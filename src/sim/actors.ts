@@ -13,6 +13,7 @@ import {
 import {
   canBeHit, detach, die, dropHat, emit, heldHats, hitstop, kill, level, sec,
 } from './common';
+import { chopTree, collideTrees, isStanding } from './trees';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
 
@@ -144,6 +145,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
       const kn = p.kx * tmp.nx + p.ky * tmp.ny;
       if (kn < 0) { p.kx -= 1.6 * kn * tmp.nx; p.ky -= 1.6 * kn * tmp.ny; }
     }
+    if (s.trees.length) collideTrees(s, p, P.playerRadius);
   }
 }
 
@@ -308,6 +310,11 @@ export function resolveMelee(s: GameState): void {
         hitstop(s, P.hitstopClash);
       }
     }
+    if (a.slashKind === 0) {
+      for (const t of s.trees) {
+        if (isStanding(t) && inArc(a, t.x, t.y, range + P.treeRadius)) chopTree(s, t, a.id, t.x - a.x, t.y - a.y);
+      }
+    }
     const ball = s.ball;
     if (ball && inArc(a, ball.x, ball.y, range + P.ballRadius)) {
       const imp = P.ballSlashImpulse * (a.slashKind === 0 ? 1 : 0.8);
@@ -395,6 +402,11 @@ export function updateHats(s: GameState): void {
         h.x = tmp.x; h.y = tmp.y;
         dropHat(s, h);
         break;
+      }
+      // Flying hats chop trees, then fall.
+      if (s.trees.length) {
+        const t = collideTrees(s, h, P.hatRadius * 0.6);
+        if (t) { chopTree(s, t, h.owner, h.vx, h.vy); dropHat(s, h); break; }
       }
     }
     if (h.state === HAT_GROUND) continue;

@@ -36,14 +36,14 @@ function tone(freq: number, dur: number, type: OscillatorType = 'square', vol = 
 }
 
 let noiseBuf: AudioBuffer | null = null;
-function noise(dur: number, vol = 0.2, filter = 2000, q = 1, sweep = 1): void {
+function noise(dur: number, vol = 0.2, filter = 2000, q = 1, sweep = 1, delay = 0): void {
   if (!ctx || !master) return;
   if (!noiseBuf) {
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
-  const t = ctx.currentTime;
+  const t = ctx.currentTime + delay;
   const src = ctx.createBufferSource();
   src.buffer = noiseBuf;
   const f = ctx.createBiquadFilter();
@@ -111,6 +111,16 @@ export function playEvent(e: SimEvent): void {
     case 'kick': tone(140, 0.1, 'sine', 0.3, 0.5); break;
     case 'pickup': [660, 880, 1100].forEach((f, i) => tone(f, 0.1, 'triangle', 0.15, 0, i * 0.06)); break;
     case 'spawn': tone(440, 0.1, 'sine', 0.1, 2); break;
+    case 'chop':
+      tone(240, 0.09, 'triangle', 0.3, 0.55);     // woody thock
+      noise(0.06, 0.3, 1800, 2.5, 0.6);
+      break;
+    case 'fell':
+      tone(170, 0.55, 'sawtooth', 0.06, 0.35);    // creak
+      tone(90, 0.3, 'sine', 0.45, 0.4, 0.55);     // ground thump
+      noise(0.45, 0.3, 700, 0.8, 0.3, 0.55);      // crash of branches
+      noise(0.5, 0.12, 3500, 0.5, 0.5, 0.6);      // leaves
+      break;
     case 'boom': noise(0.6, 0.4, 300, 0.7, 0.3); tone(80, 0.4, 'sine', 0.35, 0.4); break;
     case 'goal': [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.18, 'square', 0.12, 0, i * 0.1)); break;
     case 'round': [784, 659, 784].forEach((f, i) => tone(f, 0.15, 'triangle', 0.15, 0, i * 0.12)); break;

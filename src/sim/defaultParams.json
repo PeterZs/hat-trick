@@ -58,5 +58,10 @@
   "cursorSpeed": 14,
   "hazardRoundTime": 45,
   "hitstopKill": 2,
-  "hitstopClash": 2
+  "hitstopClash": 2,
+  "lumberTime": 90,
+  "treeCount": 10,
+  "treeHp": 3,
+  "treeRegrowTime": 4,
+  "treeRadius": 0.6
 }

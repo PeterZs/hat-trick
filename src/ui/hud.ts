@@ -1,6 +1,6 @@
 // In-game HUD: scores, banners, lobby roster/controls, pause menu.
 
-import { BALLS, HATS, HZ, MODES, isTeamMode } from '../sim/const';
+import { BALLS, HATS, HZ, MODES, isSoloMode, isTeamMode } from '../sim/const';
 import { LEVELS } from '../sim/level';
 import type { Command, GameState, MatchConfig, ModeId, Player } from '../sim/types';
 import { PLAYER_COLORS, TEAM_COLORS, TEAM_NAMES } from '../render/models';
@@ -18,7 +18,7 @@ export interface HudContext {
 }
 
 function color(s: GameState, p: Player): string {
-  if (s.cfg.mode === 'ffa') return PLAYER_COLORS[p.id % PLAYER_COLORS.length];
+  if (isSoloMode(s.cfg.mode)) return PLAYER_COLORS[p.id % PLAYER_COLORS.length];
   if (s.cfg.mode === 'hazard') return p.role === 'overlord' ? '#a77dff' : TEAM_COLORS[0];
   return TEAM_COLORS[p.team % TEAM_COLORS.length];
 }
@@ -110,9 +110,10 @@ export class Hud {
     let html = '';
     if (s.phase === 'lobby') {
       html = `<div class="chip">${MODES.find((m) => m.id === mode)?.name} · Lobby</div>`;
-    } else if (mode === 'ffa') {
+    } else if (isSoloMode(mode)) {
+      const icon = mode === 'lumber' ? ' 🌲' : '';
       html = s.players.filter((p) => p.active).map((p) =>
-        `<div class="chip ${p.alive ? '' : 'dead'}"><span class="dot" style="background:${color(s, p)}"></span>${escapeHtml(p.name)} ${s.scores[p.id]}</div>`).join('');
+        `<div class="chip ${p.alive ? '' : 'dead'}"><span class="dot" style="background:${color(s, p)}"></span>${escapeHtml(p.name)} ${s.scores[p.id]}${icon}</div>`).join('');
     } else if (mode === 'hazard') {
       html = `<div class="chip"><span class="dot" style="background:${TEAM_COLORS[0]}"></span>Runners ${s.scores[0]}</div>
               <div class="chip"><span class="dot" style="background:#a77dff"></span>Overlords ${s.scores[1]}</div>`;
@@ -121,7 +122,7 @@ export class Hud {
       if (teams.length < 2 && (mode === 'ctf' || mode === 'soccer')) teams.splice(0, teams.length, 0, 1);
       html = teams.map((t) => `<div class="chip"><span class="dot" style="background:${TEAM_COLORS[t]}"></span>${TEAM_NAMES[t]} ${s.scores[t]}</div>`).join('');
     }
-    if (s.phase !== 'lobby') html += `<div class="chip" style="opacity:.7">to ${s.cfg.winScore}</div>`;
+    if (s.phase !== 'lobby' && mode !== 'lumber') html += `<div class="chip" style="opacity:.7">to ${s.cfg.winScore}</div>`;
     if (html !== this.scoreKey) { this.scoreKey = html; this.scores.innerHTML = html; }
   }
 
@@ -140,11 +141,11 @@ export class Hud {
         text = s.cfg.mode === 'soccer' ? `GOAL!<small>${winnerName(s, s.lastWinner)}</small>` : s.lastWinner < 0 ? 'Draw!' : `${escapeHtml(winnerName(s, s.lastWinner))}<small>wins the round</small>`;
         break;
       case 'matchOver':
-        text = `🏆 ${escapeHtml(winnerName(s, s.lastWinner))} wins!<small>back to lobby in ${Math.max(0, Math.ceil(8 - t))}</small>`;
+        text = `${s.lastWinner < 0 ? "🤝 It's a tie!" : `🏆 ${escapeHtml(winnerName(s, s.lastWinner))} wins!`}<small>back to lobby in ${Math.max(0, Math.ceil(8 - t))}</small>`;
         break;
     }
     if (this.banner.innerHTML !== text) this.banner.innerHTML = text;
-    const showTimer = s.cfg.mode === 'hazard' && (s.phase === 'playing' || s.phase === 'countdown');
+    const showTimer = (s.cfg.mode === 'hazard' || s.cfg.mode === 'lumber') && (s.phase === 'playing' || s.phase === 'countdown');
     this.timer.textContent = showTimer ? `⏱ ${Math.ceil(s.timer / HZ)}` : '';
   }
 
@@ -179,7 +180,7 @@ export class Hud {
             <select data-l="mode">${MODES.map((m) => `<option value="${m.id}" ${m.id === mode ? 'selected' : ''}>${m.name}</option>`).join('')}</select>
             <select data-l="level">${Object.values(LEVELS).map((l) => `<option value="${l.id}" ${l.id === s.cfg.level ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
             <label class="hint">to <input data-l="win" type="number" min="1" max="50" value="${s.cfg.winScore}" style="width:56px"></label>`
-          : `<span class="hint">${MODES.find((m) => m.id === mode)?.name} · ${LEVELS[s.cfg.level]?.name} · first to ${s.cfg.winScore} — waiting for host</span>`}
+          : `<span class="hint">${MODES.find((m) => m.id === mode)?.name} · ${LEVELS[s.cfg.level]?.name}${mode === 'lumber' ? '' : ` · first to ${s.cfg.winScore}`} — waiting for host</span>`}
           <span class="grow"></span>
           <button class="small" data-l="bot">+ Bot</button>
           <button class="small" data-l="rmbot">− Bot</button>

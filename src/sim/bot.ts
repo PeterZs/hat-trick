@@ -9,6 +9,7 @@ import { BTN_ATTACK, BTN_DASH, BTN_THROW, makeInput, NEUTRAL, type PlayerInput }
 import { navGrid } from './level';
 import { HAT_GROUND, HAT_HELD, type GameState, type Player } from './types';
 import { heldHats, level } from './common';
+import { isStanding } from './trees';
 import { isLethal } from './actors';
 
 function nearestEnemy(s: GameState, p: Player): Player | null {
@@ -109,7 +110,7 @@ export function botInput(s: GameState, p: Player): PlayerInput {
   let goalX = p.x, goalY = p.y;
   let aimX = 0, aimY = 0;
   const held = heldHats(s, p);
-  const enemy = nearestEnemy(s, p);
+  let enemy = nearestEnemy(s, p);
   const mode = s.cfg.mode;
 
   // Where do we want to be?
@@ -132,6 +133,26 @@ export function botInput(s: GameState, p: Player): PlayerInput {
     else if (!mine.atHome && p.id % 2 === 0) { goalX = mine.x; goalY = mine.y; }
     else if (theirs.carrier >= 0) { const c = s.players[theirs.carrier]; goalX = c.x + 1.5; goalY = c.y; }
     else { goalX = theirs.x; goalY = theirs.y; }
+  } else if (mode === 'lumber') {
+    // Chop the nearest standing tree; only fight rivals who come close.
+    let tree = null, bd = 1e18;
+    for (const t of s.trees) {
+      if (!isStanding(t)) continue;
+      const d = dist2(p.x, p.y, t.x, t.y);
+      if (d < bd) { bd = d; tree = t; }
+    }
+    if (enemy && dist2(p.x, p.y, enemy.x, enemy.y) > 4 * 4) enemy = null;
+    if (tree && !enemy) {
+      const dx = tree.x - p.x, dy = tree.y - p.y, d = Math.sqrt(bd);
+      const reach = P.slashRange + P.treeRadius - 0.3;
+      if (d > reach) { goalX = tree.x - (dx / d) * (reach - 0.2); goalY = tree.y - (dy / d) * (reach - 0.2); }
+      aimX = dx; aimY = dy;
+      if (held > 0 && d <= reach + 0.2 && p.slashCd <= 0 && rand(s) < 0.5) b |= BTN_ATTACK;
+      else if (held > 0 && d > 4 && d < P.hatRange && p.botAimT <= 0 && rand(s) < 0.02 &&
+               !segmentBlocked(p.x, p.y, tree.x, tree.y, L.walls, true)) {
+        b |= BTN_THROW; p.botAimT = 0; // tap-throw at the tree
+      }
+    }
   } else if (enemy) {
     goalX = enemy.x; goalY = enemy.y;
   } else {

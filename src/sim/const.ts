@@ -13,16 +13,22 @@ export const MODES: { id: ModeId; name: string; desc: string; level: string }[] 
   { id: 'ctf', name: 'Capture the Flag', desc: "Grab the enemy flag and bring it home.", level: 'fortress' },
   { id: 'soccer', name: 'Soccer', desc: 'Hit the ball into the other net.', level: 'pitch' },
   { id: 'hazard', name: 'Overlord', desc: 'Overlords drop bombs; runners survive the clock.', level: 'courtyard' },
+  { id: 'lumber', name: 'Lumberjacks', desc: 'Chop down the most trees before time runs out.', level: 'clearing' },
 ];
 
 export function isTeamMode(m: ModeId): boolean {
-  return m !== 'ffa';
+  return m !== 'ffa' && m !== 'lumber';
+}
+
+/** Modes scored per player rather than per team. */
+export function isSoloMode(m: ModeId): boolean {
+  return m === 'ffa' || m === 'lumber';
 }
 
 /** The team used for friendly fire and scoring. */
 export function teamOf(s: GameState, p: Player): number {
   switch (s.cfg.mode) {
-    case 'ffa': return 100 + p.id;
+    case 'ffa': case 'lumber': return 100 + p.id;
     case 'hazard': return p.role === 'overlord' ? 1 : 0;
     default: return p.team;
   }

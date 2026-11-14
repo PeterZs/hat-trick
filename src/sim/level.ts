@@ -133,7 +133,24 @@ const fortress: Level = {
   bases: [{ team: 0, x: -15.5, y: 0 }, { team: 1, x: 15.5, y: 0 }],
 };
 
-export const LEVELS: Record<string, Level> = { courtyard, pitch, fortress };
+const clearing: Level = {
+  id: 'clearing',
+  name: 'Clearing',
+  w: 15, h: 10,
+  floor: ['#9fd47e', '#95ca74'],
+  walls: [
+    ...border(15, 10),
+    W(-8, -2, 0.7, 0.7, 'box'),
+    W(8, 2, 0.7, 0.7, 'box'),
+    W(0, -5.5, 2.2, 0.35, 'low'),
+    W(0, 5.5, 2.2, 0.35, 'low'),
+  ],
+  spawns: spawnsRing(15, 10),
+  goals: [],
+  bases: [{ team: 0, x: -12.5, y: 0 }, { team: 1, x: 12.5, y: 0 }],
+};
+
+export const LEVELS: Record<string, Level> = { courtyard, pitch, fortress, clearing };
 export const LEVEL_IDS = Object.keys(LEVELS);
 
 export function getLevel(id: string): Level {

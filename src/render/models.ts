@@ -255,4 +255,32 @@ export function makePickup(kind: string): THREE.Group {
   return g;
 }
 
+/** Choppable tree, origin at the base of the trunk. */
+export function makeTree(seed: number): THREE.Group {
+  const g = new THREE.Group();
+  const trunk = mesh(new THREE.CylinderGeometry(0.32, 0.42, 1.3, 7), '#8a5a3b');
+  trunk.position.y = 0.65; g.add(trunk);
+  const canopy = new THREE.Group();
+  canopy.name = 'canopy';
+  const greens = ['#3f9b5b', '#4fae62', '#5cbf6b'];
+  const tall = 0.8 + (seed % 3) * 0.15;
+  for (let i = 0; i < 3; i++) {
+    const c = mesh(new THREE.ConeGeometry(1.25 - i * 0.3, 1.2 * tall, 7), greens[(i + seed) % 3]);
+    c.position.y = 1.5 + i * 0.6 * tall;
+    c.rotation.y = i * 0.7 + seed;
+    canopy.add(c);
+  }
+  g.add(canopy);
+  return g;
+}
+
+export function makeStump(): THREE.Group {
+  const g = new THREE.Group();
+  const s = mesh(new THREE.CylinderGeometry(0.36, 0.44, 0.35, 7), '#8a5a3b');
+  s.position.y = 0.17; g.add(s);
+  const top = mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.04, 7), '#e9c99a');
+  top.position.y = 0.36; g.add(top);
+  return g;
+}
+
 export { PICKUP_COLORS, PICKUP_ICONS };

@@ -119,3 +119,37 @@ describe('hit-stop', () => {
     expect(a.x).toBeGreaterThan(x0);
   });
 });
+
+describe('lumberjacks', () => {
+  it('slashing a tree treeHp times fells it and scores', () => {
+    const s = createState({ mode: 'lumber', level: 'clearing', winScore: 5 }, { ...DEFAULT_PARAMS, powerupMax: 0 }, 3);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'join', device: 'd0', name: 'A', ball: 0 }, { t: 'start', cfg: s.cfg }] }]);
+    while (s.phase !== 'playing') step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+    const [a] = s.players;
+    const t = s.trees[0];
+    a.x = t.x - 1.4; a.y = t.y;
+    const ev: string[] = [];
+    for (let i = 0; i < DEFAULT_PARAMS.treeHp; i++) {
+      ev.push(...run(s, 40, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : 0) })));
+    }
+    expect(ev.filter((e) => e === 'chop').length).toBe(DEFAULT_PARAMS.treeHp);
+    expect(ev).toContain('fell');
+    expect(s.scores[a.id]).toBe(1);
+    // Regrows somewhere after the regrow time.
+    run(s, Math.round(DEFAULT_PARAMS.treeRegrowTime * 60) + 5, () => ({}));
+    expect(s.trees.filter((t) => t.hp > 0).length).toBe(DEFAULT_PARAMS.treeCount);
+  });
+
+  it('bots play a timed match to the end', () => {
+    const s = createState({ mode: 'lumber', level: 'clearing', winScore: 5 }, { ...DEFAULT_PARAMS, lumberTime: 40 }, 9);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'addBot' }, { t: 'addBot' }, { t: 'addBot' }, { t: 'start', cfg: s.cfg }] }]);
+    let fells = 0, ended = false;
+    for (let f = 0; f < 60 * 45 && !ended; f++) {
+      step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+      for (const e of s.events) { if (e.e === 'fell') fells++; if (e.e === 'match') ended = true; }
+    }
+    console.log('lumber fells', fells, 'scores', s.scores.slice(0, 3), 'winner', s.lastWinner);
+    expect(fells).toBeGreaterThan(3);
+    expect(ended).toBe(true);
+  });
+});

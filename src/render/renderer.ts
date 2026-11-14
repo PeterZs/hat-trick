@@ -3,9 +3,9 @@
 import * as THREE from 'three';
 import { getLevel, levelBounds, type Level } from '../sim/level';
 import { HAT_GROUND, HAT_HELD, HAT_RECALL, type GameState, type Player, type SimEvent } from '../sim/types';
-import { HZ, isTeamMode } from '../sim/const';
+import { HZ, isSoloMode, isTeamMode } from '../sim/const';
 import {
-  PLAYER_COLORS, TEAM_COLORS, makeBall, makeBase, makeCar, makeEyes, makeFlag, makeHat, makePickup, mat, vertexColorMat,
+  PLAYER_COLORS, TEAM_COLORS, makeBall, makeBase, makeCar, makeEyes, makeFlag, makeHat, makePickup, makeStump, makeTree, mat, vertexColorMat,
 } from './models';
 import { Effects } from './effects';
 
@@ -48,6 +48,10 @@ export class Renderer {
   private flags: THREE.Group[] = [];
   private bombs = new Map<number, { shadow: THREE.Mesh; bomb: THREE.Mesh }>();
   private ballView: THREE.Mesh | null = null;
+  private trees = new Map<number, { g: THREE.Group; wobble: number; wx: number; wz: number }>();
+  /** Render-only animations of felled trees and leftover stumps. */
+  private falling: { g: THREE.Group; axis: THREE.Vector3; t: number; landed: boolean; x: number; z: number }[] = [];
+  private stumps: { g: THREE.Group; t: number; life: number }[] = [];
   private ballLast = { x: 0, y: 0 };
   private hitboxes = new THREE.Group();
   readonly effects: Effects;
@@ -245,7 +249,7 @@ export class Renderer {
   // Entities
 
   playerColor(s: GameState, p: Player): string {
-    if (s.cfg.mode === 'ffa') return PLAYER_COLORS[p.id % PLAYER_COLORS.length];
+    if (isSoloMode(s.cfg.mode)) return PLAYER_COLORS[p.id % PLAYER_COLORS.length];
     if (s.cfg.mode === 'hazard') return p.role === 'overlord' ? '#a77dff' : TEAM_COLORS[0];
     return TEAM_COLORS[p.team % TEAM_COLORS.length];
   }
@@ -547,7 +551,64 @@ export class Renderer {
     }
     for (const [id, bv] of this.bombs) if (!bSeen.has(id)) { this.scene.remove(bv.shadow, bv.bomb); this.bombs.delete(id); }
 
+    // --- Trees
+    const tSeen = new Set<number>();
+    for (const t of s.trees) {
+      if (t.hp <= 0) continue;
+      tSeen.add(t.id);
+      let tv = this.trees.get(t.id);
+      if (!tv) {
+        const g = makeTree(t.id);
+        g.rotation.y = t.id * 1.3;
+        this.scene.add(g);
+        tv = { g, wobble: 0, wx: 1, wz: 0 };
+        this.trees.set(t.id, tv);
+      }
+      tv.g.position.set(t.x, 0, t.y);
+      // Sprout pop-in with a little overshoot.
+      const k = Math.min(1, t.grow / 30);
+      const sc = k < 1 ? 1 - Math.pow(1 - k, 3) + Math.sin(k * Math.PI) * 0.25 : 1;
+      tv.g.scale.setScalar(Math.max(0.01, sc));
+      // Damped wobble after a chop, leaning away from the hit.
+      tv.wobble = Math.max(0, tv.wobble - dt * 3);
+      const lean = Math.sin(this.time * 38) * tv.wobble * 0.18;
+      tv.g.rotation.x = tv.wz * lean;
+      tv.g.rotation.z = -tv.wx * lean;
+    }
+    for (const [id, tv] of this.trees) if (!tSeen.has(id)) { this.scene.remove(tv.g); this.trees.delete(id); }
+    this.animateFelled(dt, s);
+
     this.syncHitboxes(s);
+  }
+
+  private animateFelled(dt: number, s: GameState): void {
+    this.falling = this.falling.filter((f) => {
+      f.t += dt;
+      // Accelerating topple over ~0.55 s, a small bounce, then sink away.
+      const T = 0.55;
+      let ang: number;
+      if (f.t < T) ang = (Math.PI / 2) * Math.pow(f.t / T, 2.2);
+      else ang = Math.PI / 2 - Math.abs(Math.sin((f.t - T) * 14)) * Math.max(0, 0.12 - (f.t - T) * 0.3);
+      f.g.quaternion.setFromAxisAngle(f.axis, ang);
+      if (!f.landed && f.t >= T) {
+        f.landed = true;
+        const dir = new THREE.Vector3(0, 0, 0).crossVectors(f.axis, new THREE.Vector3(0, 1, 0));
+        const lx = f.x + dir.x * 2.2, lz = f.z + dir.z * 2.2;
+        this.effects.burst(lx, 0.5, lz, ['#3f9b5b', '#4fae62', '#5cbf6b'], 24, 6, 0.9);
+        this.effects.puff(lx, lz, '#e6dccb', 8);
+        this.shake = Math.max(this.shake, 0.35);
+      }
+      if (f.t > 1.6) f.g.position.y = -(f.t - 1.6) * 2;
+      if (f.t > 2.4) { this.scene.remove(f.g); return false; }
+      return true;
+    });
+    this.stumps = this.stumps.filter((st) => {
+      st.t += dt;
+      if (st.t > st.life) st.g.position.y = -(st.t - st.life) * 0.8;
+      if (st.t > st.life + 0.6) { this.scene.remove(st.g); return false; }
+      return true;
+    });
+    void s;
   }
 
   private syncHitboxes(s: GameState): void {
@@ -630,6 +691,40 @@ export class Renderer {
       case 'kick': { const p = s.players[e.target]; if (p) this.effects.burst(p.x, 0.6, p.y, ['#ffe680'], 8, 5, 0.3); break; }
       case 'catch': { const p = s.players[e.who]; if (p) this.effects.puff(p.x, p.y, '#ffffff', 3); break; }
       case 'piggy': { const p = s.players[e.who]; if (p) this.effects.ring(p.x, p.y, '#ffffff', 1.5); break; }
+      case 'chop': {
+        const tv = this.trees.get(e.tree);
+        const p = s.players[e.who];
+        if (tv) {
+          tv.wobble = 1;
+          if (p) { const dx = e.x - p.x, dz = e.y - p.y, d = Math.hypot(dx, dz) || 1; tv.wx = dx / d; tv.wz = dz / d; }
+        }
+        this.effects.burst(e.x, 0.7, e.y, ['#c98b4f', '#e9c99a', '#8a5a3b'], 12, 6, 0.6);
+        this.effects.burst(e.x, 2.2, e.y, ['#4fae62', '#5cbf6b'], 6, 2, 0.8);
+        this.shake = Math.max(this.shake, 0.15);
+        break;
+      }
+      case 'fell': {
+        const old = this.trees.get(e.tree);
+        const g = makeTree(e.tree);
+        if (old) { g.rotation.copy(old.g.rotation); this.scene.remove(old.g); this.trees.delete(e.tree); }
+        const pivot = new THREE.Group();
+        pivot.position.set(e.x, 0, e.y);
+        pivot.add(g);
+        this.scene.add(pivot);
+        // Fall away from the chopper: rotate about up x direction.
+        const axis = new THREE.Vector3(e.dy, 0, -e.dx).normalize();
+        this.falling.push({ g: pivot, axis, t: 0, landed: false, x: e.x, z: e.y });
+        const stump = makeStump();
+        stump.position.set(e.x, 0, e.y);
+        this.scene.add(stump);
+        this.stumps.push({ g: stump, t: 0, life: s.params.treeRegrowTime + 0.3 });
+        this.effects.burst(e.x, 0.6, e.y, ['#c98b4f', '#e9c99a'], 18, 8, 0.7);
+        this.effects.text(e.x, 3.4, e.y, 'TIMBER!', '#8a5a3b', 1.1);
+        const p = s.players[e.who];
+        if (p && s.phase === 'playing') this.effects.text(p.x, 2.6, p.y, '+1 🌲', this.playerColor(s, p), 0.8, 1.0);
+        this.punch = Math.max(this.punch, 0.4);
+        break;
+      }
       case 'flag': { const f = s.flags.find((f) => f.team === e.team); if (f && e.what === 'score') this.effects.burst(f.homeX, 1, f.homeY, [TEAM_COLORS[(e.team) % 4], '#fff'], 40, 9, 1.2); break; }
     }
   }

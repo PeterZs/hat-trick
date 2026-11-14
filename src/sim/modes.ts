@@ -11,6 +11,7 @@ import {
 } from './types';
 import { canBeHit, die, dropHat, emit, giveHats, kill, level, newId, sec, spawnPlayer } from './common';
 import { isLethal, spawnCar } from './actors';
+import { resetTrees } from './trees';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
 
@@ -39,7 +40,7 @@ export function updatePickups(s: GameState): void {
     if (s.pickups.length < P.powerupMax) {
       const spot = freeSpot(s);
       if (spot) {
-        if (carCount === 0 && rand(s) < P.carChance && s.cfg.mode !== 'soccer') {
+        if (carCount === 0 && rand(s) < P.carChance && s.cfg.mode !== 'soccer' && s.cfg.mode !== 'lumber') {
           spawnCar(s, spot.x, spot.y, rand(s) * 6.283);
         } else {
           s.pickups.push({ id: newId(s), kind: PICKUP_KINDS[randInt(s, PICKUP_KINDS.length)], x: spot.x, y: spot.y, t: 0 });
@@ -229,6 +230,7 @@ export function resetArena(s: GameState): void {
   s.cars = [];
   s.bombs = [];
   s.pickupT = sec(s, 'powerupInterval');
+  resetTrees(s);
   s.ball = s.cfg.mode === 'soccer' ? { x: 0, y: 0, vx: 0, vy: 0, lastTouch: -1 } : null;
   if (s.cfg.mode === 'ctf') resetFlags(s); else s.flags = [];
   // Respawn everyone at deterministic spawn points.
@@ -256,7 +258,7 @@ export function startRound(s: GameState): void {
   s.round++;
   s.phase = s.params.countdownTime > 0 ? 'countdown' : 'playing';
   s.phaseT = 0;
-  s.timer = s.cfg.mode === 'hazard' ? sec(s, 'hazardRoundTime') : 0;
+  s.timer = s.cfg.mode === 'hazard' ? sec(s, 'hazardRoundTime') : s.cfg.mode === 'lumber' ? sec(s, 'lumberTime') : 0;
   resetArena(s);
 }
 
@@ -295,6 +297,18 @@ export function updateRules(s: GameState): void {
       if (s.phaseT >= sec(s, 'countdownTime')) { s.phase = 'playing'; s.phaseT = 0; }
       break;
     case 'playing': {
+      if (mode === 'lumber') {
+        if (--s.timer <= 0) {
+          // Most trees wins; a tie is a draw.
+          let best = -1, winner = -1;
+          for (const p of fighters) {
+            const sc = s.scores[p.id];
+            if (sc > best) { best = sc; winner = 100 + p.id; } else if (sc === best) winner = -1;
+          }
+          endMatch(s, winner);
+        }
+        break;
+      }
       if (mode === 'hazard') {
         const runners = fighters.filter((p) => p.alive);
         const overlords = s.players.filter((p) => p.active && p.role === 'overlord');

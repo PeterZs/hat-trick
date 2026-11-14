@@ -2,7 +2,7 @@
 
 import * as THREE from 'three';
 
-interface Particle { m: THREE.Mesh; vx: number; vy: number; vz: number; life: number; max: number; spin: number; grow: number; streak?: boolean }
+interface Particle { m: THREE.Mesh | THREE.Sprite; vx: number; vy: number; vz: number; life: number; max: number; spin: number; grow: number; streak?: boolean; float?: boolean }
 
 const chunkGeo = new THREE.TetrahedronGeometry(0.14, 0);
 const puffGeo = new THREE.IcosahedronGeometry(0.22, 0);
@@ -42,6 +42,27 @@ export class Effects {
     }
   }
 
+  /** Floating text that pops, rises and fades (e.g. "TIMBER!"). */
+  text(x: number, y: number, z: number, text: string, color: string, size = 1, life = 1.1): void {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 128;
+    const ctx = c.getContext('2d')!;
+    ctx.font = '700 84px Fredoka, system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 14; ctx.strokeStyle = '#ffffff'; ctx.lineJoin = 'round';
+    ctx.strokeText(text, 256, 68);
+    ctx.fillStyle = color; ctx.fillText(text, 256, 68);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+    m.renderOrder = 10;
+    m.position.set(x, y, z);
+    m.scale.set(4 * size, 1 * size, 1);
+    m.userData.size = size;
+    this.scene.add(m);
+    this.parts.push({ m, vx: 0, vy: 1.6, vz: 0, life, max: life, spin: 0, grow: 0, float: true });
+  }
+
   puff(x: number, z: number, color = '#ffffff', n = 6): void {
     this.burst(x, 0.3, z, [color], n, 2, 0.45, puffGeo);
   }
@@ -66,11 +87,18 @@ export class Effects {
       p.life -= dt;
       if (p.life <= 0) {
         this.scene.remove(p.m);
-        (p.m.material as THREE.Material).dispose();
-        if (p.m.geometry !== chunkGeo && p.m.geometry !== puffGeo && p.m.geometry !== ringGeo && p.m.geometry !== sparkGeo) p.m.geometry.dispose();
+        const mm = p.m.material as THREE.Material & { map?: THREE.Texture | null };
+        if (p.float) mm.map?.dispose();
+        mm.dispose();
+        // Sprites share one internal geometry; never dispose it.
+        if (!p.float && p.m.geometry !== chunkGeo && p.m.geometry !== puffGeo && p.m.geometry !== ringGeo && p.m.geometry !== sparkGeo) p.m.geometry.dispose();
         return false;
       }
-      if (p.streak) {
+      if (p.float) {
+        p.m.position.y += p.vy * dt; p.vy *= 0.96;
+        const age = p.max - p.life, sz = (p.m.userData.size as number) * (1 + 0.5 * Math.max(0, 1 - age * 8));
+        p.m.scale.set(4 * sz, sz, 1);
+      } else if (p.streak) {
         p.vx *= 0.9; p.vz *= 0.9; p.vy -= 6 * dt;
         p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt;
         const sp = Math.hypot(p.vx, p.vy, p.vz);
@@ -84,7 +112,7 @@ export class Effects {
         if (p.m.position.y < 0.08) { p.m.position.y = 0.08; p.vy *= -0.4; p.vx *= 0.7; p.vz *= 0.7; }
         p.m.rotation.x += p.spin * dt; p.m.rotation.y += p.spin * dt * 0.7;
       }
-      (p.m.material as THREE.MeshBasicMaterial).opacity = Math.min(1, (p.life / p.max) * 2);
+      (p.m.material as THREE.MeshBasicMaterial | THREE.SpriteMaterial).opacity = Math.min(1, (p.life / p.max) * 2);
       return true;
     });
   }

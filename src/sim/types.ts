@@ -6,7 +6,7 @@
 import type { Params } from './params';
 import type { PlayerInput } from './input';
 
-export type ModeId = 'ffa' | 'teams' | 'ctf' | 'soccer' | 'hazard';
+export type ModeId = 'ffa' | 'teams' | 'ctf' | 'soccer' | 'hazard' | 'lumber';
 export type Phase = 'lobby' | 'countdown' | 'playing' | 'roundOver' | 'matchOver';
 export type Role = 'fighter' | 'overlord';
 
@@ -51,7 +51,7 @@ export interface Player {
 
   cursorX: number; cursorY: number; bombCd: number; // overlord
 
-  kills: number; deaths: number;
+  kills: number; deaths: number; trees: number;
 
   // Bot memory (part of state for determinism).
   botT: number; botMx: number; botMy: number; botStrafe: number; botAimT: number;
@@ -96,6 +96,14 @@ export interface Flag {
   dropT: number;         // frames until auto-return when dropped
 }
 
+export interface Tree {
+  id: number;
+  x: number; y: number;
+  hp: number;            // 0 = felled (stump)
+  regrowT: number;       // frames until a new tree grows (when felled)
+  grow: number;          // frames since sprouting (render pop-in)
+}
+
 export interface Bomb { id: number; owner: number; x: number; y: number; t: number }
 
 export type SimEvent =
@@ -115,6 +123,8 @@ export type SimEvent =
   | { e: 'goal'; team: number }
   | { e: 'flag'; what: 'take' | 'drop' | 'return' | 'score'; team: number; who: number }
   | { e: 'boom'; x: number; y: number }
+  | { e: 'chop'; tree: number; who: number; x: number; y: number }
+  | { e: 'fell'; tree: number; who: number; x: number; y: number; dx: number; dy: number }
   | { e: 'round'; winner: number }
   | { e: 'match'; winner: number }
   | { e: 'join'; who: number }
@@ -144,6 +154,7 @@ export interface GameState {
   ball: SoccerBall | null;
   flags: Flag[];
   bombs: Bomb[];
+  trees: Tree[];
   scores: number[];      // indexed by team (FFA: by slot)
   lastWinner: number;    // team, -1 = draw
   pickupT: number;

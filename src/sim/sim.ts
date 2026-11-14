@@ -15,6 +15,7 @@ import {
   resetArena, startRound, toLobby, updateBall, updateBombs, updateFlags, updateOverlord, updatePickups, updateRules,
 } from './modes';
 import { botInput } from './bot';
+import { updateTrees } from './trees';
 
 export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd): GameState {
   const s: GameState = {
@@ -33,6 +34,7 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
     ball: null,
     flags: [],
     bombs: [],
+    trees: [],
     scores: new Array(MAX_PLAYERS).fill(0),
     lastWinner: -1,
     pickupT: 0,
@@ -51,7 +53,7 @@ function newPlayer(id: number, peer: number, device: string, name: string, ball:
     dashT: 0, dashCd: 0, dashDx: 0, dashDy: 0, slashT: -1, slashKind: 0, slashCd: 0,
     charging: false, charge: 0, recalling: false, prevB: 0, stunT: 0, invulnT: 0,
     speedT: 0, phaseT: 0, shield: 0, maxHats: 1, riding: -1, rider: -1, car: -1,
-    cursorX: 0, cursorY: 0, bombCd: 0, kills: 0, deaths: 0,
+    cursorX: 0, cursorY: 0, bombCd: 0, kills: 0, deaths: 0, trees: 0,
     botT: 0, botMx: 0, botMy: 0, botStrafe: 1, botAimT: 0,
   };
 }
@@ -144,7 +146,7 @@ function applyCommand(s: GameState, peer: number, c: Command): void {
       s.cfg = { ...c.cfg };
       s.scores = s.scores.map(() => 0);
       s.round = 0;
-      for (const p of s.players) { p.kills = 0; p.deaths = 0; }
+      for (const p of s.players) { p.kills = 0; p.deaths = 0; p.trees = 0; }
       if (s.cfg.mode === 'hazard') {
         const fighters = s.players.filter((p) => p.active);
         if (fighters.length > 1 && !fighters.some((p) => p.role === 'overlord')) {
@@ -223,6 +225,7 @@ export function step(s: GameState, frame: PeerFrame[]): void {
     updateBall(s);
     updateFlags(s);
     updateBombs(s);
+    updateTrees(s);
   } else {
     for (const p of s.players) if (p.active && inputs[p.id]) p.prevB = inputs[p.id].b;
   }
