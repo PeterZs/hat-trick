@@ -1,7 +1,7 @@
 // Players, hats, cars and combat.
 
 import { DT, HZ, allies, teamOf, isTeamMode } from './const';
-import { clamp, dcos, dsin, dist2, frames, len, lerp, PI, rotate } from './dmath';
+import { clamp, dcos, dsin, dist2, frames, len, lerp, PI } from './dmath';
 import { collideCircle, circleOverlapsWalls, type Push } from './collision';
 import {
   BTN_ATTACK, BTN_DASH, BTN_INTERACT, BTN_THROW, type PlayerInput,
@@ -363,25 +363,18 @@ export function updateHats(s: GameState): void {
     }
     if (h.state === HAT_RETURN) {
       if (!owner.alive) { dropHat(s, h); continue; }
-      // Home toward the owner: steer velocity, keep speed.
+      // Seek steering: accelerate toward "full return speed, aimed at the
+      // owner". If the owner hasn't moved, the desired velocity is exactly
+      // opposite the outbound one, so the hat decelerates, stops and flies
+      // straight back along the same line; it only bends to follow an owner
+      // who has moved. Acceleration ramps up over time so it always arrives.
       const dx = owner.x - h.x, dy = owner.y - h.y, d = Math.max(0.001, len(dx, dy));
-      h.speed += (P.hatReturnSpeed - h.speed) * Math.min(1, 4 * DT);
-      // Turn toward the owner at a limited rate (tightening over time so it
-      // always comes back). Turning by an angle, rather than blending
-      // vectors, also handles the owner being directly behind the hat.
-      const ang = (P.hatHoming / 10) * DT * (1 + h.t / 20);
-      const vl = len(h.vx, h.vy);
-      const tx = dx / d, ty = dy / d;
-      // After sliding into a wall head-on the velocity can vanish: re-aim at the owner.
-      let ux = vl > 1e-3 ? h.vx / vl : tx, uy = vl > 1e-3 ? h.vy / vl : ty;
-      if (ux * tx + uy * ty >= dcos(ang)) { ux = tx; uy = ty; }
-      else {
-        let cross = ux * ty - uy * tx;
-        // Owner (nearly) straight behind: curve toward the arena center.
-        if (Math.abs(cross) < 0.05) cross = ux * -h.y - uy * -h.x;
-        [ux, uy] = rotate(ux, uy, cross >= 0 ? ang : -ang);
-      }
-      h.vx = ux * h.speed; h.vy = uy * h.speed;
+      const wantX = (dx / d) * P.hatReturnSpeed, wantY = (dy / d) * P.hatReturnSpeed;
+      let ex = wantX - h.vx, ey = wantY - h.vy;
+      const el = len(ex, ey), maxDv = P.hatHoming * DT * (1 + h.t / 40);
+      if (el > maxDv) { ex *= maxDv / el; ey *= maxDv / el; }
+      h.vx += ex; h.vy += ey;
+      h.speed = len(h.vx, h.vy);
     }
     if (h.state === HAT_RECALL) {
       if (!owner.alive) { dropHat(s, h); continue; }

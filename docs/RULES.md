@@ -13,7 +13,7 @@ a shield).
 | **Roll** | Move freely. Walls and crates block you; low walls block you but not hats. |
 | **Dash** | Short burst in your movement direction (or facing direction if standing). 0.6 s cooldown. |
 | **Slash** | Requires a hat. A 160° swipe in front of you after a brief windup. Kills enemies in range. 0.35 s cooldown. |
-| **Quick throw** | Tap throw (or release before 1 s). Your hat flies 9 units straight ahead at speed 20, then curves back to you. You keep moving normally while holding. |
+| **Quick throw** | Tap throw (or release before 1 s). Your hat flies 9 units straight ahead at speed 20, slows, and comes straight back along the same line (bending only to follow you if you've moved). You keep moving normally while holding. |
 | **Aimed throw** | Hold throw for **1 second** to enter *stationary aim mode*: you stand still, a ring fills while you wind up, then a dashed line shows the throw. In aim mode the movement stick (or aim stick / mouse) only aims. Power builds over 0.7 s up to distance 18 at speed 30. Release to throw. |
 | **Catch** | A returning hat is caught automatically when it reaches you. |
 | **Hats always come back** | An outbound hat that hits a wall, tree or ball bounces off and heads home early. A returning hat slides along walls to get around them. It only drops to the ground if it is **pinned** against a wall without getting closer to you for 0.25 s, collides with another flying hat, is slashed out of the air, is caught in a bomb blast, or its owner dies. Walk over a dropped hat to pick it up. |

@@ -210,3 +210,41 @@ describe('throw modes', () => {
     expect(a.aiming).toBe(false);
   });
 });
+
+describe('boomerang path', () => {
+  it('goes straight out and straight back when the thrower stands still', () => {
+    const s = setup('ffa', 1);
+    const [a] = s.players;
+    a.x = -12; a.y = -2.6;
+    run(s, 3, (f) => ({ d0: makeInput(0, 0, 1, 0.0001, f < 2 ? BTN_THROW : 0) }));
+    const h = s.hats[0];
+    let maxX = -1e9, maxDev = 0, caught = false;
+    for (let f = 0; f < 150 && !caught; f++) {
+      const ev = run(s, 1, () => ({}));
+      maxX = Math.max(maxX, h.x);
+      maxDev = Math.max(maxDev, Math.abs(h.y - a.y));
+      caught = ev.includes('catch');
+    }
+    expect(caught).toBe(true);
+    expect(maxDev).toBeLessThan(0.01);
+    expect(maxX - a.x).toBeGreaterThan(DEFAULT_PARAMS.hatRange);
+    expect(maxX - a.x).toBeLessThan(DEFAULT_PARAMS.hatRange + 3);
+  });
+
+  it('bends on the way back to follow a player who moved', () => {
+    const s = setup('ffa', 1);
+    const [a] = s.players;
+    a.x = -12; a.y = -2.6;
+    run(s, 3, (f) => ({ d0: makeInput(0, 0, 1, 0, f < 2 ? BTN_THROW : 0) }));
+    const h = s.hats[0];
+    let caught = false, maxDev = 0;
+    for (let f = 0; f < 200 && !caught; f++) {
+      const ev = run(s, 1, () => ({ d0: makeInput(0, f < 30 ? 1 : 0, 0, 0, 0) })); // walk down a bit
+      if (h.state === HAT_OUT) expect(Math.abs(h.y + 2.6)).toBeLessThan(0.01); // outbound stays straight
+      maxDev = Math.max(maxDev, Math.abs(h.y + 2.6));
+      caught = ev.includes('catch');
+    }
+    expect(caught).toBe(true);
+    expect(maxDev).toBeGreaterThan(1);
+  });
+});

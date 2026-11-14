@@ -43,7 +43,7 @@ export const PARAM_DEFS: ParamDef[] = [
   D('chargeTime', 'Aimed-throw charge time (s)', 'Throw', 0.05, 3, 0.05),
   D('aimMoveFactor', 'Move speed in stationary aim (x)', 'Throw', 0, 1, 0.05),
   D('hatReturnSpeed', 'Hat return speed', 'Throw', 2, 60, 0.5),
-  D('hatHoming', 'Hat homing strength', 'Throw', 1, 200, 1),
+  D('hatHoming', 'Hat return acceleration', 'Throw', 5, 600, 5),
   D('hatRadius', 'Hat radius', 'Throw', 0.1, 1.5, 0.05),
   D('hatStuckTime', 'Pinned hat drops after (s)', 'Throw', 0.02, 2, 0.01),
   D('catchRadius', 'Catch radius', 'Throw', 0.2, 3, 0.05),

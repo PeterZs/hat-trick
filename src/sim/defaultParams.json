@@ -25,7 +25,7 @@
   "chargeTime": 0.7,
   "aimMoveFactor": 0,
   "hatReturnSpeed": 22,
-  "hatHoming": 45,
+  "hatHoming": 110,
   "hatRadius": 0.45,
   "hatStuckTime": 0.25,
   "catchRadius": 1,
