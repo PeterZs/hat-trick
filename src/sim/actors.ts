@@ -69,6 +69,9 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   // --- Interact: piggyback / car
   if (pressed & BTN_INTERACT) interact(s, p);
 
+  // Slash next to a free car gets you in (instead of swinging).
+  if ((pressed & BTN_ATTACK) && p.stunT <= 0 && tryEnterCar(s, p)) return;
+
   // --- Attack (slash with hat, kick without)
   if ((pressed & BTN_ATTACK) && p.slashCd <= 0 && p.slashT < 0 && p.stunT <= 0) {
     p.slashT = 0;
@@ -171,6 +174,23 @@ function keepInBounds(s: GameState, p: Player): void {
   p.y = clamp(p.y, -L.h + r, L.h - r);
 }
 
+/** Get into a free car within reach. Returns true if we got in. */
+function tryEnterCar(s: GameState, p: Player): boolean {
+  for (const c of s.cars) {
+    if (c.dead || c.driver >= 0) continue;
+    if (dist2(p.x, p.y, c.x, c.y) < 2.2 * 2.2) {
+      detach(s, p);
+      c.driver = p.id; p.car = c.id;
+      if (c.t <= 0) c.t = sec(s, 'carTime');
+      resetCharge(p);
+      p.slashT = -1;
+      emit(s, { e: 'car', what: 'enter', who: p.id, x: c.x, y: c.y });
+      return true;
+    }
+  }
+  return false;
+}
+
 function interact(s: GameState, p: Player): void {
   if (p.riding >= 0) {
     const m = s.players[p.riding];
@@ -179,18 +199,7 @@ function interact(s: GameState, p: Player): void {
     if (m) { p.x = m.x - m.fx * 1.2; p.y = m.y - m.fy * 1.2; }
     return;
   }
-  // Enter a nearby free car.
-  for (const c of s.cars) {
-    if (c.dead || c.driver >= 0) continue;
-    if (dist2(p.x, p.y, c.x, c.y) < 2.2 * 2.2) {
-      detach(s, p);
-      c.driver = p.id; p.car = c.id;
-      if (c.t <= 0) c.t = sec(s, 'carTime');
-      resetCharge(p);
-      emit(s, { e: 'car', what: 'enter', who: p.id, x: c.x, y: c.y });
-      return;
-    }
-  }
+  if (tryEnterCar(s, p)) return;
   // Hop on a teammate's back.
   if (!isTeamMode(s.cfg.mode) || p.rider >= 0) return;
   let best: Player | null = null, bestD = 1.8 * 1.8;
@@ -452,7 +461,7 @@ export function updateHats(s: GameState): void {
     }
 
     // Catch.
-    if ((h.state === HAT_RETURN || h.state === HAT_RECALL) && owner.alive && owner.car < 0 &&
+    if ((h.state === HAT_RETURN || h.state === HAT_RECALL) && owner.alive &&
         dist2(owner.x, owner.y, h.x, h.y) < P.catchRadius * P.catchRadius) {
       h.state = HAT_HELD; h.t = 0; h.vx = h.vy = 0;
       emit(s, { e: 'catch', who: owner.id, hat: h.id });
@@ -537,9 +546,23 @@ export function spawnCar(s: GameState, x: number, y: number, heading: number): C
 
 function driveCar(s: GameState, p: Player, c: Car, inp: PlayerInput, pressed: number): void {
   const P = s.params;
-  if (pressed & BTN_INTERACT) {
+  if (pressed & (BTN_INTERACT | BTN_ATTACK)) {
     exitCar(s, p, c);
     return;
+  }
+  // Throw while driving: always a quick throw, exactly along the aim stick
+  // (or the movement stick, or straight ahead). Holding throw with no hat in
+  // hand recalls it to the car.
+  const held = heldHats(s, p);
+  p.recalling = !!(inp.b & BTN_THROW) && held === 0;
+  if ((pressed & BTN_THROW) && held > 0) {
+    let dx = inp.ax / 127, dy = inp.ay / 127;
+    if (len(dx, dy) < 0.3) { dx = inp.mx / 127; dy = inp.my / 127; }
+    if (len(dx, dy) < 0.3) { dx = c.hx; dy = c.hy; }
+    const dl = len(dx, dy);
+    p.fx = dx / dl; p.fy = dy / dl;
+    p.x = c.x; p.y = c.y;
+    throwHat(s, p);
   }
   // Car controls: up/down = throttle/brake, left/right = steer (screen space).
   const throttle = -inp.my / 127 + ((inp.b & BTN_DASH) ? 1 : 0);

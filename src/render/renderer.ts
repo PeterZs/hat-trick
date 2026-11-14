@@ -599,7 +599,7 @@ export class Renderer {
         const cx = cv.getContext('2d')!;
         cx.font = '700 40px Fredoka, system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
         cx.lineWidth = 10; cx.strokeStyle = '#fff'; cx.lineJoin = 'round';
-        cx.strokeText('E / Y: drive', 128, 34); cx.fillStyle = '#2b2d42'; cx.fillText('E / Y: drive', 128, 34);
+        cx.strokeText('Slash: drive', 128, 34); cx.fillStyle = '#2b2d42'; cx.fillText('Slash: drive', 128, 34);
         const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
         hint = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
         hint.name = 'hint'; hint.scale.set(2.4, 0.6, 1); hint.position.y = 2.1; hint.renderOrder = 6;

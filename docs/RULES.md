@@ -44,7 +44,7 @@ power-up is an identical ❓ box until someone picks it up — good or bad is a 
 | 👻 | Phase dash | For 12 s, dashes pass through walls (never ending inside one). |
 | 🐌 | Slowpoke *(bad)* | Half running and dash speed for 6 s. Cancels Speed (and Speed cancels it). |
 | 😵‍💫 | Reversed *(bad)* | Your movement stick is reversed for 6 s. |
-| 🚗 | Car | Occasionally a car is parked instead. Press **interact** next to it to get in. Car controls: up/down = gas/brake, left/right = steer. Running into enemies at speed kills them. A hat hitting the car wrecks it and kills the driver. The car lasts 15 s. Press interact again to get out. Not in Soccer or Lumberjacks. |
+| 🚗 | Car | Occasionally a car is parked instead. **Slash** (or interact) next to it to get in, and again to get out. Car controls: up/down = gas/brake, left/right = steer. You can still **throw your hat** while driving: a quick throw exactly along your aim stick/mouse (or the movement stick, or straight ahead), and holding throw recalls it to the car. Running into enemies at speed kills them. A hat hitting the car wrecks it and kills the driver. The car lasts 15 s. Not in Soccer or Lumberjacks. |
 
 ### Piggyback (team modes)
 

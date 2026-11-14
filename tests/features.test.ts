@@ -383,3 +383,28 @@ describe('cars mode', () => {
     expect(fullFrames / playFrames).toBeGreaterThan(0.8); // wrecks are replaced quickly
   });
 });
+
+describe('driving', () => {
+  it('slash gets you into a car; you can throw exactly along the stick while driving and catch it back', () => {
+    const s = setup('ffa', 1);
+    const a = s.players[0];
+    a.x = -8; a.y = 2.5;
+    spawnCar(s, -7, 2.5, 0);
+    const ev = run(s, 2, (f) => ({ d0: makeInput(0, 0, 0, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(ev).toContain('car');
+    expect(ev).not.toContain('slash');
+    expect(a.car).toBeGreaterThan(0);
+    // Drive forward while throwing straight "up" with the aim stick.
+    const ev2 = run(s, 3, (f) => ({ d0: makeInput(0, -1, 0, -1, f === 0 ? BTN_THROW : 0) }));
+    expect(ev2).toContain('throw');
+    const h = s.hats[0];
+    expect(h.vx).toBeCloseTo(0, 5);
+    expect(h.vy).toBeLessThan(0);
+    // The hat comes back to the car.
+    const ev3 = run(s, 120, () => ({ d0: makeInput(0, 0, 0, 0, 0) }));
+    expect(ev3).toContain('catch');
+    // Slash again to get out.
+    run(s, 2, (f) => ({ d0: makeInput(0, 0, 0, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(a.car).toBe(-1);
+  });
+});
