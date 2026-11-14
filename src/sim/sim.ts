@@ -36,6 +36,7 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
     scores: new Array(MAX_PLAYERS).fill(0),
     lastWinner: -1,
     pickupT: 0,
+    hitstop: 0,
     nextId: 1,
     events: [],
   };
@@ -182,6 +183,14 @@ function applyCommand(s: GameState, peer: number, c: Command): void {
 export function step(s: GameState, frame: PeerFrame[]): void {
   s.events = [];
   for (const pf of frame) for (const c of pf.cmds) applyCommand(s, pf.peer, c);
+
+  // Hit-stop: the world freezes for a few frames after a big impact. Button
+  // history (prevB) is left untouched so presses during the freeze still count.
+  if (s.hitstop > 0) {
+    s.hitstop--;
+    s.frame++;
+    return;
+  }
 
   const inputs: PlayerInput[] = new Array(s.players.length);
   const byPeer = new Map<number, PeerFrame>();

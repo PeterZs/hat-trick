@@ -23,6 +23,11 @@ export function sec(s: GameState, key: string): number {
   return frames(s.params[key], HZ);
 }
 
+/** Freeze the world for `frames` frames (impact pause). */
+export function hitstop(s: GameState, frames: number): void {
+  s.hitstop = Math.max(s.hitstop, Math.round(frames));
+}
+
 export function heldHats(s: GameState, p: Player): number {
   let n = 0;
   for (const h of s.hats) if (h.owner === p.id && h.state === HAT_HELD) n++;
@@ -96,6 +101,7 @@ export function die(s: GameState, victim: Player, killer: number): void {
     const k = s.players[killer];
     if (k) k.kills++;
   }
+  if (killer >= 0) hitstop(s, s.params.hitstopKill);
   emit(s, { e: 'kill', victim: victim.id, killer, x: victim.x, y: victim.y });
   detach(s, victim);
   // Hats fall where they are; held hats tumble out around the body.

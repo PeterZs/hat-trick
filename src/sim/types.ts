@@ -107,6 +107,7 @@ export type SimEvent =
   | { e: 'throw'; who: number; hat: number; charge: number }
   | { e: 'catch'; who: number; hat: number }
   | { e: 'clank'; hat: number; x: number; y: number }
+  | { e: 'hatclash'; a: number; b: number; x: number; y: number }
   | { e: 'dash'; who: number }
   | { e: 'kick'; who: number; target: number }
   | { e: 'pickup'; who: number; kind: string; x: number; y: number }
@@ -146,6 +147,7 @@ export interface GameState {
   scores: number[];      // indexed by team (FFA: by slot)
   lastWinner: number;    // team, -1 = draw
   pickupT: number;
+  hitstop: number;       // frames of freeze remaining (impact pause)
   nextId: number;
   events: SimEvent[];    // emitted during the last step (render/audio only)
 }

@@ -60,6 +60,8 @@ export const PARAM_DEFS: ParamDef[] = [
   D('carTime', 'Car lifetime (s)', 'Car', 2, 60, 1),
   D('carKillSpeed', 'Car lethal speed', 'Car', 0, 30, 0.5),
   D('piggyMountSpeedMult', 'Piggyback mount speed (x)', 'Piggyback', 0.5, 4, 0.05),
+  D('hitstopKill', 'Hit-stop on kill (frames)', 'Juice', 0, 12, 1),
+  D('hitstopClash', 'Hit-stop on weapon clash (frames)', 'Juice', 0, 12, 1),
   D('respawnTime', 'Respawn time (s)', 'Rules', 0, 10, 0.1),
   D('spawnInvulnTime', 'Spawn protection (s)', 'Rules', 0, 5, 0.1),
   D('roundEndDelay', 'Round end delay (s)', 'Rules', 0.5, 10, 0.1),

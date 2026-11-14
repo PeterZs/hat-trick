@@ -11,7 +11,7 @@ import {
   type Car, type GameState, type Hat, type Player,
 } from './types';
 import {
-  canBeHit, detach, die, dropHat, emit, heldHats, kill, level, sec,
+  canBeHit, detach, die, dropHat, emit, heldHats, hitstop, kill, level, sec,
 } from './common';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
@@ -274,6 +274,7 @@ export function resolveMelee(s: GameState): void {
           a.slashT = -1; b.slashT = -1;
           a.stunT = b.stunT = sec(s, 'stunTime');
           emit(s, { e: 'clash', a: a.id, b: b.id, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+          hitstop(s, P.hitstopClash);
           break;
         }
         kills.push([a, b]);
@@ -304,6 +305,7 @@ export function resolveMelee(s: GameState): void {
         if (!inArc(a, h.x, h.y, range + P.hatRadius)) continue;
         dropHat(s, h);
         emit(s, { e: 'parry', who: a.id, hat: h.id, x: h.x, y: h.y });
+        hitstop(s, P.hitstopClash);
       }
     }
     const ball = s.ball;
@@ -412,7 +414,11 @@ export function updateHats(s: GameState): void {
       const a = flying[i], b = flying[j];
       if (a.owner === b.owner || a.state === HAT_GROUND || b.state === HAT_GROUND) continue;
       const r = P.hatRadius * 2;
-      if (dist2(a.x, a.y, b.x, b.y) < r * r) { dropHat(s, a); dropHat(s, b); }
+      if (dist2(a.x, a.y, b.x, b.y) < r * r) {
+        emit(s, { e: 'hatclash', a: a.id, b: b.id, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+        dropHat(s, a); dropHat(s, b);
+        hitstop(s, P.hitstopClash);
+      }
     }
   }
 }

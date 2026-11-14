@@ -18,6 +18,8 @@ The boomerangs are hats. The character choices are balls from different sports. 
 
 Stay with a cute art style with simple, relatively low-polygon assets with flat colors.
 
+Add synthesized sound effects and juicy VFX like some screen shake and two-frame pause when a kill happens or two weapons hit each other.
+
 ## Levels
 
 Start with a basic level that is a rectangular arena with some boxes and walls. You can't walk through walls. Some low walls you can throw over.

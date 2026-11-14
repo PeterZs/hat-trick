@@ -56,5 +56,7 @@
   "bombFallTime": 1.0,
   "bombRadius": 2.2,
   "cursorSpeed": 14,
-  "hazardRoundTime": 45
+  "hazardRoundTime": 45,
+  "hitstopKill": 2,
+  "hitstopClash": 2
 }
