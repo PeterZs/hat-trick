@@ -31,7 +31,8 @@ export class Menu {
     if (on) this.render(error);
   }
 
-  private cfg(): MatchConfig {
+  /** The mode/arena/score currently selected in the menu. */
+  cfg(): MatchConfig {
     return { mode: this.mode, level: this.level, winScore: this.prefs.winScore };
   }
 
@@ -65,7 +66,7 @@ export class Menu {
           <b>Keyboard + mouse:</b> <kbd>WASD</kbd> roll · <kbd>mouse</kbd> aim · <kbd>Z</kbd>/<kbd>Left click</kbd> slash · <kbd>X</kbd>/<kbd>Right click</kbd> throw hat (hold 1&nbsp;s to stand &amp; aim) ·
           <kbd>C</kbd>/<kbd>Space</kbd> dash · <kbd>E</kbd> ride teammate / enter car · <kbd>Q</kbd>/<kbd>R</kbd> change ball · <kbd>T</kbd> team<br>
           <b>Keyboard 2:</b> arrows · <kbd>.</kbd> slash · <kbd>/</kbd> throw · <kbd>,</kbd> dash · <kbd>M</kbd> ride · <kbd>[</kbd><kbd>]</kbd> ball<br>
-          <b>Gamepad:</b> left stick move · right stick aim · <kbd>X</kbd>/<kbd>RB</kbd> slash · <kbd>RT</kbd>/<kbd>B</kbd> throw · <kbd>A</kbd>/<kbd>LB</kbd> dash · <kbd>Y</kbd> ride · d-pad changes ball/team · <kbd>Start</kbd> starts the match / pauses · menus: d-pad + <kbd>A</kbd>/<kbd>B</kbd><br>
+          <b>Gamepad:</b> left stick move · right stick aim · <kbd>X</kbd>/<kbd>RB</kbd> slash · <kbd>RT</kbd>/<kbd>B</kbd> throw · <kbd>A</kbd>/<kbd>LB</kbd> dash · <kbd>Y</kbd> ride · d-pad changes ball/team · <kbd>Start</kbd> starts a match (from the main menu too) / pauses · menus: d-pad + <kbd>A</kbd>/<kbd>B</kbd><br>
           <b>Touch:</b> left side to move · tap THROW, or hold it 1&nbsp;s to stand still and aim (drag it or the move stick) · SLASH, DASH, RIDE buttons.<br>
           Without your hat you can only kick. Slash a flying hat to knock it down. Slash at the same time as someone to clash.
           Tap throw for a quick throw on the run; hold it for a second to plant your feet and aim a long, fast throw.

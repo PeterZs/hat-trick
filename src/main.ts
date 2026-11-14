@@ -235,6 +235,18 @@ let acc = 0;
 let last = performance.now();
 const seenEvents = new Map<string, number>();
 
+// Start on a gamepad at the main menu: play locally right away with that pad
+// joined, skipping the lobby (more players can still join mid-match).
+function startFromMenuWithStart(): void {
+  const pad = devices.devices.find((d) => d.kind === 'pad' && d.connected() && d.menuPressed());
+  if (!pad) return;
+  const cfg = menu.cfg();
+  startSession(new LocalSession(cfg, settings.params));
+  pendingJoin.set(pad.key, performance.now());
+  session!.command({ t: 'join', device: pad.key, name: prefs.name, ball: 0 });
+  session!.command({ t: 'start', cfg });
+}
+
 // Countdown beeps (3, 2, 1) and GO! derived from the phase timer.
 let lastCue = '';
 function countdownCues(s: GameState): void {
@@ -257,6 +269,7 @@ function loop(now: number): void {
   if (pressedOnce('Escape') && session) hud.togglePause();
 
   const active = session ?? demo;
+  if (!session && !settings.open) startFromMenuWithStart();
   if (session) handleDevices();
   let ticks = 0;
   while (acc >= FRAME_MS && ticks < 8) {
