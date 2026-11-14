@@ -75,7 +75,38 @@ const PATTERNS: Pattern[] = [
     if (ay >= az) return Math.abs(n.z) < 0.2 ? '#2f6fe0' : '#ffffff';
     return Math.abs(n.x) < 0.2 ? '#ffd23f' : '#2f6fe0';
   },
+  // Golf: white with dimples
+  (n) => (dimple(n, 9) ? '#d6d6d6' : '#fbfbfb'),
+  // Table tennis: orange with a thin white seam
+  (n) => (Math.abs(n.y) < 0.05 ? '#ffffff' : '#ff8c2a'),
+  // Shot put: dull iron, mottled
+  (n) => (hash3(n, 13) > 0.6 ? '#7c858f' : hash3(n, 29) > 0.5 ? '#5d6670' : '#4d555e'),
+  // Handball: red/blue/white panels
+  (n) => {
+    const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
+    if (ax >= ay && ax >= az) return n.x > 0 ? '#e63946' : '#ffffff';
+    if (ay >= az) return n.y > 0 ? '#1d4ed8' : '#e63946';
+    return n.z > 0 ? '#ffffff' : '#1d4ed8';
+  },
+  // Water polo: yellow with blue grip grooves
+  (n) => (Math.abs(n.x) < 0.07 || Math.abs(n.z) < 0.07 || Math.abs(n.y - 0.5) < 0.05 || Math.abs(n.y + 0.5) < 0.05 ? '#1e5bd8' : '#ffd23f'),
+  // Field hockey: pink with dimples
+  (n) => (dimple(n, 7) ? '#e0559a' : '#ff7ab8'),
+  // Softball: optic yellow with red seams
+  (n) => (Math.abs(seam(n) - 0.14) < 0.05 ? '#d8322e' : '#e8f040'),
+  // Lacrosse: lime rubber, slight sheen
+  (n) => (n.y > 0.8 ? '#a6f06a' : hash3(n, 5) > 0.85 ? '#6cc42f' : '#80d940'),
 ];
+
+function hash3(n: THREE.Vector3, k: number): number {
+  const v = Math.sin(n.x * 127.1 * k + n.y * 311.7 + n.z * 74.7 * k) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+/** Speckled 'dimples' on roughly a quarter of the faces. */
+function dimple(n: THREE.Vector3, k: number): boolean {
+  return Math.sin(n.x * k * 3.1) * Math.sin(n.y * k * 2.7) * Math.sin(n.z * k * 3.3) > 0.25;
+}
 
 const ballGeoCache = new Map<number, THREE.BufferGeometry>();
 export function ballGeometry(kind: number, r: number): THREE.BufferGeometry {
@@ -134,7 +165,7 @@ function cyl(rt: number, rb: number, h: number, color: string, seg = 10): THREE.
 export function makeHat(kind: number): THREE.Group {
   const g = new THREE.Group();
   const add = (m: THREE.Object3D, y = 0) => { m.position.y += y; g.add(m); return m; };
-  switch (kind % 8) {
+  switch (kind % 16) {
     case 0: // Top hat
       add(cyl(0.6, 0.6, 0.05, '#222'));
       add(cyl(0.36, 0.34, 0.55, '#262626'), 0.04);
@@ -180,6 +211,77 @@ export function makeHat(kind: number): THREE.Group {
       add(cyl(0.39, 0.39, 0.1, '#ffffff'));
       const pom = mesh(new THREE.IcosahedronGeometry(0.12, 0), '#ffffff');
       pom.position.y = 0.46; add(pom);
+      break;
+    }
+    case 8: { // Flat cap
+      const dome = mesh(new THREE.SphereGeometry(0.4, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), '#8a8f6a');
+      dome.scale.y = 0.45; add(dome);
+      const bill = mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.04, 12, 1, false, -Math.PI / 2.4, Math.PI / 1.2), '#7a7f5c');
+      bill.position.set(0.12, 0.04, 0); add(bill);
+      break;
+    }
+    case 9: { // Propeller beanie
+      const cols = ['#e63946', '#ffd23f', '#1d4ed8', '#2bb673'];
+      for (let i = 0; i < 4; i++) {
+        const seg = mesh(new THREE.SphereGeometry(0.38, 4, 5, (i * Math.PI) / 2, Math.PI / 2, 0, Math.PI / 2), cols[i]);
+        add(seg);
+      }
+      add(cyl(0.03, 0.03, 0.18, '#444', 6), 0.36);
+      const blade = mesh(new THREE.BoxGeometry(0.7, 0.02, 0.1), '#e63946');
+      blade.position.y = 0.55; blade.rotation.y = 0.6; add(blade);
+      break;
+    }
+    case 10: { // Viking helmet
+      const dome = mesh(new THREE.SphereGeometry(0.39, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), '#9aa3ab');
+      add(dome);
+      add(cyl(0.4, 0.4, 0.08, '#c8a24a'));
+      for (const s of [-1, 1]) {
+        const horn = mesh(new THREE.ConeGeometry(0.08, 0.38, 6), '#f3ead2');
+        horn.position.set(0, 0.28, s * 0.38); horn.rotation.x = s * -0.9; add(horn);
+      }
+      break;
+    }
+    case 11: { // Headband
+      const band = mesh(new THREE.TorusGeometry(0.36, 0.06, 6, 16), '#e63946');
+      band.rotation.x = Math.PI / 2; band.position.y = 0.08; add(band);
+      const knot = mesh(new THREE.BoxGeometry(0.06, 0.14, 0.18), '#e63946');
+      knot.position.set(-0.4, 0.08, 0); knot.rotation.z = 0.4; add(knot);
+      break;
+    }
+    case 12: { // Swim cap (water polo, with ear guards)
+      const dome = mesh(new THREE.SphereGeometry(0.39, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), '#1e5bd8');
+      dome.scale.y = 1.05; add(dome);
+      for (const s of [-1, 1]) {
+        const ear = mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.05, 10), '#ffffff');
+        ear.rotation.x = Math.PI / 2; ear.position.set(0, 0.08, s * 0.38); add(ear);
+      }
+      break;
+    }
+    case 13: // Fez
+      add(cyl(0.24, 0.32, 0.4, '#c0392b'));
+      add(cyl(0.02, 0.02, 0.06, '#222', 4), 0.4);
+      { const tassel = mesh(new THREE.ConeGeometry(0.05, 0.22, 5), '#222'); tassel.position.set(-0.18, 0.32, 0); tassel.rotation.z = 0.3; add(tassel); }
+      break;
+    case 14: { // Cowboy hat
+      const brim = mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.04, 14), '#a0672f');
+      add(brim);
+      for (const s of [-1, 1]) {
+        const curl = mesh(new THREE.BoxGeometry(0.9, 0.04, 0.2), '#a0672f');
+        curl.position.set(0, 0.08, s * 0.62); curl.rotation.x = s * 0.6; add(curl);
+      }
+      add(cyl(0.3, 0.36, 0.36, '#b57837'), 0.03);
+      add(cyl(0.365, 0.365, 0.07, '#5a3a1a'), 0.05);
+      break;
+    }
+    case 15: { // Crown
+      add(cyl(0.36, 0.36, 0.18, '#f4c430', 12));
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const spike = mesh(new THREE.ConeGeometry(0.08, 0.2, 4), '#f4c430');
+        spike.position.set(Math.cos(a) * 0.32, 0.27, Math.sin(a) * 0.32); add(spike);
+        const gem = mesh(new THREE.OctahedronGeometry(0.045, 0), i % 2 ? '#e63946' : '#1d4ed8');
+        gem.position.set(Math.cos(a) * 0.37, 0.09, Math.sin(a) * 0.37); add(gem);
+      }
       break;
     }
   }

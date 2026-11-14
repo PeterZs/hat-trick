@@ -4,8 +4,10 @@ export const HZ = 60;
 export const DT = 1 / HZ;
 export const MAX_PLAYERS = 16;
 
-export const BALLS = ['Soccer', 'Basketball', 'Tennis', 'Baseball', 'Beach', 'Eight', 'Bowling', 'Volley'];
-export const HATS = ['Top hat', 'Bucket hat', 'Visor', 'Baseball cap', 'Sun hat', 'Fedora', 'Bowler', 'Beanie'];
+export const BALLS = ['Soccer', 'Basketball', 'Tennis', 'Baseball', 'Beach', 'Eight', 'Bowling', 'Volley',
+  'Golf', 'Table tennis', 'Shot put', 'Handball', 'Water polo', 'Field hockey', 'Softball', 'Lacrosse'];
+export const HATS = ['Top hat', 'Bucket hat', 'Visor', 'Baseball cap', 'Sun hat', 'Fedora', 'Bowler', 'Beanie',
+  'Flat cap', 'Propeller beanie', 'Viking helmet', 'Headband', 'Swim cap', 'Fez', 'Cowboy hat', 'Crown'];
 
 export const MODES: { id: ModeId; name: string; desc: string; level: string }[] = [
   { id: 'ffa', name: 'Free-for-all', desc: 'Last ball standing wins the round.', level: 'courtyard' },

@@ -13,6 +13,8 @@ import { Effects } from './effects';
 const BALL_COLORS = [
   ['#ffffff', '#222222'], ['#f07a2a', '#3a1d0e'], ['#cfe83c', '#ffffff'], ['#f7f4ea', '#d8322e'],
   ['#ff4b4b', '#ffcf33', '#3d8bff'], ['#1a1a1a', '#ffffff'], ['#27357e', '#5b74d6'], ['#ffd23f', '#2f6fe0', '#ffffff'],
+  ['#fbfbfb', '#d6d6d6'], ['#ff8c2a', '#ffffff'], ['#5d6670', '#7c858f'], ['#e63946', '#1d4ed8', '#ffffff'],
+  ['#ffd23f', '#1e5bd8'], ['#ff7ab8', '#e0559a'], ['#e8f040', '#d8322e'], ['#80d940', '#a6f06a'],
 ];
 
 interface PlayerView {

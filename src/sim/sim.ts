@@ -4,7 +4,7 @@
 //   of (state, frameInputs). No wall-clock time, DOM, Math.random or
 //   non-deterministic Math functions are used anywhere under src/sim.
 
-import { MAX_PLAYERS } from './const';
+import { BALLS, MAX_PLAYERS } from './const';
 import { cloneParams, type Params } from './params';
 import { NEUTRAL, type PlayerInput } from './input';
 import { randInt } from './rng';
@@ -132,7 +132,7 @@ function applyCommand(s: GameState, peer: number, c: Command): void {
     }
     case 'addBot': {
       const n = s.players.filter((p) => p.active && p.isBot).length + 1;
-      const bot = addPlayer(s, peer, 'bot' + s.nextId++, 'Bot ' + n, randInt(s, 8), true, c.team);
+      const bot = addPlayer(s, peer, 'bot' + s.nextId++, 'Bot ' + n, randInt(s, BALLS.length), true, c.team);
       if (bot && c.skill !== undefined) bot.skill = Math.max(0, Math.min(3, c.skill | 0));
       return;
     }
