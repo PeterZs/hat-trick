@@ -217,7 +217,7 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
 
   switch (e.e) {
     case 'slash': {
-      const out = v(0.08, 2.2);
+      const out = v(0.08, 1.5);
       if (e.kind === 0) {
         // Low, airy whoosh: a wide band of noise sweeping up then down
         // through the low-mids, with a soft rumble underneath.
