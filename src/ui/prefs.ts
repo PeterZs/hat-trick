@@ -2,8 +2,17 @@
 
 import { cloneParams, DEFAULT_PARAMS, type Params } from '../sim/params';
 
-const K_PARAMS = 'boomerang-hat.params';
-const K_PREFS = 'boomerang-hat.prefs';
+const K_PARAMS = 'hat-trick.params';
+const K_PREFS = 'hat-trick.prefs';
+
+// The game used to be called Boomerang Hat: carry saved settings over once.
+try {
+  for (const [oldKey, newKey] of [['boomerang-hat.params', K_PARAMS], ['boomerang-hat.prefs', K_PREFS]]) {
+    const v = localStorage.getItem(oldKey);
+    if (v !== null && localStorage.getItem(newKey) === null) localStorage.setItem(newKey, v);
+    localStorage.removeItem(oldKey);
+  }
+} catch { /* storage unavailable */ }
 
 export interface Prefs {
   name: string;

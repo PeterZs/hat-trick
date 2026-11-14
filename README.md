@@ -1,4 +1,4 @@
-# Boomerang Hat 🎩⚽
+# Hat Trick 🎩⚽
 
 A party brawler in the spirit of Boomerang Fu: you are a sports ball, your
 weapon is your hat. Throw it, it comes back. Browser-based, local multiplayer

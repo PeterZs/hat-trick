@@ -1,4 +1,4 @@
-# Boomerang Hat — Architecture
+# Hat Trick — Architecture
 
 Browser game (TypeScript + Vite + Three.js + PeerJS). The central design rule:
 **the game simulation is a deterministic, pure-data state machine that knows

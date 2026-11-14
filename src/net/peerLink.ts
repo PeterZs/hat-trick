@@ -4,7 +4,7 @@
 import Peer, { type DataConnection } from 'peerjs';
 import type { Msg, NetLink } from './link';
 
-const PREFIX = 'boomerang-hat-v1-';
+const PREFIX = 'hat-trick-v1-';
 
 export function randomRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

@@ -1,4 +1,4 @@
-# Boomerang Hat — Rules
+# Hat Trick — Rules
 
 Numbers below are the current defaults from `src/sim/defaultParams.json`. All
 of them can be changed live in the settings panel (`` ` ``).

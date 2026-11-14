@@ -40,7 +40,7 @@ export class Menu {
     const joinCode = new URLSearchParams(location.search).get('join') ?? '';
     this.el.innerHTML = `
       <div class="menu-card">
-        <h1 class="title">Boomerang <span>Hat</span></h1>
+        <h1 class="title">Hat <span>Trick</span></h1>
         <div class="subtitle">Throw your hat. It comes back. Usually.</div>
         <div class="section-title">Game mode</div>
         <div class="modes">
