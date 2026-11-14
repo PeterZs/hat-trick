@@ -41,14 +41,14 @@ export function hatsOf(s: GameState, p: Player): Hat[] {
 export function giveHats(s: GameState, p: Player): void {
   s.hats = s.hats.filter((h) => h.owner !== p.id);
   for (let i = 0; i < p.maxHats; i++) {
-    s.hats.push({ id: newId(s), owner: p.id, state: HAT_HELD, x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, dist: 0, range: 0, t: 0 });
+    s.hats.push({ id: newId(s), owner: p.id, state: HAT_HELD, x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, dist: 0, range: 0, t: 0, stuck: 0, lastD: 0, hitCd: 0 });
   }
 }
 
 export function dropHat(s: GameState, h: Hat): void {
   if (h.state === HAT_GROUND) return;
   h.state = HAT_GROUND;
-  h.vx = 0; h.vy = 0; h.speed = 0; h.t = 0;
+  h.vx = 0; h.vy = 0; h.speed = 0; h.t = 0; h.stuck = 0;
   emit(s, { e: 'clank', hat: h.id, x: h.x, y: h.y });
 }
 

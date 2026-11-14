@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createState, step } from '../src/sim/sim';
 import { DEFAULT_PARAMS } from '../src/sim/params';
 import { BTN_ATTACK, BTN_INTERACT, BTN_THROW, makeInput, type PlayerInput } from '../src/sim/input';
-import { HAT_GROUND, HAT_HELD, HAT_OUT, HAT_RECALL, type GameState, type ModeId } from '../src/sim/types';
+import { HAT_GROUND, HAT_HELD, HAT_OUT, HAT_RECALL, HAT_RETURN, type GameState, type ModeId } from '../src/sim/types';
 import { spawnCar } from '../src/sim/actors';
 
 function setup(mode: ModeId = 'teams', n = 2): GameState {
@@ -61,11 +61,21 @@ describe('features', () => {
     const ev2 = run(s, 120, () => ({ d0: makeInput(0, 0, 1, 0, 0) }));
     expect(ev2).toContain('catch');
     expect(s.hats[0].state).toBe(HAT_HELD);
-    // Throw at a wall: it should drop.
+    // Throw at a nearby wall: it bounces and still comes back.
     a.x = 12; a.y = -1;
     run(s, 4, (f) => ({ d0: makeInput(0, 0, 1, 0, f < 2 ? BTN_THROW : 0) }));
-    run(s, 30, () => ({ d0: makeInput(0, 0, 0, 0, 0) }));
-    expect(s.hats[0].state).toBe(HAT_GROUND);
+    const evb = run(s, 90, () => ({ d0: makeInput(0, 0, 0, 0, 0) }));
+    expect(evb).toContain('bounce');
+    expect(evb).toContain('catch');
+    expect(s.hats[0].state).toBe(HAT_HELD);
+    // Pinned against a wall with the owner straight behind it: it drops.
+    a.x = 12; a.y = -3;
+    const h = s.hats[0];
+    Object.assign(h, { state: HAT_RETURN, x: 7.5, y: -3, vx: 22, vy: 0, speed: 22, t: 0, stuck: 0, lastD: 1e9 });
+    const evp = run(s, 40, () => ({ d0: makeInput(0, 0, 0, 0, 0) }));
+    expect(evp).toContain('clank');
+    expect(h.state).toBe(HAT_GROUND);
+    expect(h.x).toBeLessThan(9.1); // dropped on the near side of the wall
     a.x = 4; a.y = -1;
     run(s, 10, () => ({ d0: makeInput(0, 0, 0, 0, BTN_THROW) }));
     expect(s.hats[0].state).toBe(HAT_RECALL);

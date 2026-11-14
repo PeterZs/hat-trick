@@ -86,6 +86,7 @@ export function playEvent(e: SimEvent): void {
     case 'throw': noise(0.25, 0.18, 1200, 3, 2.5); break;
     case 'catch': tone(880, 0.06, 'triangle', 0.15); tone(1320, 0.08, 'triangle', 0.12, 0, 0.05); break;
     case 'clank': tone(180, 0.12, 'triangle', 0.2, 0.6); break;
+    case 'bounce': clang(1500, 0.12, 0.08, 2.1, 1.2); tone(320, 0.06, 'triangle', 0.15, 0.7); break;
     case 'kill':
       thump(0.55);
       noise(0.08, 0.35, 4000, 0.8, 0.5);          // crack

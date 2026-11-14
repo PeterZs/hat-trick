@@ -10,7 +10,7 @@ import {
   type GameState, type Player,
 } from './types';
 import { canBeHit, die, dropHat, emit, giveHats, kill, level, newId, sec, spawnPlayer } from './common';
-import { isLethal, spawnCar } from './actors';
+import { bounceHat, isLethal, spawnCar } from './actors';
 import { resetTrees } from './trees';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
@@ -70,7 +70,7 @@ function applyPickup(s: GameState, p: Player, kind: string): void {
     case 'double':
       if (p.maxHats < 2) {
         p.maxHats = 2;
-        s.hats.push({ id: newId(s), owner: p.id, state: 0, x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, dist: 0, range: 0, t: 0 });
+        s.hats.push({ id: newId(s), owner: p.id, state: 0, x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, dist: 0, range: 0, t: 0, stuck: 0, lastD: 0, hitCd: 0 });
       }
       break;
   }
@@ -107,11 +107,15 @@ export function updateBall(s: GameState): void {
   for (const h of s.hats) {
     if (!isLethal(s, h)) continue;
     const r = P.hatRadius + P.ballRadius;
-    if (dist2(h.x, h.y, b.x, b.y) < r * r) {
+    if (h.hitCd <= 0 && dist2(h.x, h.y, b.x, b.y) < r * r) {
       const hl = Math.max(0.01, len(h.vx, h.vy));
       b.vx = (h.vx / hl) * P.ballHatImpulse; b.vy = (h.vy / hl) * P.ballHatImpulse;
       b.lastTouch = h.owner;
-      if (h.state !== HAT_RECALL) dropHat(s, h);
+      h.hitCd = 10;
+      if (h.state !== HAT_RECALL) {
+        const dx = h.x - b.x, dy = h.y - b.y, d = Math.max(1e-6, len(dx, dy));
+        bounceHat(s, h, dx / d, dy / d);
+      }
     }
   }
   const f = Math.max(0, 1 - P.ballFriction * DT);

@@ -212,7 +212,7 @@ function throwHat(s: GameState, p: Player): void {
   h.range = lerp(P.hatRange, P.chargedHatRange, t);
   h.vx = p.fx * h.speed; h.vy = p.fy * h.speed;
   h.x = p.x + p.fx * 0.5; h.y = p.y + p.fy * 0.5;
-  h.dist = 0; h.t = 0;
+  h.dist = 0; h.t = 0; h.stuck = 0; h.hitCd = 0; h.lastD = 1e9;
   resetCharge(p);
   emit(s, { e: 'throw', who: p.id, hat: h.id, charge: t });
 }
@@ -367,9 +367,10 @@ export function updateHats(s: GameState): void {
       // always comes back). Turning by an angle, rather than blending
       // vectors, also handles the owner being directly behind the hat.
       const ang = (P.hatHoming / 10) * DT * (1 + h.t / 20);
-      const vl = Math.max(0.001, len(h.vx, h.vy));
-      let ux = h.vx / vl, uy = h.vy / vl;
+      const vl = len(h.vx, h.vy);
       const tx = dx / d, ty = dy / d;
+      // After sliding into a wall head-on the velocity can vanish: re-aim at the owner.
+      let ux = vl > 1e-3 ? h.vx / vl : tx, uy = vl > 1e-3 ? h.vy / vl : ty;
       if (ux * tx + uy * ty >= dcos(ang)) { ux = tx; uy = ty; }
       else {
         let cross = ux * ty - uy * tx;
@@ -399,26 +400,39 @@ export function updateHats(s: GameState): void {
       }
     }
 
-    // Integrate in substeps so fast hats don't tunnel.
+    // Integrate in substeps so fast hats don't tunnel. Hats always try to
+    // come back: an outbound hat bounces off obstacles and turns for home; a
+    // returning hat slides along them. It only drops when pinned (below).
+    if (h.hitCd > 0) h.hitCd--;
     const steps = 2;
+    let touching = false;
     for (let k = 0; k < steps; k++) {
       h.x += (h.vx * DT) / steps; h.y += (h.vy * DT) / steps;
       if (h.state === HAT_OUT) h.dist += (h.speed * DT) / steps;
       // Recalled hats lift up and fly over walls.
       if (h.state === HAT_RECALL) continue;
+      let nx = 0, ny = 0, hit = false;
       collideCircle(h.x, h.y, P.hatRadius * 0.6, L.walls, true, tmp);
-      if (tmp.hit) {
-        h.x = tmp.x; h.y = tmp.y;
-        dropHat(s, h);
-        break;
-      }
-      // Flying hats chop trees, then fall.
+      if (tmp.hit) { h.x = tmp.x; h.y = tmp.y; nx = tmp.nx; ny = tmp.ny; hit = true; }
       if (s.trees.length) {
         const t = collideTrees(s, h, P.hatRadius * 0.6);
-        if (t) { chopTree(s, t, h.owner, h.vx, h.vy); dropHat(s, h); break; }
+        if (t) {
+          const dx = h.x - t.x, dy = h.y - t.y, d = Math.max(1e-6, len(dx, dy));
+          nx = dx / d; ny = dy / d; hit = true;
+          if (h.hitCd <= 0) { chopTree(s, t, h.owner, h.vx, h.vy); h.hitCd = 12; }
+        }
       }
+      if (hit) bounceHat(s, h, nx, ny);
+      touching = touching || hit;
     }
-    if (h.state === HAT_GROUND) continue;
+    if (h.state === HAT_RETURN) {
+      // Pinned against an obstacle and not getting any closer: give up and drop.
+      const d = len(owner.x - h.x, owner.y - h.y);
+      if (touching && d > h.lastD - 0.02) h.stuck++;
+      else if (!touching) h.stuck = 0;
+      h.lastD = d;
+      if (h.stuck >= Math.max(1, sec(s, 'hatStuckTime'))) { dropHat(s, h); continue; }
+    }
 
     // Catch.
     if ((h.state === HAT_RETURN || h.state === HAT_RECALL) && owner.alive && owner.car < 0 &&
@@ -441,6 +455,20 @@ export function updateHats(s: GameState): void {
         hitstop(s, P.hitstopClash);
       }
     }
+  }
+}
+
+/** Obstacle contact with surface normal (nx, ny). Outbound hats bounce and
+ *  turn for home; returning hats slide along the surface. */
+export function bounceHat(s: GameState, h: Hat, nx: number, ny: number): void {
+  const vn = h.vx * nx + h.vy * ny;
+  if (vn >= 0) return;
+  if (h.state === HAT_OUT) {
+    h.vx -= 2 * vn * nx; h.vy -= 2 * vn * ny;
+    h.state = HAT_RETURN; h.t = 0; h.stuck = 0; h.lastD = 1e9;
+    emit(s, { e: 'bounce', hat: h.id, x: h.x, y: h.y });
+  } else {
+    h.vx -= vn * nx; h.vy -= vn * ny;
   }
 }
 

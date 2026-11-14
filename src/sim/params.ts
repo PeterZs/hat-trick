@@ -45,6 +45,7 @@ export const PARAM_DEFS: ParamDef[] = [
   D('hatReturnSpeed', 'Hat return speed', 'Throw', 2, 60, 0.5),
   D('hatHoming', 'Hat homing strength', 'Throw', 1, 200, 1),
   D('hatRadius', 'Hat radius', 'Throw', 0.1, 1.5, 0.05),
+  D('hatStuckTime', 'Pinned hat drops after (s)', 'Throw', 0.02, 2, 0.01),
   D('catchRadius', 'Catch radius', 'Throw', 0.2, 3, 0.05),
   D('recallAccel', 'Recall acceleration', 'Throw', 1, 80, 0.5),
   D('recallMaxSpeed', 'Recall max speed', 'Throw', 1, 60, 0.5),

@@ -70,6 +70,9 @@ export interface Hat {
   dist: number;          // distance travelled outward
   range: number;
   t: number;             // frames in current state
+  stuck: number;         // frames pinned against an obstacle without getting closer to the owner
+  lastD: number;         // distance to owner last frame (stuck detection)
+  hitCd: number;         // frames until it can chop/smack again (trees, ball)
 }
 
 export type PickupKind = 'speed' | 'shield' | 'double' | 'phase';
@@ -118,6 +121,7 @@ export type SimEvent =
   | { e: 'throw'; who: number; hat: number; charge: number }
   | { e: 'catch'; who: number; hat: number }
   | { e: 'clank'; hat: number; x: number; y: number }
+  | { e: 'bounce'; hat: number; x: number; y: number }
   | { e: 'hatclash'; a: number; b: number; x: number; y: number }
   | { e: 'dash'; who: number }
   | { e: 'kick'; who: number; target: number }

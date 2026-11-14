@@ -16,11 +16,11 @@ a shield).
 | **Quick throw** | Tap throw (or release before 1 s). Your hat flies 9 units straight ahead at speed 20, then curves back to you. You keep moving normally while holding. |
 | **Aimed throw** | Hold throw for **1 second** to enter *stationary aim mode*: you stand still, a ring fills while you wind up, then a dashed line shows the throw. In aim mode the movement stick (or aim stick / mouse) only aims. Power builds over 0.7 s up to distance 18 at speed 30. Release to throw. |
 | **Catch** | A returning hat is caught automatically when it reaches you. |
-| **Walls** | A thrown hat that hits a wall (or a tree) drops to the ground. Walk over it to pick it up. |
+| **Hats always come back** | An outbound hat that hits a wall, tree or ball bounces off and heads home early. A returning hat slides along walls to get around them. It only drops to the ground if it is **pinned** against a wall without getting closer to you for 0.25 s, collides with another flying hat, is slashed out of the air, is caught in a bomb blast, or its owner dies. Walk over a dropped hat to pick it up. |
 | **Recall** | With no hat in hand and your hat on the ground, hold throw: the hat lifts, flies over walls and accelerates toward you. It is lethal while moving fast. Release to let it slow down and drop. |
 | **Kick** | Attacking without a hat kicks: knocks enemies back and stuns briefly, no damage. |
 | **Parry** | A slash that touches an enemy's flying hat knocks it out of the air. |
-| **Clash** | If two players slash each other nearly simultaneously, nobody dies: both are knocked back. Two flying hats that collide both drop. |
+| **Clash** | If two players slash each other nearly simultaneously, nobody dies: both are knocked back. Two flying hats from different players that collide both drop. |
 | **Hit-stop** | Kills, clashes, parries, hat collisions and felled trees freeze the game for 2 frames. |
 | **Spawn protection** | 1.2 s of invulnerability (blinking) after spawning. |
 
@@ -76,7 +76,7 @@ to the lobby after 8 s.
 
 ### Soccer
 - Two teams, one ball, a net at each end (Pitch arena).
-- Push the ball by rolling into it; slashes, kicks and thrown hats smack it harder.
+- Push the ball by rolling into it; slashes, kicks and thrown hats smack it harder (hats bounce off it and come back).
 - A goal scores for the attacking team and resets positions.
 - Players can still pop each other and respawn after 2.5 s. First to the target score wins.
 
@@ -88,7 +88,7 @@ to the lobby after 8 s.
 
 ### Lumberjacks
 - Free-for-all on the Clearing arena with 10 trees.
-- Trees block bodies and hats. A slash chops every tree in its arc; a thrown hat chops the tree it hits, then drops. Kicks and recalled hats don't chop.
+- Trees block bodies and hats. A slash chops every tree in its arc; a thrown hat chops the tree it hits and bounces back toward you. Kicks and recalled hats don't chop.
 - A tree takes 3 chops. Whoever lands the last chop fells it and scores 1. A new tree grows elsewhere 4 s later.
 - Combat stays on: popped players respawn after 2.5 s.
 - **Timed:** after 90 s, the most trees wins (a tie is a draw). The target score is not used.

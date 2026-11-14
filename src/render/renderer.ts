@@ -691,6 +691,7 @@ export class Renderer {
         this.punch = Math.max(this.punch, 0.3);
         break;
       case 'clank': this.effects.puff(e.x, e.y, '#e6dccb', 4); break;
+      case 'bounce': this.effects.sparks(e.x, 0.85, e.y, ['#ffffff', '#ffe680'], 7, 8, 0.2); this.shake = Math.max(this.shake, 0.12); break;
       case 'boom':
         this.effects.sphere(e.x, e.y, '#ff9f43', s.params.bombRadius * 1.1, 0.35);
         this.effects.burst(e.x, 0.5, e.y, ['#ff9f43', '#ffd23f', '#555'], 24, 9, 0.8);
