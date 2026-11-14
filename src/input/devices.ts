@@ -30,7 +30,9 @@ export interface Device {
 }
 
 class Edge {
-  private prev = false;
+  // Starts 'held': a button already down when a device first appears (e.g. a
+  // controller resting on something) must not count as a press.
+  private prev = true;
   rise(now: boolean): boolean { const r = now && !this.prev; this.prev = now; return r; }
 }
 

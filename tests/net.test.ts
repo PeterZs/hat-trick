@@ -106,3 +106,45 @@ describe('big games', () => {
     expect(host.desyncFrame).toBe(-1);
   });
 });
+
+describe('stalls', () => {
+  it('the host drops a peer that stops responding, and the game keeps going', () => {
+    const hub = new LoopbackHub(2, 0);
+    const clock = () => hub.now * (1000 / 60);
+    const cfg = { mode: 'ffa' as const, level: 'courtyard', winScore: 99 };
+    const host = new RollbackSession(hub.host(), createState(cfg, DEFAULT_PARAMS, 3), { now: clock });
+    host.command({ t: 'join', device: 'kb', name: 'H', ball: 0 });
+    const c = new RollbackSession(hub.connect(), null, { now: clock });
+    let lost = '';
+    c.onHostLost = (r) => { lost = r; };
+    for (let i = 0; i < 60; i++) { host.tick({}); c.tick({}); hub.pump(); }
+    c.command({ t: 'join', device: 'pad', name: 'C', ball: 1 });
+    for (let i = 0; i < 60; i++) { host.tick({}); c.tick({ pad: randomInput(i) }); hub.pump(); }
+    expect(host.state.players.some((p) => p.active && p.name === 'C')).toBe(true);
+    // The client goes silent (backgrounded tab): the host stalls, then drops it.
+    const f0 = host.state.frame;
+    for (let i = 0; i < 400; i++) { host.tick({}); hub.pump(); }
+    expect(host.state.frame - f0).toBeGreaterThan(100);
+    expect(host.state.players.some((p) => p.active && p.name === 'C')).toBe(false);
+    expect(host.stalledMs()).toBe(0);
+    for (let i = 0; i < 10; i++) { c.tick({}); hub.pump(); }
+    expect(lost).toMatch(/stopped responding/);
+  });
+
+  it('a joining peer with no players yet never makes the host wait', () => {
+    const hub = new LoopbackHub(3, 0);
+    const clock = () => hub.now * (1000 / 60);
+    const cfg = { mode: 'ffa' as const, level: 'courtyard', winScore: 99 };
+    const host = new RollbackSession(hub.host(), createState(cfg, DEFAULT_PARAMS, 3), { now: clock });
+    for (let i = 0; i < 300; i++) { host.tick({}); hub.pump(); }
+    const c = new RollbackSession(hub.connect(), null, { now: clock });
+    let maxGap = 0;
+    // The client only gets one tick for every 3 host ticks (a slow phone catching up).
+    for (let i = 0; i < 300; i++) {
+      host.tick({}); if (i % 3 === 0) c.tick({}); hub.pump();
+      maxGap = Math.max(maxGap, host.state.frame - (host as any).confirmed);
+    }
+    expect(c.started).toBe(true);
+    expect(maxGap).toBeLessThan(15); // never pinned at the prediction limit
+  });
+});

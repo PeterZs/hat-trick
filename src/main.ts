@@ -59,12 +59,22 @@ const hud = new Hud(hudRoot, () => ({
   online: session?.online ?? false,
   roomCode,
   status: session?.status() ?? '',
+  waiting: waitingText(),
   command: (c: Command) => session?.command(c),
   rememberName: (name: string) => { prefs.name = name; savePrefs(prefs); },
   openSettings: () => settings.toggle(),
   quit: () => quitToMenu(),
 }));
 hud.show(false);
+
+/** 'Waiting for …' when the online game can't advance (someone's inputs are late). */
+function waitingText(): string {
+  if (!(session instanceof RollbackSession) || !session.started || session.stalledMs() < 700) return '';
+  const peers = session.waitingOn();
+  const names = session.state.players.filter((p) => p.active && !p.isBot && peers.includes(p.peer)).map((p) => p.name);
+  if (names.length) return `⏳ Waiting for ${names.join(', ')}…`;
+  return peers.includes(0) ? '⏳ Waiting for the host…' : '⏳ Waiting for a player who is joining…';
+}
 
 const menu = new Menu(uiRoot, prefs, {
   playLocal: (cfg) => startSession(new LocalSession(cfg, settings.params)),

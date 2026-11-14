@@ -75,7 +75,7 @@
   "bombCooldown": 0.6,
   "bombFallTime": 1,
   "bombRadius": 2.2,
-  "bombHats": 5,
+  "bombHats": 2,
   "bombHatSpeed": 14,
   "bombHatRange": 6,
   "cursorSpeed": 14,

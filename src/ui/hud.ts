@@ -13,6 +13,8 @@ export interface HudContext {
   online: boolean;
   roomCode: string;
   status: string;
+  /** Non-empty while the online game is waiting on someone. */
+  waiting: string;
   command(c: Command): void;
   /** Remember a typed name as the default for new local players. */
   rememberName(name: string): void;
@@ -41,6 +43,7 @@ export class Hud {
   private timer: HTMLElement;
   private lobby: HTMLElement;
   private net: HTMLElement;
+  private waiting: HTMLElement;
   private pause: HTMLElement;
   private lobbyKey = '';
   private scoreKey = '';
@@ -61,6 +64,7 @@ export class Hud {
       <div class="timer"></div>
       <div class="lobby"></div>
       <div class="netstatus"></div>
+      <div class="waiting"></div>
       <div class="pause" style="display:none"></div>`;
     this.top = this.el.querySelector('.topbar')!;
     this.scores = this.el.querySelector('.scores')!;
@@ -68,6 +72,7 @@ export class Hud {
     this.timer = this.el.querySelector('.timer')!;
     this.lobby = this.el.querySelector('.lobby')!;
     this.net = this.el.querySelector('.netstatus')!;
+    this.waiting = this.el.querySelector('.waiting')!;
     this.pause = this.el.querySelector('.pause')!;
     this.el.querySelector('[data-act=menu]')!.addEventListener('click', () => this.togglePause());
     this.el.querySelector('[data-act=settings]')!.addEventListener('click', () => this.ctx().openSettings());
@@ -104,6 +109,8 @@ export class Hud {
   update(s: GameState): void {
     const c = this.ctx();
     this.net.textContent = c.online ? c.status : '';
+    if (this.waiting.textContent !== c.waiting) this.waiting.textContent = c.waiting;
+    this.waiting.style.display = c.waiting ? '' : 'none';
     this.updateScores(s);
     this.updateBanner(s);
     this.updateLobby(s, c);

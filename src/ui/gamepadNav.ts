@@ -23,7 +23,8 @@ export class GamepadNav {
 
     const btn = (i: number) => pads.some((p) => { const b = p.buttons[i]; return !!b && (b.pressed || b.value > 0.5); });
     const axis = (i: number) => pads.reduce((m, p) => (Math.abs(p.axes[i] ?? 0) > Math.abs(m) ? p.axes[i] ?? 0 : m), 0);
-    const edge = (key: string, down: boolean) => { const r = down && !this.prev.get(key); this.prev.set(key, down); return r; };
+    // A button/stick already held when we first see the pad doesn't count.
+    const edge = (key: string, down: boolean) => { const r = down && this.prev.get(key) === false; this.prev.set(key, down); return r; };
 
     let dir: Dir | null = null;
     const ax = axis(0), ay = axis(1);
@@ -35,8 +36,11 @@ export class GamepadNav {
     // Keep focus valid (menus re-render their DOM).
     if (!this.focused || !root.contains(this.focused) || !visible(this.focused)) this.setFocus(this.reacquire(root));
 
-    // Direction with key-repeat.
-    if (dir !== this.held.dir) {
+    // Direction with key-repeat (ignoring a direction held since we first saw the pad).
+    const first = !this.prev.has('dir');
+    this.prev.set('dir', true);
+    if (first) { this.held = { dir, since: now, last: now }; }
+    else if (dir !== this.held.dir) {
       this.held = { dir, since: now, last: now };
       if (dir) this.move(root, dir);
     } else if (dir && now - this.held.since > 380 && now - this.held.last > 110) {

@@ -49,6 +49,8 @@ export interface RollbackOptions {
   maxPredict?: number;
   now?: () => number;          // ms clock (for RTT)
   hashInterval?: number;
+  /** Host drops a peer whose inputs haven't arrived for this long. */
+  kickAfterMs?: number;
 }
 
 export class RollbackSession implements Session {
@@ -78,6 +80,10 @@ export class RollbackSession implements Session {
   private pendingJoins: number[] = [];
   private pendingLeaves: number[] = [];
   private remoteLf = new Map<number, number>();
+  private lastHeard = new Map<number, number>();   // peer -> ms of last frame message
+  private leaving = new Set<number>();
+  private stallSince = -1;                          // ms when we last could not advance
+  private kickAfterMs: number;
   private rollbackTo = INF;
   private events: { frame: number; ev: SimEvent }[] = [];
   private myHashes = new Map<number, number>();
@@ -87,7 +93,8 @@ export class RollbackSession implements Session {
 
   constructor(private link: NetLink, initial: GameState | null, opts: RollbackOptions = {}) {
     this.inputDelay = opts.inputDelay ?? 2;
-    this.maxPredict = opts.maxPredict ?? 12;
+    this.maxPredict = opts.maxPredict ?? 20;
+    this.kickAfterMs = opts.kickAfterMs ?? 4000;
     this.hashInterval = opts.hashInterval ?? 60;
     this.now = opts.now ?? (() => performance.now());
     this.state = initial ?? (null as unknown as GameState);
@@ -154,13 +161,75 @@ export class RollbackSession implements Session {
     }
     this.advanceConfirmed();
     this.gc();
+    // Track how long we've been unable to advance (for the 'waiting for…' banner).
+    const now = this.now();
+    if (this.state.frame - this.confirmed >= this.maxPredict - 1) { if (this.stallSince < 0) this.stallSince = now; }
+    else this.stallSince = -1;
+    if (this.isHost) this.kickSilentPeers(now);
+  }
+
+  /** Milliseconds the game has been waiting on someone (0 = running). */
+  stalledMs(): number {
+    return this.stallSince < 0 ? 0 : this.now() - this.stallSince;
+  }
+
+  /** Peers whose inputs we're waiting for at the oldest unconfirmed frame. */
+  waitingOn(): number[] {
+    const known = this.known.get(this.confirmed);
+    return this.requiredPeers(this.confirmed).filter((p) => !known?.has(p));
+  }
+
+  /** Host: a peer that stops sending (backgrounded tab, locked phone, dead
+   *  connection) would freeze everyone. Drop it so the game goes on. */
+  private kickSilentPeers(now: number): void {
+    for (const [p, m] of this.members) {
+      if (p === 0 || m.end !== INF || this.leaving.has(p)) continue;
+      const heard = this.lastHeard.get(p) ?? now;
+      if (!this.lastHeard.has(p)) this.lastHeard.set(p, now);
+      if (now - heard < this.kickAfterMs) continue;
+      console.warn('dropping unresponsive peer', p);
+      this.link.send(p, { t: 'kick', reason: 'You were disconnected because your game stopped responding (was it in the background?). Join again to keep playing.' });
+      this.removePeer(p);
+    }
+  }
+
+  /** Host: stop requiring a peer's inputs. The leave takes effect at the
+   *  first frame we never got from them (nobody can have more of their inputs
+   *  than the host, which relays everything), and is announced immediately with
+   *  its own message — a stalled host isn't producing frame messages to carry it. */
+  private removePeer(p: number): void {
+    if (this.leaving.has(p)) return;
+    this.leaving.add(p);
+    const m = this.members.get(p);
+    if (!m) return;
+    const last = this.lastKnown.get(p);
+    const leaveAt = Math.max(m.start, last ? last.f + 1 : m.start);
+    this.applyLeave(p, leaveAt);
+    this.link.broadcast({ t: 'leave', p, f: leaveAt }, p);
+    // Their players are removed by a normal (synced) command.
+    this.pendingCmds.push({ t: 'peerLeft', peer: p });
+  }
+
+  private applyLeave(p: number, f: number): void {
+    const m = this.members.get(p);
+    if (!m || m.end <= f) return;
+    m.end = f;
+    for (const [frame, msgs] of this.known) if (frame >= f) msgs.delete(p);
+    if (f < this.state.frame) this.rollbackTo = Math.min(this.rollbackTo, f);
   }
 
   private sendOwn(local: Record<string, PlayerInput>): void {
     const me = this.members.get(this.peer);
     if (!me) return;
     if (this.nextSend < me.start) this.nextSend = me.start;
-    const target = this.state.frame + this.inputDelay;
+    let target = this.state.frame + this.inputDelay;
+    // Without local players (e.g. just joined, still fast-forwarding through the
+    // snapshot) our inputs are known to be empty: send them ahead right away so
+    // nobody has to wait for us to catch up.
+    if (!this.isHost && Object.keys(local).length === 0 && this.pendingCmds.length === 0 &&
+        !this.state.players.some((q) => q.active && q.peer === this.peer && !q.isBot)) {
+      target = Math.max(target, (this.remoteLf.get(0) ?? 0) + this.inputDelay);
+    }
     while (this.nextSend <= target) {
       const f = this.nextSend++;
       const msg: FrameMsg = { t: 'f', p: this.peer, f, i: { ...local }, c: this.pendingCmds, lf: this.state.frame };
@@ -291,6 +360,7 @@ export class RollbackSession implements Session {
           this.link.broadcast(msg, from);
         }
         this.remoteLf.set(m.p, Math.max(this.remoteLf.get(m.p) ?? 0, m.lf));
+        this.lastHeard.set(from, this.now());
         if (!this.started) return;
         if (m.j) for (const p of m.j) this.members.set(p, { start: m.f, end: INF });
         if (m.l) for (const p of m.l) { const mm = this.members.get(p); if (mm) mm.end = m.f; }
@@ -331,6 +401,12 @@ export class RollbackSession implements Session {
         if (mine !== undefined && mine !== h) this.flagDesync(f);
         return;
       }
+      case 'leave':
+        if (!this.isHost && this.started) this.applyLeave(msg.p as number, msg.f as number);
+        return;
+      case 'kick':
+        this.onHostLost(String(msg.reason ?? 'Disconnected by the host.'));
+        return;
       case 'd':
         this.flagDesync(msg.f as number);
         return;
@@ -355,7 +431,6 @@ export class RollbackSession implements Session {
   }
 
   private onPeerDisconnect(p: number): void {
-    this.pendingLeaves.push(p);
-    this.pendingCmds.push({ t: 'peerLeft', peer: p });
+    this.removePeer(p);
   }
 }
