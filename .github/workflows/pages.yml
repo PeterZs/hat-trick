@@ -1,8 +1,11 @@
 name: Deploy to GitHub Pages
 
+# Manual for now: Pages is served from the gh-pages branch (npm run deploy).
+# To deploy from CI instead, set the Pages source to "GitHub Actions" and
+# re-enable the push trigger below.
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 permissions:
