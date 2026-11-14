@@ -19,6 +19,7 @@ export const MODES: { id: ModeId; name: string; desc: string; level: string }[] 
   { id: 'cars', name: 'Cars', desc: 'Free-for-all with cars always on the field. Run them over!', level: 'raceway' },
   { id: 'bumper', name: 'Bumper Balls', desc: 'No hats: kick and dash rivals off a crumbling platform.', level: 'platform' },
   { id: 'golf', name: 'Golf', desc: "Hit your team's ball into the cup with your hat. Fewest strokes wins.", level: 'links' },
+  { id: 'ghost', name: 'Ghost Brawl', desc: 'Everyone is invisible until they attack, dash, bump into something or get hit.', level: 'courtyard' },
   { id: 'lava', name: 'Floor is Lava', desc: 'The floor turns to lava under you. Last ball standing wins.', level: 'courtyard' },
 ];
 
@@ -28,13 +29,13 @@ export function isTeamMode(m: ModeId): boolean {
 
 /** Modes scored per player rather than per team. */
 export function isSoloMode(m: ModeId): boolean {
-  return m === 'ffa' || m === 'lumber' || m === 'cars' || m === 'bumper' || m === 'lava';
+  return m === 'ffa' || m === 'lumber' || m === 'cars' || m === 'bumper' || m === 'lava' || m === 'ghost';
 }
 
 /** The team used for friendly fire and scoring. */
 export function teamOf(s: GameState, p: Player): number {
   switch (s.cfg.mode) {
-    case 'ffa': case 'lumber': case 'cars': case 'bumper': case 'lava': return 100 + p.id;
+    case 'ffa': case 'lumber': case 'cars': case 'bumper': case 'lava': case 'ghost': return 100 + p.id;
     case 'hazard': return p.role === 'overlord' ? 1 : 0;
     default: return p.team;
   }
@@ -50,5 +51,5 @@ export function allies(s: GameState, a: Player, b: Player): boolean {
 
 /** Round-based modes end when one side remains. */
 export function isRoundMode(m: ModeId): boolean {
-  return m === 'ffa' || m === 'teams' || m === 'hazard' || m === 'cars' || m === 'bumper' || m === 'lava';
+  return m === 'ffa' || m === 'teams' || m === 'hazard' || m === 'cars' || m === 'bumper' || m === 'lava' || m === 'ghost';
 }

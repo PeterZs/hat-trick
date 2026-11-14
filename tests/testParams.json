@@ -100,5 +100,10 @@
   "golfPenalty": 2,
   "lavaStartInterval": 1.0,
   "lavaMinInterval": 0.15,
-  "lavaRampTime": 60
+  "lavaRampTime": 60,
+  "nightDayTime": 16,
+  "nightNightTime": 12,
+  "nightFadeTime": 2,
+  "nightDarkness": 0.97,
+  "nightLightRadius": 7
 }

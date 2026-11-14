@@ -20,7 +20,7 @@ to the `gh-pages` branch). There is also a GitHub Actions workflow
 repo's Pages source to "GitHub Actions".
 
 **Modes:** Free-for-all, Teams, Capture the Flag, Soccer, Overlord (asymmetric:
-overlords drop bombs on runners), Lumberjacks (timed race to chop the most trees), Cars, Bumper Balls, Golf, and Floor is Lava, across 23 arenas (or a random one each round). **Power-ups:** speed, shield, double hat,
+overlords drop bombs on runners), Lumberjacks (timed race to chop the most trees), Cars, Bumper Balls, Golf, Floor is Lava and Ghost Brawl, across 23 arenas (or a random one each round). **Power-ups:** speed, shield, double hat,
 phase dash (through walls), and cars. Teammates can ride piggyback.
 
 **Controls** — Keyboard+mouse: WASD, mouse aim, Z or left click slash, X or right

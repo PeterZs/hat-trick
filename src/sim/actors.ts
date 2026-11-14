@@ -11,7 +11,7 @@ import {
   type Car, type GameState, type Hat, type Player,
 } from './types';
 import {
-  canBeHit, detach, die, dropHat, emit, heldHats, hitstop, isInvisible, kill, level, sec,
+  canBeHit, detach, die, dropHat, emit, heldHats, hitstop, isInvisible, kill, level, reveal, sec,
 } from './common';
 import { chopProp, collideProps, isStanding, propInfo } from './props';
 import { onIce, shovedBy } from './hazards';
@@ -45,7 +45,8 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   if (p.speedT > 0) p.speedT--;
   if (p.slowT > 0) p.slowT--;
   if (p.reverseT > 0) p.reverseT--;
-  if (p.invisT > 0) p.invisT--;
+  if (s.cfg.mode === 'ghost') p.invisT = 2; // Ghost Brawl: always invisible (except reveals)
+  else if (p.invisT > 0) p.invisT--;
   if (p.revealT > 0) p.revealT--;
   if (p.phaseT > 0) p.phaseT--;
   if (p.stunT > 0) p.stunT--;
@@ -128,6 +129,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
     p.dashDx = dx; p.dashDy = dy;
     p.dashT = sec(s, 'dashTime');
     p.dashCd = sec(s, 'dashCooldown') + p.dashT;
+    reveal(s, p);
     emit(s, { e: 'dash', who: p.id });
   }
 
@@ -166,13 +168,14 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
     collideCircle(p.x, p.y, P.playerRadius, L.walls, false, tmp);
     p.x = tmp.x; p.y = tmp.y;
     if (tmp.hit) {
+      reveal(s, p); // bumped into a wall
       // Remove velocity into the wall.
       const vn = p.vx * tmp.nx + p.vy * tmp.ny;
       if (vn < 0) { p.vx -= vn * tmp.nx; p.vy -= vn * tmp.ny; }
       const kn = p.kx * tmp.nx + p.ky * tmp.ny;
       if (kn < 0) { p.kx -= 1.6 * kn * tmp.nx; p.ky -= 1.6 * kn * tmp.ny; }
     }
-    if (s.props.length) collideProps(s, p, P.playerRadius);
+    if (s.props.length && collideProps(s, p, P.playerRadius)) reveal(s, p);
   }
 }
 
@@ -275,6 +278,7 @@ export function separatePlayers(s: GameState): void {
       const d = Math.sqrt(d2);
       const nx = d > 1e-6 ? dx / d : 1, ny = d > 1e-6 ? dy / d : 0;
       const push = (m - d) * 0.5;
+      reveal(s, a); reveal(s, b);
       a.x -= nx * push; a.y -= ny * push;
       b.x += nx * push; b.y += ny * push;
       // Dashing into someone bumps them away (no damage).
@@ -349,6 +353,7 @@ export function resolveMelee(s: GameState): void {
           a.slashT = -1; b.slashT = -1;
           a.stunT = b.stunT = sec(s, 'stunTime');
           shovedBy(s, a, b.id); shovedBy(s, b, a.id);
+          reveal(s, a); reveal(s, b);
           emit(s, { e: 'clash', a: a.id, b: b.id, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
           hitstop(s, P.hitstopClash);
           break;
@@ -363,6 +368,7 @@ export function resolveMelee(s: GameState): void {
         b.kx = (dx / d) * P.kickKnockback; b.ky = (dy / d) * P.kickKnockback;
         b.stunT = sec(s, 'kickStunTime');
         shovedBy(s, b, a.id);
+        reveal(s, b);
         resetCharge(b);
         if (b.rider >= 0 || b.riding >= 0) detach(s, b);
         emit(s, { e: 'kick', who: a.id, target: b.id, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });

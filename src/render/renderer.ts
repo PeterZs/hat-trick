@@ -444,7 +444,7 @@ export class Renderer {
       if (overlord) txt = `👁 ${p.name}`;
       else if (p.alive) {
         // Status icons for active (good and bad) power-ups.
-        const st = (p.speedT > 0 ? '⚡' : '') + (p.phaseT > 0 ? '👻' : '') + (p.maxHats > 1 ? '🎩' : '') + (p.slowT > 0 ? '🐌' : '') + (p.reverseT > 0 ? '😵‍💫' : '') + (p.invisT > 0 ? '🕶️' : '');
+        const st = (p.speedT > 0 ? '⚡' : '') + (p.phaseT > 0 ? '👻' : '') + (p.maxHats > 1 ? '🎩' : '') + (p.slowT > 0 ? '🐌' : '') + (p.reverseT > 0 ? '😵‍💫' : '') + (p.invisT > 0 && s.cfg.mode !== 'ghost' ? '🕶️' : '');
         if (st) txt += ' ' + st;
       }
       v.label.textContent = txt;
@@ -557,7 +557,7 @@ export class Renderer {
       if (invis) {
         // A faint dust tell when moving.
         v.dustT -= dt;
-        if (v.dustT <= 0 && Math.hypot(p.vx, p.vy) > 2) { v.dustT = 0.35; this.effects.puff(p.x, p.y, '#e8e4da', 2); }
+        if (v.dustT <= 0 && Math.hypot(p.vx, p.vy) > 2) { v.dustT = s.cfg.mode === 'ghost' ? 0.6 : 0.35; this.effects.puff(p.x, p.y, '#e8e4da', 2); }
       }
       v.ballMat.transparent = phasing || ghost < 1;
       v.ballMat.opacity = Math.min(ghost, phasing ? 0.55 + 0.2 * Math.sin(this.time * 10) : 1);
@@ -726,9 +726,9 @@ export class Renderer {
     if (this.outsideMesh) this.outsideMesh.visible = !this.arena.tilesActive;
     // Night: dim the sun and sky (player lights come from the arena view).
     const d = this.arena.darkness;
-    this.hemi.intensity = 1.6 * (1 - 0.88 * d);
-    this.sun.intensity = 1.9 * (1 - 0.95 * d);
-    const sky = new THREE.Color('#8fd3ff').lerp(new THREE.Color('#0b1030'), d);
+    this.hemi.intensity = 1.6 * (1 - d);
+    this.sun.intensity = 1.9 * (1 - d);
+    const sky = new THREE.Color('#8fd3ff').lerp(new THREE.Color('#02030a'), d);
     (this.scene.background as THREE.Color).copy(sky);
     this.scene.fog!.color.copy(sky);
 

@@ -54,6 +54,11 @@ export function dropHat(s: GameState, h: Hat): void {
 }
 
 /** Invisible to others: has the power-up and isn't attacking / aiming / just attacked. */
+/** Briefly visible (invisibility power-up, Ghost Brawl): attacks, dashes, bumps, hits. */
+export function reveal(s: GameState, p: Player): void {
+  p.revealT = Math.max(p.revealT, sec(s, 'invisRevealTime'));
+}
+
 export function isInvisible(p: Player): boolean {
   return p.invisT > 0 && p.revealT <= 0 && p.slashT < 0 && !p.aiming;
 }
@@ -91,6 +96,7 @@ export function kill(s: GameState, victim: Player, killer: number): boolean {
   if (victim.shield > 0) {
     victim.shield--;
     victim.invulnT = frames(0.6, HZ);
+    reveal(s, victim);
     emit(s, { e: 'shield', who: victim.id, x: victim.x, y: victim.y });
     return false;
   }
@@ -175,6 +181,7 @@ export function spawnPlayer(s: GameState, p: Player, at?: { x: number; y: number
   p.speedT = 0; p.phaseT = 0; p.shield = 0; p.maxHats = s.cfg.mode === 'bumper' ? 0 : 1; p.slowT = 0; p.reverseT = 0; p.invisT = 0; p.revealT = 0;
   p.respawnT = 0;
   giveHats(s, p);
+  if (s.cfg.mode === 'ghost') p.revealT = sec(s, 'spawnInvulnTime');
   emit(s, { e: 'spawn', who: p.id });
 }
 

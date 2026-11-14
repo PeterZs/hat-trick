@@ -329,14 +329,17 @@ export class ArenaView {
 
   private updateNight(s: GameState): void {
     if (!this.L?.night) { this.darkness = 0; return; }
-    // 30 s cycle: day, dusk, night, dawn (driven by the frame so every peer agrees).
-    const t = (s.frame / HZ / 30) % 1;
-    const d = t < 0.55 ? 0 : t < 0.62 ? (t - 0.55) / 0.07 : t < 0.93 ? 1 : 1 - (t - 0.93) / 0.07;
-    this.darkness = d;
+    // Day, dusk, night, dawn (driven by the frame so every peer agrees).
+    const P = s.params;
+    const day = P.nightDayTime, night = P.nightNightTime, fade = P.nightFadeTime;
+    const t = (s.frame / HZ) % (day + night + 2 * fade);
+    const d = t < day ? 0 : t < day + fade ? (t - day) / fade : t < day + fade + night ? 1 : 1 - (t - day - fade - night) / fade;
+    this.darkness = d * P.nightDarkness;
     const lit = s.players.filter((p) => p.active && p.alive && p.role === 'fighter');
     this.lights.forEach((l, i) => {
       const p = lit[i];
-      l.intensity = p ? 12 * d : 0;
+      l.intensity = p ? 14 * this.darkness : 0;
+      l.distance = P.nightLightRadius * 1.3;
       if (p) { l.position.x = p.x; l.position.z = p.y; }
     });
   }

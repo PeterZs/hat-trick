@@ -7,7 +7,7 @@ import { collideCircle, type Push } from './collision';
 import { randInt } from './rng';
 import type { Level, TileSpec } from './level';
 import { HAT_GROUND, HAT_HELD, HAT_OUT, HAT_RECALL, HAT_RETURN, type GameState, type Player } from './types';
-import { die, emit, level, sec } from './common';
+import { die, emit, level, reveal, sec } from './common';
 import { bounceHat, crashCar } from './actors';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
@@ -197,6 +197,7 @@ export function updateHazards(s: GameState): void {
       p.vx = 0; p.vy = 0; p.dashT = 0;
       p.kx = nx * P.bumperForce; p.ky = ny * P.bumperForce;
       p.stunT = Math.max(p.stunT, sec(s, 'stunTime') >> 1);
+      reveal(s, p);
       emit(s, { e: 'bump', x: bm.x + nx * bm.r, y: bm.y + ny * bm.r, i });
     }
     for (const h of s.hats) {

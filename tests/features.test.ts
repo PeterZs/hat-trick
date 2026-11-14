@@ -695,3 +695,44 @@ describe('new modes', () => {
     expect(ball.sunk).toBe(true);
   });
 });
+
+describe('Ghost Brawl', () => {
+  it('everyone is invisible while walking; dashes, bumps and hits reveal', async () => {
+    const { isInvisible } = await import('../src/sim/common');
+    const cfg = { mode: 'ghost' as const, level: 'courtyard', winScore: 99 };
+    const s = createState(cfg, { ...DEFAULT_PARAMS, countdownTime: 0, powerupMax: 0 }, 2);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'join', device: 'a', name: 'A', ball: 0 }, { t: 'join', device: 'b', name: 'B', ball: 1 }, { t: 'start', cfg }] }]);
+    s.props = [];
+    const [a, b] = s.players;
+    expect(isInvisible(a)).toBe(false); // revealed while spawning
+    a.x = -4; a.y = -2.6; b.x = 4; b.y = -2.6;
+    const settle = Math.round((DEFAULT_PARAMS.spawnInvulnTime + DEFAULT_PARAMS.invisRevealTime) * 60) + 5;
+    run(s, settle, (f) => ({ a: makeInput(0, f % 60 < 30 ? 0.5 : -0.5, 0, 0, 0) })); // walking about
+    expect(isInvisible(a)).toBe(true);
+    run(s, 1, () => ({ a: makeInput(1, 0, 0, 0, BTN_DASH) }));
+    expect(isInvisible(a)).toBe(false); // dashing reveals
+    run(s, 90, () => ({}));
+    expect(isInvisible(a)).toBe(true);
+    // Walk into the wall: bumping reveals.
+    a.x = -14.2; a.y = -2.6;
+    run(s, 10, () => ({ a: makeInput(-1, 0, 0, 0, 0) }));
+    expect(isInvisible(a)).toBe(false);
+    // Getting kicked reveals.
+    run(s, 90, () => ({}));
+    a.x = 0; a.y = -2.6; b.x = 1.2; b.y = -2.6;
+    s.hats.forEach((h) => { if (h.owner === b.id) h.state = HAT_GROUND; });
+    a.invulnT = 0;
+    expect(isInvisible(a)).toBe(true);
+    run(s, 6, (f) => ({ b: makeInput(0, 0, -1, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(isInvisible(a)).toBe(false);
+  });
+
+  it('bots play rounds of Ghost Brawl', () => {
+    const cfg = { mode: 'ghost' as const, level: 'courtyard', winScore: 99 };
+    const s = createState(cfg, DEFAULT_PARAMS, 3);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'addBot' }, { t: 'addBot' }, { t: 'addBot' }, { t: 'start', cfg }] }]);
+    let rounds = 0;
+    for (let f = 0; f < 60 * 120; f++) { step(s, [{ peer: 0, inputs: {}, cmds: [] }]); rounds += s.events.filter((e) => e.e === 'round').length; }
+    expect(rounds).toBeGreaterThan(0);
+  });
+});

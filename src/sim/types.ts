@@ -6,7 +6,7 @@
 import type { Params } from './params';
 import type { PlayerInput } from './input';
 
-export type ModeId = 'ffa' | 'teams' | 'ctf' | 'soccer' | 'hazard' | 'lumber' | 'cars' | 'bumper' | 'golf' | 'lava';
+export type ModeId = 'ffa' | 'teams' | 'ctf' | 'soccer' | 'hazard' | 'lumber' | 'cars' | 'bumper' | 'golf' | 'lava' | 'ghost';
 export type Phase = 'lobby' | 'countdown' | 'playing' | 'roundOver' | 'matchOver';
 export type Role = 'fighter' | 'overlord';
 

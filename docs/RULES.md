@@ -39,7 +39,7 @@ power-up is an identical ❓ box until someone picks it up — good or bad is a 
 | Icon | Power-up | Effect |
 |---|---|---|
 | ⚡ | Speed | 1.5× running speed for 10 s. |
-| 🕶️ | Invisible | For 10 s nobody can see you (your own screen shows a faint ghost). You flash visible while slashing, kicking or aiming, and for 0.6 s after attacking or throwing. Bots lose track of you unless you're very close. |
+| 🕶️ | Invisible | For 10 s nobody can see you (online, your own screen shows a faint ghost). You flash visible while slashing, kicking or aiming, and for 0.6 s after attacking, throwing, dashing, bumping into something or getting hit. Bots lose track of you unless you're very close. |
 | 🫧 | Bubble Shield | Survive one hit (brief invulnerability after it pops). |
 | 🎩 | Double hat | Two hats: throw twice, or slash while one hat is out. Slash cooldown halves. |
 | 👻 | Phase dash | For 12 s, dashes pass through walls (never ending inside one). |
@@ -73,7 +73,7 @@ to you); a car at speed smashes straight through. They regrow in place after
 | Bumpers | Pinball | Fling players, hats, balls and cars away. |
 | Portals | Teleporter Temple | Step (or throw a hat) in one ring, come out of its partner with your momentum. |
 | Wind | Windy Cliffs | Bends flying hats and gently pushes players. |
-| Night | Night Market | Every 30 s the lights go out; only the area around each player is lit. |
+| Night | Night Market | Periodically the lights go out (16 s day, 12 s night, 2 s dusk/dawn by default); only a small circle around each player is lit. Day/night lengths, darkness and light radius are in settings (Night). |
 | Low walls | everywhere, especially Downtown windows and the Bowling Alley gutters | Block bodies but not hats. Sniper Canyon's pens can't be left at all: it's all hat throwing. |
 
 **Dash bump:** dashing into an enemy shoves them away (no damage).
@@ -164,3 +164,8 @@ to the lobby after 8 s.
 
 ### Floor is Lava
 - Free-for-all elimination. Random floor tiles flash and turn to lava, faster and faster. Don't be standing on one.
+
+### Ghost Brawl
+- Free-for-all elimination where **everyone is invisible** while standing or walking — even on your own screen; watch for the faint dust you kick up.
+- You flash visible for 0.6 s whenever you attack, throw, dash, bump into a wall, crate, bumper or another player, or get hit or kicked (and briefly when you spawn). Aiming keeps you visible.
+- Last ball standing wins the round.
