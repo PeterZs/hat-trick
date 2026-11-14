@@ -15,6 +15,7 @@ import {
 } from './common';
 import { chopProp, collideProps, isStanding, propInfo } from './props';
 import { onIce, shovedBy } from './hazards';
+import { golfMelee } from './golf';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
 
@@ -383,6 +384,7 @@ export function resolveMelee(s: GameState): void {
         if (isStanding(t) && inArc(a, t.x, t.y, range + propInfo(s, t.kind).r)) chopProp(s, t, a.id, t.x - a.x, t.y - a.y);
       }
     }
+    golfMelee(s, a, a.slashKind === 1, (x, y, r) => inArc(a, x, y, r));
     const ball = s.ball;
     if (ball && inArc(a, ball.x, ball.y, range + P.ballRadius)) {
       const kick = a.slashKind === 1;

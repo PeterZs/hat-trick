@@ -90,5 +90,15 @@
   "portalCooldown": 0.5,
   "windOnPlayers": 0.35,
   "tileWarnTime": 1.2,
-  "collapseTime": 50
+  "collapseTime": 50,
+  "golfSwing": 13,
+  "golfKick": 18,
+  "golfHat": 16,
+  "golfFriction": 1.1,
+  "golfSinkSpeed": 9,
+  "golfHoleTime": 90,
+  "golfPenalty": 2,
+  "lavaStartInterval": 1.0,
+  "lavaMinInterval": 0.15,
+  "lavaRampTime": 60
 }

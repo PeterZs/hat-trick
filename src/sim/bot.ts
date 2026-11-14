@@ -22,6 +22,7 @@ import { HAT_GROUND, HAT_HELD, type GameState, type Player } from './types';
 import { heldHats, isInvisible, level } from './common';
 import { safeSpot } from './hazards';
 import { isStanding } from './props';
+import { golfTarget } from './golf';
 import { isLethal } from './actors';
 
 function nearestEnemy(s: GameState, p: Player): Player | null {
@@ -204,6 +205,28 @@ function think(s: GameState, p: Player): PlayerInput {
     else if (!mine.atHome && p.id % 2 === 0) { goalX = mine.x; goalY = mine.y; }
     else if (theirs.carrier >= 0) { const c = s.players[theirs.carrier]; goalX = c.x + 1.5; goalY = c.y; }
     else { goalX = theirs.x; goalY = theirs.y; }
+  } else if (mode === 'golf' && golfTarget(s, p)) {
+    // Line up behind our ball, facing the cup, and swing (or throw from range).
+    const { ball, cupX, cupY } = golfTarget(s, p)!;
+    if (enemy && dist2(p.x, p.y, enemy.x, enemy.y) > 3 * 3) enemy = null;
+    if (!enemy) {
+      const gdx = cupX - ball.x, gdy = cupY - ball.y, gl = Math.max(0.01, len(gdx, gdy));
+      const ux = gdx / gl, uy = gdy / gl;
+      const back = 1.3;
+      const bx = ball.x - ux * back, by = ball.y - uy * back;
+      const moving = len(ball.vx, ball.vy) > 1;
+      if (!moving && dist2(p.x, p.y, bx, by) < 0.8 * 0.8) {
+        aimX = ux; aimY = uy;
+        if (p.slashCd <= 0 && rand(s) < K.attack) b |= BTN_ATTACK;
+      } else if (!moving && held > 0 && gl > 8 && dist2(p.x, p.y, ball.x - ux * 4, ball.y - uy * 4) < 1 && rand(s) < K.throw * 4) {
+        aimX = ball.x - p.x; aimY = ball.y - p.y; b |= BTN_THROW; // tap-throw through the ball
+      } else {
+        // Go around the ball to the spot behind it (not through it).
+        const far = len(gl, 0) > 3 && dist2(p.x, p.y, ball.x, ball.y) < 2.2 * 2.2 && (p.x - ball.x) * ux + (p.y - ball.y) * uy > 0;
+        goalX = far ? ball.x - uy * 2 : (gl > 8 && held > 0 ? ball.x - ux * 4 : bx);
+        goalY = far ? ball.y + ux * 2 : (gl > 8 && held > 0 ? ball.y - uy * 4 : by);
+      }
+    }
   } else if (mode === 'lumber') {
     // Chop the nearest standing tree; only fight rivals who come close.
     let tree = null, bd = 1e18;
@@ -266,6 +289,11 @@ function think(s: GameState, p: Player): PlayerInput {
       const aimHold = Math.round(P.aimHoldTime * 60);
       p.botAimT = d < P.hatRange * 0.9 ? 2 : aimHold + 4 + Math.floor(rand(s) * P.chargeTime * 60);
       b |= BTN_THROW; aimX = dx; aimY = dy;
+    }
+    // Bumper Balls: dash into rivals to bump them toward the edge.
+    if (mode === 'bumper' && d < 3 && p.dashCd <= 0 && rand(s) < K.attack * 0.25) {
+      b |= BTN_DASH; aimX = dx; aimY = dy;
+      return makeInput(dx / Math.max(d, 0.01), dy / Math.max(d, 0.01), aimX, aimY, b);
     }
     // Keep a little distance and strafe when armed and far.
     if (--p.botT <= 0) { p.botT = 40 + Math.floor(rand(s) * 60); p.botStrafe = rand(s) < 0.5 ? -1 : 1; }

@@ -621,3 +621,77 @@ describe('extra easy bots', () => {
     expect(extra).toBeLessThan(easy);
   });
 });
+
+describe('new modes', () => {
+  const play = (mode: 'bumper' | 'golf' | 'lava', level: string, seconds: number, bots = 4) => {
+    const cfg = { mode, level, winScore: 99 };
+    const s = createState(cfg, DEFAULT_PARAMS, 11);
+    const cmds: any[] = [];
+    for (let i = 0; i < bots; i++) cmds.push({ t: 'addBot', team: i % 2 });
+    cmds.push({ t: 'start', cfg });
+    step(s, [{ peer: 0, inputs: {}, cmds }]);
+    const ev: Record<string, number> = {};
+    for (let f = 0; f < 60 * seconds; f++) {
+      step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+      for (const e of s.events) ev[e.e + ((e as any).cause ? ':' + (e as any).cause : '')] = (ev[e.e + ((e as any).cause ? ':' + (e as any).cause : '')] ?? 0) + 1;
+    }
+    return { s, ev };
+  };
+
+  it('Bumper Balls: no hats, players get knocked off the platform, rounds end', () => {
+    const { s, ev } = play('bumper', 'platform', 90);
+    console.log('bumper', JSON.stringify(ev));
+    expect(s.hats.length).toBe(0);
+    expect(ev['kill:fall'] ?? 0).toBeGreaterThan(2);
+    expect(ev.round ?? 0).toBeGreaterThan(0);
+  });
+
+  it('Floor is Lava: tiles turn to lava and rounds end; standing on lava burns', () => {
+    const { ev } = play('lava', 'courtyard', 120);
+    console.log('lava', JSON.stringify(ev));
+    expect(ev.tile ?? 0).toBeGreaterThan(20);
+    expect(ev.round ?? 0).toBeGreaterThan(0);
+    // A player standing still while their tile goes.
+    const cfg = { mode: 'lava' as const, level: 'courtyard', winScore: 99 };
+    const s = createState(cfg, { ...DEFAULT_PARAMS, countdownTime: 0 }, 5);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'join', device: 'a', name: 'A', ball: 0 }, { t: 'join', device: 'b', name: 'B', ball: 1 }, { t: 'start', cfg }] }]);
+    const a = s.players[0];
+    const i = s.tiles.findIndex((_, k) => k > 0);
+    const g = (globalThis as any).__tg;
+    void g;
+    a.x = -12; a.y = -7.5; a.invulnT = 0;
+    const evs = run(s, 3, () => ({}));
+    void evs;
+    // Turn the tile under A into a warning tile and wait.
+    const nx = Math.ceil(30 / 2);
+    const tx = Math.floor((a.x + 15) / 2), ty = Math.floor((a.y + 10) / 2);
+    s.tiles[ty * nx + tx] = 2;
+    const ev2 = run(s, 10, () => ({}));
+    expect(i).toBeGreaterThan(0);
+    expect(ev2).toContain('kill');
+    expect(a.alive).toBe(false);
+  });
+
+  it('Golf: bots take strokes and sink balls; holes end', () => {
+    const { s, ev } = play('golf', 'links', 240);
+    console.log('golf', JSON.stringify(ev), 'scores', s.scores.slice(0, 2), 'hole', s.golf?.hole);
+    expect(ev.stroke ?? 0).toBeGreaterThan(3);
+    expect(ev.round ?? 0).toBeGreaterThan(0);
+  });
+
+  it('Golf: a slash on your own ball counts a stroke; slow balls drop in the cup', () => {
+    const cfg = { mode: 'golf' as const, level: 'links', winScore: 99 };
+    const s = createState(cfg, { ...DEFAULT_PARAMS, countdownTime: 0 }, 1);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'join', device: 'd0', name: 'A', ball: 0, team: 0 }, { t: 'start', cfg }] }]);
+    s.props = [];
+    const a = s.players[0];
+    const ball = s.golf!.balls[0];
+    // Put the ball 2.5 units left of the cup and the player just behind it.
+    ball.x = s.golf!.cupX - 2.5; ball.y = s.golf!.cupY; ball.vx = ball.vy = 0;
+    a.x = ball.x - 1.2; a.y = ball.y; a.fx = 1; a.fy = 0;
+    const evs = run(s, 180, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(evs).toContain('stroke');
+    expect(ball.strokes).toBe(1);
+    expect(ball.sunk).toBe(true);
+  });
+});

@@ -287,7 +287,9 @@ export function updateHazards(s: GameState): void {
     if (h.state !== HAT_GROUND || h.bomb || !isHazard(s, h.x, h.y)) continue;
     const owner = s.players[h.owner];
     emit(s, { e: 'splash', x: h.x, y: h.y });
-    if (owner && owner.alive) { h.state = HAT_HELD; h.x = owner.x; h.y = owner.y; emit(s, { e: 'catch', who: owner.id, hat: h.id }); }
+    // Back to its owner (even a popped one: they respawn holding it).
+    h.state = HAT_HELD; h.vx = h.vy = 0;
+    if (owner) { h.x = owner.x; h.y = owner.y; if (owner.alive) emit(s, { e: 'catch', who: owner.id, hat: h.id }); }
   }
   if (s.ball && isHazard(s, s.ball.x, s.ball.y)) {
     emit(s, { e: 'splash', x: s.ball.x, y: s.ball.y });

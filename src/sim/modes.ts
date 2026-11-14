@@ -13,6 +13,7 @@ import { canBeHit, die, dropHat, emit, giveHats, kill, level, newId, sec, spawnP
 import { bounceHat, isLethal, spawnCar } from './actors';
 import { collideProps, resetProps } from './props';
 import { resetTiles, safeSpot } from './hazards';
+import { resetGolf } from './golf';
 import { getLevel, LEVEL_IDS, levelSupports } from './level';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
@@ -58,6 +59,7 @@ export function updateCarsMode(s: GameState): void {
 export function updatePickups(s: GameState): void {
   const P = s.params;
   if (s.phase !== 'playing' && s.phase !== 'lobby') return;
+  if (s.cfg.mode === 'bumper' || s.cfg.mode === 'golf') return; // pure modes: no power-ups
   if (--s.pickupT <= 0) {
     s.pickupT = sec(s, 'powerupInterval');
     const carCount = s.cars.length;
@@ -286,6 +288,7 @@ export function resetArena(s: GameState): void {
   s.pickupT = sec(s, 'powerupInterval');
   resetProps(s);
   resetTiles(s);
+  resetGolf(s);
   if (s.cfg.mode === 'cars') { for (let i = 0; i < carCount(s); i++) spawnModeCar(s); s.carSpawnT = sec(s, 'carRespawnTime'); }
   s.ball = s.cfg.mode === 'soccer' ? { x: 0, y: 0, vx: 0, vy: 0, lastTouch: -1 } : null;
   if (s.cfg.mode === 'ctf') resetFlags(s); else s.flags = [];

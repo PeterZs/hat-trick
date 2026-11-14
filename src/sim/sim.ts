@@ -17,6 +17,7 @@ import {
 import { botInput } from './bot';
 import { updateProps } from './props';
 import { applyFields, updateHazards } from './hazards';
+import { updateGolf } from './golf';
 
 export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd): GameState {
   const s: GameState = {
@@ -246,6 +247,7 @@ export function step(s: GameState, frame: PeerFrame[]): void {
     resolveHatHits(s);
     updatePickups(s);
     updateBall(s);
+    updateGolf(s);
     updateFlags(s);
     updateBombs(s);
     updateProps(s);
