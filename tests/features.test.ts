@@ -590,3 +590,20 @@ describe('names', () => {
     expect(s.players[0].name).toBe('Yotam the Magnif');
   });
 });
+
+describe('lobby settings', () => {
+  it('any peer can change match settings in the lobby, but not mid-match', () => {
+    const cfg = { mode: 'ffa' as const, level: 'courtyard', winScore: 5 };
+    const s = createState(cfg, DEFAULT_PARAMS, 1);
+    step(s, [{ peer: 1, inputs: {}, cmds: [{ t: 'lobby', cfg: { mode: 'soccer', level: 'pitch', winScore: 3 } }] }]);
+    expect(s.cfg.mode).toBe('soccer');
+    expect(s.cfg.level).toBe('pitch');
+    step(s, [{ peer: 1, inputs: {}, cmds: [{ t: 'start', cfg: s.cfg }] }]);
+    expect(s.phase).toBe('lobby'); // only the host starts
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'start', cfg: s.cfg }] }]);
+    expect(s.phase).not.toBe('lobby');
+    step(s, [{ peer: 1, inputs: {}, cmds: [{ t: 'lobby', cfg }] }]);
+    expect(s.phase).not.toBe('lobby'); // a client can't abort the match
+    expect(s.cfg.mode).toBe('soccer');
+  });
+});

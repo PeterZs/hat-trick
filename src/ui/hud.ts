@@ -182,16 +182,14 @@ export class Hud {
           <button class="small" data-l="collapse" title="Collapse">▼</button>
         </h3>
         <div class="row" style="margin-top:4px">
-          ${c.isHost ? `
             <select data-l="mode">${MODES.map((m) => `<option value="${m.id}" ${m.id === mode ? 'selected' : ''}>${m.name}</option>`).join('')}</select>
             <select data-l="level">${Object.values(LEVELS).map((l) => `<option value="${l.id}" ${l.id === s.cfg.level ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
-            <label class="hint">to <input data-l="win" type="number" min="1" max="50" value="${s.cfg.winScore}" style="width:56px"></label>
-            ${mode === 'cars' ? `<label class="hint">🚗 cars <input data-l="cars" type="number" min="1" max="8" value="${s.cfg.cars ?? 2}" style="width:52px"></label>` : ''}`
-          : `<span class="hint">${MODES.find((m) => m.id === mode)?.name} · ${LEVELS[s.cfg.level]?.name}${mode === 'lumber' ? '' : ` · first to ${s.cfg.winScore}`}${mode === 'cars' ? ` · ${s.cfg.cars ?? 2} cars` : ''} — waiting for host</span>`}
+            ${mode === 'lumber' ? '' : `<label class="hint">to <input data-l="win" type="number" min="1" max="50" value="${s.cfg.winScore}" style="width:56px"></label>`}
+            ${mode === 'cars' ? `<label class="hint">🚗 cars <input data-l="cars" type="number" min="1" max="8" value="${s.cfg.cars ?? 2}" style="width:52px"></label>` : ''}
           <span class="grow"></span>
           <button class="small" data-l="bot">+ Bot</button>
           <button class="small" data-l="rmbot">− Bot</button>
-          ${c.isHost ? `<button class="primary" data-l="start" ${roster.length === 0 ? 'disabled' : ''}>Start ▶</button>` : ''}
+          ${c.isHost ? `<button class="primary" data-l="start" ${roster.length === 0 ? 'disabled' : ''}>Start ▶</button>` : '<span class="hint">host starts</span>'}
         </div>
         <div class="pcards">
           ${roster.map((p) => `

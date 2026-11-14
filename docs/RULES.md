@@ -83,8 +83,8 @@ names are editable right on their cards; press Enter to apply.
 
 ## Game modes
 
-Every game starts in the **lobby**: free play with respawns, no score. The host
-picks the mode and arena and presses Start. After a match ends, everyone returns
+Every game starts in the **lobby**: free play with respawns, no score. Any
+player can pick the mode, arena and target score; the host presses Start. After a match ends, everyone returns
 to the lobby after 8 s.
 
 ### Free-for-all

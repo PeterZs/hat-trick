@@ -172,7 +172,9 @@ function applyCommand(s: GameState, peer: number, c: Command): void {
       return;
     }
     case 'lobby': {
-      if (peer !== 0) return;
+      // Anyone can change the match settings while in the lobby; only the
+      // host can send everyone back to the lobby from a match.
+      if (peer !== 0 && s.phase !== 'lobby') return;
       if (c.cfg) s.cfg = { ...c.cfg };
       toLobby(s);
       return;
