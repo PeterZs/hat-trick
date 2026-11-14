@@ -14,8 +14,10 @@ npm test         # sim, mechanics, and netcode tests
 npm run build
 ```
 
-Every push to `main` runs the tests, builds, and deploys to GitHub Pages
-(`.github/workflows/pages.yml`).
+Deploy to GitHub Pages with `npm run deploy` (tests, builds, and pushes `dist/`
+to the `gh-pages` branch). There is also a GitHub Actions workflow
+(`.github/workflows/pages.yml`) for deploying from CI; to use it, switch the
+repo's Pages source to "GitHub Actions".
 
 **Modes:** Free-for-all, Teams, Capture the Flag, Soccer, Overlord (asymmetric:
 overlords drop bombs on runners), Lumberjacks (timed race to chop the most trees). **Power-ups:** speed, shield, double hat,
