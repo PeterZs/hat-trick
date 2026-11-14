@@ -7,7 +7,7 @@
   "dashCooldown": 0.1,
   "slashWindup": 0.05,
   "slashActive": 0.1,
-  "slashCooldown": 0.35,
+  "slashCooldown": 0.25,
   "slashRange": 1.9,
   "slashArcDeg": 160,
   "clashWindow": 0.12,

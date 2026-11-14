@@ -9,6 +9,8 @@ export class SettingsPanel {
   open = false;
   params: Params = loadParams();
   readOnly = false;
+  /** Which groups are expanded (kept across re-renders). */
+  private openGroups = new Set(['Player', 'Movement', 'Dash', 'Melee', 'Throw']);
   onParams: (p: Params) => void = () => {};
   onPrefs: (p: Prefs) => void = () => {};
 
@@ -36,13 +38,17 @@ export class SettingsPanel {
   }
 
   private render(): void {
+    // Re-rendering replaces the DOM: keep the scroll position and focus.
+    const scroll = this.el.querySelector('.body')?.scrollTop ?? 0;
+    const focusKey = (document.activeElement as HTMLElement | null)?.closest('.settings') ? (document.activeElement as HTMLElement).getAttribute('data-key') ?? (document.activeElement as HTMLElement).getAttribute('data-bool') : null;
+    const focusType = (document.activeElement as HTMLInputElement | null)?.type;
     const groups = new Map<string, typeof PARAM_DEFS>();
     for (const d of PARAM_DEFS) { if (!groups.has(d.group)) groups.set(d.group, []); groups.get(d.group)!.push(d); }
     const pf = this.prefs;
     this.el.innerHTML = `
       <header><b>⚙️ Settings</b><button class="small" data-act="close">✕</button></header>
       <div class="body">
-        <details open><summary>Player</summary>
+        <details data-group="Player" ${this.openGroups.has('Player') ? 'open' : ''}><summary>Player</summary>
           <div class="prow"><label>Name</label><input data-pref="name" type="text" maxlength="14" value="${escapeHtml(pf.name)}" style="grid-column:1/3"></div>
           <div class="prow"><label>Volume <span>${Math.round(pf.volume * 100)}%</span></label><input data-pref="volume" type="range" min="0" max="1" step="0.05" value="${pf.volume}" style="grid-column:1/3"></div>
           <div class="prow"><button class="small" data-act="soundtest" style="grid-column:1/3">🔊 Sound test (plays every effect)</button></div>
@@ -55,7 +61,7 @@ export class SettingsPanel {
           <button class="small" data-act="reset" ${this.readOnly ? 'disabled' : ''}>Reset all</button>
         </div>
         ${[...groups.entries()].map(([g, defs]) => `
-          <details ${g === 'Movement' || g === 'Throw' || g === 'Melee' || g === 'Dash' ? 'open' : ''}><summary>${g}</summary>
+          <details data-group="${g}" ${this.openGroups.has(g) ? 'open' : ''}><summary>${g}</summary>
             ${defs.map((d) => {
               const v = this.params[d.key];
               const changed = v !== DEFAULT_PARAMS[d.key];
@@ -72,6 +78,15 @@ export class SettingsPanel {
           </details>`).join('')}
       </div>`;
 
+    const body = this.el.querySelector('.body')!;
+    body.scrollTop = scroll;
+    if (focusKey) {
+      const again = this.el.querySelector<HTMLInputElement>(`input[data-key="${focusKey}"][type="${focusType}"], input[data-bool="${focusKey}"]`);
+      again?.focus({ preventScroll: true });
+    }
+    for (const d of this.el.querySelectorAll<HTMLDetailsElement>('details[data-group]')) {
+      d.addEventListener('toggle', () => { if (d.open) this.openGroups.add(d.dataset.group!); else this.openGroups.delete(d.dataset.group!); });
+    }
     this.el.querySelector('[data-act=close]')!.addEventListener('click', () => this.toggle(false));
     this.el.querySelector('[data-act=download]')!.addEventListener('click', () => this.download());
     this.el.querySelector('[data-act=soundtest]')!.addEventListener('click', () => soundTest());
