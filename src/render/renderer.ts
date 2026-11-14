@@ -239,6 +239,15 @@ export class Renderer {
     this.camera.lookAt(target);
     this.camBase.copy(this.camera.position);
     this.camTarget.copy(target);
+    // Fog only for the scenery beyond the arena: start past its farthest corner.
+    // (Narrow/portrait screens put the camera much farther back.)
+    let far = 0;
+    for (const c of corners) far = Math.max(far, c.distanceTo(this.camera.position));
+    const fog = this.scene.fog as THREE.Fog;
+    fog.near = far + 8;
+    fog.far = far + 70;
+    this.camera.far = far + 200;
+    this.camera.updateProjectionMatrix();
   }
 
   screenToWorld(cx: number, cy: number): { x: number; y: number } | null {

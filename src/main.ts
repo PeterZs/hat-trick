@@ -225,6 +225,9 @@ function pressedOnce(code: string): boolean {
 }
 
 window.addEventListener('resize', () => renderer.resize());
+// iOS Safari: block pinch-zoom gestures and double-tap zoom.
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 window.addEventListener('pointerdown', () => unlockAudio(), { once: false });
 window.addEventListener('keydown', () => unlockAudio());
 
