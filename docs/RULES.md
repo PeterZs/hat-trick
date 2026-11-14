@@ -32,7 +32,8 @@ A random power-up appears every 7 s (max 3 on the field). Walk over it to take i
 About 30% of them are **bad** — they look like dark, spiky lumps instead of shiny gems,
 so you can dodge them (or knock a rival into one). When you pick something up, its
 icon and name pop up over you; active effects show as icons next to your name.
-All are lost when you die.
+All are lost when you die. With **Hide power-up identity** (settings) on, every
+power-up is an identical ❓ box until someone picks it up — good or bad is a gamble.
 
 | Icon | Power-up | Effect |
 |---|---|---|

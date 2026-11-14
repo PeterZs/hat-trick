@@ -59,6 +59,10 @@ export class SettingsPanel {
             ${defs.map((d) => {
               const v = this.params[d.key];
               const changed = v !== DEFAULT_PARAMS[d.key];
+              if (d.bool) return `<div class="prow">
+                <label class="${changed ? 'changed' : ''}" title="${d.key}"><span>${d.label}</span>
+                  <input type="checkbox" data-bool="${d.key}" ${v ? 'checked' : ''} ${this.readOnly ? 'disabled' : ''}></label>
+              </div>`;
               return `<div class="prow">
                 <label class="${changed ? 'changed' : ''}" title="${d.key}"><span>${d.label}</span>${changed ? `<a href="#" data-reset="${d.key}" title="Reset to ${DEFAULT_PARAMS[d.key]}">↺</a>` : ''}</label>
                 <input type="range" data-key="${d.key}" min="${d.min}" max="${d.max}" step="${d.step}" value="${v}" ${this.readOnly ? 'disabled' : ''}>
@@ -86,6 +90,9 @@ export class SettingsPanel {
         this.commit();
       });
       inp.addEventListener('change', () => this.render());
+    }
+    for (const inp of this.el.querySelectorAll<HTMLInputElement>('input[data-bool]')) {
+      inp.addEventListener('change', () => { this.params[inp.dataset.bool!] = inp.checked ? 1 : 0; this.commit(); this.render(); });
     }
     for (const inp of this.el.querySelectorAll<HTMLInputElement>('input[data-pref]')) {
       inp.addEventListener('input', () => {

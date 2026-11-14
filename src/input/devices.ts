@@ -39,7 +39,7 @@ export class KeyboardMouseDevice implements Device {
   private join = new Edge(); private leave = new Edge(); private ballL = new Edge(); private ballR = new Edge(); private team = new Edge();
   private j = false; private l = false; private bl = 0; private t = 0;
   update(): void {
-    this.j = this.join.rise(anyKey('Enter', 'KeyE', 'Space') || (mouseButtons() & 1) === 1);
+    this.j = this.join.rise(anyKey('Enter', 'KeyE', 'Space', 'KeyZ', 'KeyX', 'KeyC') || (mouseButtons() & 1) === 1);
     this.l = this.leave.rise(anyKey('Backspace'));
     this.bl = this.ballL.rise(anyKey('KeyQ')) ? -1 : this.ballR.rise(anyKey('KeyR')) ? 1 : 0;
     this.t = this.team.rise(anyKey('KeyT')) ? 1 : 0;
@@ -54,9 +54,9 @@ export class KeyboardMouseDevice implements Device {
       if (w) { ax = w.x - pos.x; ay = w.y - pos.y; if (Math.hypot(ax, ay) < 0.3) { ax = 0; ay = 0; } }
     }
     let b = 0;
-    if ((mouseButtons() & 1) || anyKey('KeyJ')) b |= BTN_ATTACK;
-    if ((mouseButtons() & 2) || anyKey('KeyK')) b |= BTN_THROW;
-    if (anyKey('Space', 'ShiftLeft', 'KeyL')) b |= BTN_DASH;
+    if ((mouseButtons() & 1) || anyKey('KeyZ', 'KeyJ')) b |= BTN_ATTACK;
+    if ((mouseButtons() & 2) || anyKey('KeyX', 'KeyK')) b |= BTN_THROW;
+    if (anyKey('KeyC', 'Space', 'ShiftLeft', 'KeyL')) b |= BTN_DASH;
     if (anyKey('KeyE')) b |= BTN_INTERACT;
     return makeInput(mx, my, ax, ay, b);
   }

@@ -11,6 +11,7 @@ export interface ParamDef {
   min: number;
   max: number;
   step: number;
+  bool?: boolean; // shown as a checkbox; 0 = off, 1 = on
 }
 
 const D = (key: string, label: string, group: string, min: number, max: number, step: number): ParamDef =>
@@ -54,6 +55,7 @@ export const PARAM_DEFS: ParamDef[] = [
   D('powerupMax', 'Max power-ups on field', 'Power-ups', 0, 10, 1),
   D('speedBoostMult', 'Speed boost multiplier', 'Power-ups', 1, 3, 0.05),
   D('speedBoostTime', 'Speed boost duration (s)', 'Power-ups', 1, 60, 0.5),
+  { ...D('hidePowerups', 'Hide power-up identity until picked up', 'Power-ups', 0, 1, 1), bool: true },
   D('badPowerupChance', 'Chance a power-up is bad', 'Power-ups', 0, 1, 0.05),
   D('slowMult', 'Slowpoke speed multiplier', 'Power-ups', 0.1, 1, 0.05),
   D('slowTime', 'Slowpoke duration (s)', 'Power-ups', 1, 60, 0.5),

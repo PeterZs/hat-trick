@@ -553,7 +553,9 @@ export class Renderer {
     for (const q of s.pickups) {
       puSeen.add(q.id);
       let g = this.pickups.get(q.id);
-      if (!g) { g = makePickup(q.kind); this.scene.add(g); this.pickups.set(q.id, g); }
+      const look = s.params.hidePowerups ? '?' : q.kind;
+      if (g && g.userData.look !== look) { this.scene.remove(g); g = undefined; }
+      if (!g) { g = makePickup(q.kind, look === '?'); g.userData.look = look; this.scene.add(g); this.pickups.set(q.id, g); }
       g.position.set(q.x, 0, q.y);
       const gem = g.getObjectByName('gem')!;
       gem.rotation.y = this.time * 2;

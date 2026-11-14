@@ -36,6 +36,7 @@
   "powerupMax": 3,
   "speedBoostMult": 1.5,
   "speedBoostTime": 10,
+  "hidePowerups": 0,
   "badPowerupChance": 0.3,
   "slowMult": 0.5,
   "slowTime": 6,

@@ -6,7 +6,7 @@ import { LocalSession, type Session } from './net/session';
 import { RollbackSession } from './net/rollback';
 import { hostRoom, joinRoom, randomRoomCode } from './net/peerLink';
 import { DeviceManager, type AimContext } from './input/devices';
-import { endInputFrame, installKeyboard, keys } from './input/keyboard';
+import { anyKey, endInputFrame, installKeyboard } from './input/keyboard';
 import { TouchControls } from './input/touch';
 import { NEUTRAL, type PlayerInput } from './sim/input';
 import { BALLS, HZ, MAX_PLAYERS } from './sim/const';
@@ -216,7 +216,7 @@ function pollInputs(): Record<string, PlayerInput> {
 // Global keys.
 const edges = new Set<string>();
 function pressedOnce(code: string): boolean {
-  const down = keys.has(code);
+  const down = anyKey(code); // includes taps shorter than a frame
   if (down && !edges.has(code)) { edges.add(code); return true; }
   if (!down) edges.delete(code);
   return false;

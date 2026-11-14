@@ -250,8 +250,20 @@ function iconTexture(icon: string): THREE.Texture {
   return t;
 }
 
-export function makePickup(kind: string): THREE.Group {
+export function makePickup(kind: string, hidden = false): THREE.Group {
   const g = new THREE.Group();
+  if (hidden) {
+    // Mystery box: every power-up looks the same until someone grabs it.
+    const box = mesh(new THREE.BoxGeometry(0.62, 0.62, 0.62), '#f4f1ff');
+    box.position.y = 0.7; box.name = 'gem';
+    g.add(box);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTexture('❓'), depthTest: false }));
+    sprite.scale.set(0.8, 0.8, 0.8); sprite.position.y = 1.55; sprite.renderOrder = 5;
+    g.add(sprite);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.65, 20), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.6 }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; g.add(ring);
+    return g;
+  }
   // Good power-ups are smooth gems; bad ones are dark, spiky lumps.
   const bad = PICKUP_INFO[kind]?.bad;
   const box = mesh(bad ? new THREE.TetrahedronGeometry(0.5, 0) : new THREE.OctahedronGeometry(0.45, 0), PICKUP_COLORS[kind] ?? '#fff');
