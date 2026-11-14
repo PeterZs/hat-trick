@@ -65,3 +65,20 @@ describe('rollback netcode', () => {
     expect(Math.abs(host.state.frame - c2.state.frame)).toBeLessThan(10);
   });
 });
+
+describe('late join race', () => {
+  it("host accepts a new client's inputs that arrive before its next tick", () => {
+    const hub = new LoopbackHub(0, 0);
+    const s0 = createState({ mode: 'ffa', level: 'courtyard', winScore: 99 }, DEFAULT_PARAMS, 1);
+    const host = new RollbackSession(hub.host(), s0, { now: () => hub.now * 16 });
+    for (let i = 0; i < 10; i++) { host.tick({}); hub.pump(); }
+    const c = new RollbackSession(hub.connect(), null, { now: () => hub.now * 16 });
+    hub.pump();            // welcome arrives
+    c.tick({});            // client answers immediately
+    c.tick({});
+    hub.pump();            // ...and its inputs reach the host before the host ticks
+    for (let i = 0; i < 60; i++) { host.tick({}); c.tick({}); hub.pump(); }
+    expect(host.state.frame).toBeGreaterThan(50);
+    expect(c.state.frame).toBeGreaterThan(50);
+  });
+});
