@@ -77,6 +77,8 @@ export class Renderer {
   private sun: THREE.DirectionalLight;
   private hemi!: THREE.HemisphereLight;
   private arena: ArenaView;
+  private floorMesh: THREE.Mesh | null = null;
+  private outsideMesh: THREE.Mesh | null = null;
   private raycaster = new THREE.Raycaster();
   private aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.5);
   private time = 0;
@@ -124,6 +126,7 @@ export class Renderer {
     const outside = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), mat(L.outside ?? '#79b765'));
     outside.rotation.x = -Math.PI / 2; outside.position.y = -0.02; outside.receiveShadow = true;
     this.levelGroup.add(outside);
+    this.outsideMesh = outside;
 
     // Checkered floor.
     const tile = 2;
@@ -140,6 +143,7 @@ export class Renderer {
     const floor = new THREE.Mesh(geo, vertexColorMat);
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
     this.levelGroup.add(floor);
+    this.floorMesh = floor;
 
     // Goal areas get their own floor.
     for (const g of L.goals) {
@@ -717,6 +721,9 @@ export class Renderer {
     this.animateFelled(dt, s);
 
     this.arena.update(s, dt, this.time);
+    // Tiled floors are drawn as slabs (with their own surroundings) so holes can be recessed.
+    if (this.floorMesh) this.floorMesh.visible = !this.arena.tilesActive;
+    if (this.outsideMesh) this.outsideMesh.visible = !this.arena.tilesActive;
     // Night: dim the sun and sky (player lights come from the arena view).
     const d = this.arena.darkness;
     this.hemi.intensity = 1.6 * (1 - 0.88 * d);

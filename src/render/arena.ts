@@ -5,11 +5,13 @@ import * as THREE from 'three';
 import type { Level } from '../sim/level';
 import type { GameState } from '../sim/types';
 import { HZ } from '../sim/const';
-import { tileCenter, tileGrid, TILE_FALLEN, TILE_NONE, TILE_SOLID } from '../sim/hazards';
+import { tileCenter, tileGrid, TILE_FALLEN, TILE_NONE } from '../sim/hazards';
 import { GOLF_BALL_R } from '../sim/golf';
 import { makeBall, mat, TEAM_COLORS } from './models';
 
 const PIT = '#241d2b';
+/** Thickness of floor slabs (how deep a fallen tile's hole looks). */
+const SLAB_DEPTH = 1.6;
 
 function flat(w: number, h: number, color: string, y: number, opts: Partial<THREE.MeshBasicMaterialParameters> = {}): THREE.Mesh {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color, ...opts }));
@@ -40,7 +42,13 @@ export class ArenaView {
   private portals: THREE.Group[] = [];
   private streaks: Streak[] = [];
   private tiles: THREE.InstancedMesh | null = null;
+  private under: THREE.Mesh | null = null;
+  private tileObjs: THREE.Object3D[] = [];
   private tileKey = '';
+  private prevTiles: number[] = [];
+  private fallAt = new Map<number, number>();
+  /** True while a tiled floor replaces the normal floor. */
+  tilesActive = false;
   private golfGroup = new THREE.Group();
   private golfBalls: THREE.Group[] = [];
   private golfCup: THREE.Group | null = null;
@@ -56,7 +64,7 @@ export class ArenaView {
     this.L = L;
     this.group.clear();
     this.belts = []; this.bumpers = []; this.portals = []; this.streaks = [];
-    this.tiles = null; this.tileKey = '';
+    this.tiles = null; this.under = null; this.tileObjs = []; this.tileKey = ''; this.tilesActive = false;
     this.golfGroup = new THREE.Group(); this.group.add(this.golfGroup);
     this.golfBalls = []; this.golfCup = null;
     for (const l of this.lights) this.scene.remove(l);
@@ -181,47 +189,103 @@ export class ArenaView {
     this.updateNight(s);
   }
 
+  /** Tiled floors: each tile is a thick slab, so a fallen tile leaves a
+   *  recessed hole (neighbors' sides as walls) with lava/water/void below. */
   private updateTiles(s: GameState, time: number): void {
     const g = s.tiles.length ? tileGrid(s) : null;
-    const key = g ? `${g.nx}x${g.ny}:${g.cell}` : '';
-    if (key !== this.tileKey) {
-      if (this.tiles) { this.group.remove(this.tiles); this.tiles.dispose(); this.tiles = null; }
-      this.tileKey = key;
-      if (g) {
-        const geo = new THREE.PlaneGeometry(g.cell * 0.98, g.cell * 0.98);
-        geo.rotateX(-Math.PI / 2);
-        this.tiles = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color: '#ffffff' }), g.nx * g.ny);
-        this.tiles.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-        this.group.add(this.tiles);
-      }
-    }
+    const key = g ? `${g.nx}x${g.ny}:${g.cell}:${this.L?.id}:${g.spec.lava}` : '';
+    if (key !== this.tileKey) this.buildTiles(g, key);
     if (!g || !this.tiles) return;
     const L = this.L!;
     const m = new THREE.Matrix4(), c = new THREE.Color();
-    const lava = !!g.spec.lava;
-    const voidColor = new THREE.Color(L.outside ?? PIT);
-    const flashRed = new THREE.Color('#ff4a2a'), floor = new THREE.Color(L.floor[0]);
+    const c0 = new THREE.Color(L.floor[0]), c1 = new THREE.Color(L.floor[1]), red = new THREE.Color('#ff4a2a');
+    const D = SLAB_DEPTH;
     for (let i = 0; i < s.tiles.length; i++) {
       const t = s.tiles[i];
+      const prev = this.prevTiles[i];
+      if (t === TILE_FALLEN && prev !== undefined && prev !== TILE_FALLEN) this.fallAt.set(i, time);
+      this.prevTiles[i] = t;
       const [x, z] = tileCenter(g, i);
-      if (t === TILE_SOLID) { m.makeScale(0, 0, 0); this.tiles.setMatrixAt(i, m); continue; }
-      m.makeTranslation(x, 0.018, z);
-      this.tiles.setMatrixAt(i, m);
+      const tx = i % g.nx, tz = (i - tx) / g.nx;
+      const base = (tx + tz) % 2 ? c0 : c1;
+      if (t === TILE_NONE) { m.makeScale(0, 0, 0); this.tiles.setMatrixAt(i, m); continue; }
+      let y = -D / 2, jx = 0, jz = 0;
+      c.copy(base);
       if (t > 0) {
-        // Warning: flash faster as it's about to go.
-        const f = Math.sin(time * (10 + 30 / Math.max(1, t / 10))) * 0.5 + 0.5;
-        c.copy(floor).lerp(flashRed, 0.35 + 0.5 * f);
-      } else if (t === TILE_FALLEN && lava) {
-        const glow = 0.75 + 0.25 * Math.sin(time * 3 + x * 0.7 + z * 0.5);
-        c.setRGB(1.0 * glow, 0.38 * glow, 0.08);
-      } else {
-        c.copy(voidColor);
-        if (t === TILE_NONE) c.multiplyScalar(1);
+        // Warning: flash red and jiggle, more as it's about to go.
+        const urgency = 1 - Math.min(1, t / 60);
+        const f = Math.sin(time * (10 + 25 * urgency)) * 0.5 + 0.5;
+        c.lerp(red, 0.3 + 0.5 * f);
+        jx = Math.sin(time * 47 + i) * 0.03 * (0.5 + urgency);
+        jz = Math.cos(time * 53 + i * 1.7) * 0.03 * (0.5 + urgency);
+        y -= 0.04 * urgency;
+      } else if (t === TILE_FALLEN) {
+        // Drop out of sight (or already gone).
+        const t0 = this.fallAt.get(i);
+        const k = t0 === undefined ? 99 : time - t0;
+        if (k > 0.7) { m.makeScale(0, 0, 0); this.tiles.setMatrixAt(i, m); continue; }
+        y -= 9 * k * k;
+        c.multiplyScalar(Math.max(0.3, 1 - k));
       }
+      m.makeTranslation(x + jx, y, z + jz);
+      this.tiles.setMatrixAt(i, m);
       this.tiles.setColorAt(i, c);
     }
     this.tiles.instanceMatrix.needsUpdate = true;
     if (this.tiles.instanceColor) this.tiles.instanceColor.needsUpdate = true;
+    if (this.under && g.spec.lava) {
+      const glow = 0.8 + 0.2 * Math.sin(time * 2.2);
+      (this.under.material as THREE.MeshBasicMaterial).color.setRGB(1.0 * glow, 0.36 * glow, 0.06);
+    }
+  }
+
+  private buildTiles(g: ReturnType<typeof tileGrid>, key: string): void {
+    for (const o of this.tileObjs) { this.group.remove(o); }
+    this.tileObjs = [];
+    this.tiles = null; this.under = null;
+    this.tileKey = key;
+    this.prevTiles = []; this.fallAt.clear();
+    this.tilesActive = !!g;
+    if (!g) return;
+    const L = this.L!;
+    const D = SLAB_DEPTH;
+    const W = g.nx * g.cell, H = g.ny * g.cell;
+    // Slabs.
+    // Slab sides are darker than the top so a hole's walls read as depth.
+    const geo = new THREE.BoxGeometry(g.cell, D, g.cell).toNonIndexed();
+    const nrm = geo.getAttribute('normal'), cols = new Float32Array(nrm.count * 3);
+    for (let v = 0; v < nrm.count; v++) {
+      const top = nrm.getY(v) > 0.5, shade = top ? 1 : 0.42;
+      cols[v * 3] = shade * 0.95; cols[v * 3 + 1] = shade * 0.85; cols[v * 3 + 2] = shade * 0.8;
+      if (top) { cols[v * 3] = cols[v * 3 + 1] = cols[v * 3 + 2] = 1; }
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    const slabs = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: '#ffffff', vertexColors: true, flatShading: true }), g.nx * g.ny);
+    slabs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    slabs.receiveShadow = true;
+    slabs.castShadow = false;
+    // What's below: lava, water (open levels) or a dark pit.
+    const lava = !!g.spec.lava;
+    const belowColor = lava ? '#ff5c10' : L.outside ?? '#241d2b';
+    const under = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.02, H + 0.02),
+      lava ? new THREE.MeshBasicMaterial({ color: belowColor }) : new THREE.MeshLambertMaterial({ color: belowColor }));
+    under.rotation.x = -Math.PI / 2; under.position.set(g.x0 + W / 2, -D * 0.95, g.y0 + H / 2);
+    // Ground around the slab area with a matching hole, at the same height as
+    // before for walled arenas, or at water level for open ones.
+    const shape = new THREE.Shape();
+    shape.moveTo(-120, -120); shape.lineTo(120, -120); shape.lineTo(120, 120); shape.lineTo(-120, 120); shape.closePath();
+    const hole = new THREE.Path();
+    hole.moveTo(g.x0, g.y0); hole.lineTo(g.x0, g.y0 + H); hole.lineTo(g.x0 + W, g.y0 + H); hole.lineTo(g.x0 + W, g.y0); hole.closePath();
+    shape.holes.push(hole);
+    const ring = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshLambertMaterial({ color: L.outside ?? '#79b765', flatShading: true, side: THREE.DoubleSide }));
+    ring.rotation.x = Math.PI / 2; // shape is in x/y; lay it on x/z (y -> z)
+    ring.position.y = L.open ? -D * 0.95 : -0.02;
+    ring.receiveShadow = true;
+    // Under a walled arena the hole's outer rim needs sides down to the lava.
+    const skirt = L.open ? null : new THREE.Mesh(new THREE.BoxGeometry(W + 0.4, D, H + 0.4), new THREE.MeshLambertMaterial({ color: '#5b4a3a', side: THREE.BackSide }));
+    if (skirt) skirt.position.set(g.x0 + W / 2, -D / 2 - 0.01, g.y0 + H / 2);
+    for (const o of [slabs, under, ring, skirt]) if (o) { this.group.add(o); this.tileObjs.push(o); }
+    this.tiles = slabs; this.under = under;
   }
 
   private updateGolf(s: GameState, time: number): void {
