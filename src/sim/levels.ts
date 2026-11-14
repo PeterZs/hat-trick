@@ -24,6 +24,7 @@ const shop: Level = {
   props: [P('crate', -6.75, 0), P('crate', 6.75, 0), P('bush', -13.4, -8.6), P('bush', 13.4, 8.6), P('crate', -2.25, 8.7), P('crate', 2.25, -8.7)],
 };
 
+const bushCluster = (x: number, y: number) => [P('bush', x, y), P('bush', x + 1.1, y + 0.3), P('bush', x - 0.4, y + 1.1), P('bush', x + 0.6, y - 1)];
 const daycare: Level = {
   id: 'daycare', name: 'Ball Pit Daycare', w: 14, h: 10, floor: ['#ffd6e8', '#ffcade'],
   walls: [
@@ -34,9 +35,12 @@ const daycare: Level = {
   spawns: mirror([[-12, -7.5], [12, -7.5], [0, -8.5], [-6, 0]]),
   goals: [], bases: [{ team: 0, x: -12.2, y: 0 }, { team: 1, x: 12.2, y: 0 }],
   props: [
-    // "Ball pits": clusters of bushes you can hide behind (hats pass through).
-    ...[[-7, -4], [7, 4], [0, 0], [-7, 5], [7, -5]].flatMap(([x, y]) => [P('bush', x, y), P('bush', x + 1.1, y + 0.3), P('bush', x - 0.4, y + 1.1)]),
-    P('crate', -2, -3), P('crate', 2, 3), P('crate', 10.5, -5.6), P('crate', -10.5, 5.6),
+    // "Ball pits": lots of bush clusters to hide behind (hats pass through).
+    ...[[-8, -4.5], [-2.5, -3], [3, -3.2], [8.5, -4.5], [-8.5, 4.5], [-3, 3.2], [2.5, 3], [8, 4.5], [0, 0], [-12.3, -3.6], [11.6, 3.6], [5.5, -8], [-5.5, 8]]
+      .flatMap(([x, y]) => bushCluster(x, y)),
+    // Tall grass to hide in.
+    P('grass', -12.3, 0.4), P('grass', 12.3, -0.4), P('grass', -5.5, -8.6), P('grass', 5.5, 8.6), P('grass', 0, -4.6), P('grass', 0, 4.6),
+    P('crate', 10.5, -5.6), P('crate', -10.5, 5.6),
   ],
 };
 
@@ -64,7 +68,7 @@ const crateLine = (x0: number, y0: number, x1: number, y1: number, gapAt = -1) =
 };
 
 const rooftops: Level = {
-  id: 'rooftops', name: 'Rooftops', w: 15, h: 10, floor: ['#9aa3ab', '#8f989f'],
+  id: 'rooftops', name: 'Rooftops', w: 15, h: 10, floor: ['#9aa3ab', '#8f989f'], regrowScale: 0.2,
   walls: [...border(15, 10), W(-10, -5, 0.8, 0.8, 'box'), W(10, 5, 0.8, 0.8, 'box'), W(-10, 5, 0.6, 0.6, 'box'), W(10, -5, 0.6, 0.6, 'box')],
   spawns: mirror([[-12.5, -7.5], [12.5, -7.5], [-12.5, 0], [0, -6.5]]),
   goals: [], bases: [{ team: 0, x: -12.5, y: 2.5 }, { team: 1, x: 12.5, y: -2.5 }],
@@ -154,6 +158,9 @@ const pinball: Level = {
   bumpers: [
     { x: -4, y: -6, r: 1 }, { x: 4, y: -6, r: 1 }, { x: 0, y: -2, r: 1.2 },
     { x: -5, y: 3, r: 0.9 }, { x: 5, y: 3, r: 0.9 }, { x: 0, y: 7.5, r: 1 },
+    { x: -8, y: -5, r: 0.8 }, { x: 8, y: 5, r: 0.8 }, { x: 0, y: -8.5, r: 0.9 },
+    { x: -7, y: 8, r: 0.8 }, { x: 7, y: -8, r: 0.8 }, { x: -2.5, y: 10, r: 0.7 }, { x: 2.5, y: 10, r: 0.7 },
+    { x: -2.6, y: 0.8, r: 0.6 }, { x: 2.6, y: 0.8, r: 0.6 },
   ],
   walls: [...border(12, 14), W(-6.5, 10.5, 2.5, 0.3, 'low'), W(6.5, 10.5, 2.5, 0.3, 'low'), W(-9.5, -10, 0.6, 0.6, 'box'), W(9.5, -10, 0.6, 0.6, 'box')],
   spawns: mirror([[-9, -12], [9, -12], [-9, 0], [0, -11.5]]),
@@ -161,21 +168,30 @@ const pinball: Level = {
   props: [],
 };
 
+/** Walls for one half, plus the same walls rotated 180 degrees for the other. */
+const pointSym = (ws: Wall[]) => [...ws, ...ws.map((w) => ({ ...w, x: -w.x, y: -w.y }))];
 const temple: Level = {
   id: 'temple', name: 'Teleporter Temple', w: 16, h: 10, floor: ['#d9c79a', '#cfbd8f'],
   walls: [
     ...border(16, 10),
     W(0, 0, 0.5, 10.5), // the two halves only connect through the portals
-    W(-11, 0, 0.7, 0.7, 'box'), W(11, 0, 0.7, 0.7, 'box'),
-    W(-5, -4, 0.6, 0.6, 'box'), W(5, 4, 0.6, 0.6, 'box'), W(-5, 4, 0.6, 0.6, 'box'), W(5, -4, 0.6, 0.6, 'box'),
+    ...pointSym([
+      W(-11, 0, 0.7, 0.7, 'box'), W(-5, -4, 0.6, 0.6, 'box'), W(-5, 4, 0.6, 0.6, 'box'),
+      W(-11, -3.5, 2.2, 0.3),            // high
+      W(-6.5, -1, 0.3, 2.6, 'low'),      // low: throw over it
+      W(-10.5, 4, 0.3, 1.5),             // high
+      W(-3, 6.5, 1.8, 0.3, 'low'),
+      W(-2, -7, 0.3, 1.8),               // high
+      W(-13.5, -0.5, 1.2, 0.3, 'low'),
+    ]),
   ],
   portals: [
     { x: -8, y: -7, to: 1 }, { x: 8, y: 7, to: 0 },
     { x: -8, y: 7, to: 3 }, { x: 8, y: -7, to: 2 },
   ],
   spawns: mirror([[-13, -7], [13, -7], [-3, 0], [-13, 3]]),
-  goals: [], bases: [{ team: 0, x: -13, y: 0 }, { team: 1, x: 13, y: 0 }],
-  props: [P('bush', -2.5, -7.5), P('bush', 2.5, 7.5)],
+  goals: [], bases: [{ team: 0, x: -13, y: 1.5 }, { team: 1, x: 13, y: -1.5 }],
+  props: [P('grass', -9, 1.5), P('grass', 9, -1.5)],
 };
 
 const cliffs: Level = {
@@ -239,14 +255,15 @@ const downtown: Level = {
   id: 'downtown', name: 'Downtown', w: 17, h: 11, floor: ['#8d939a', '#858b92'],
   walls: [
     ...border(17, 11),
-    ...room(-10, -5.5, 3.2, 2.6, ['s', 'w']), ...room(0, -5.5, 3.2, 2.6, ['s']), ...room(10, -5.5, 3.2, 2.6, ['s', 'e']),
-    ...room(-10, 5.5, 3.2, 2.6, ['n', 'w']), ...room(0, 5.5, 3.2, 2.6, ['n']), ...room(10, 5.5, 3.2, 2.6, ['n', 'e']),
+    // Top row opens onto the middle street; bottom row onto the bottom street.
+    ...room(-11, -5.5, 3.6, 2.6, ['s', 'w']), ...room(-1, -6, 2.8, 2.4, ['s', 'e']), ...room(9.5, -5.2, 3.4, 2.8, ['s']),
+    ...room(-9, 5.8, 3.2, 2.4, ['s']), ...room(1.5, 5.3, 3.6, 2.8, ['s', 'w']), ...room(11.5, 6, 2.8, 2.2, ['s', 'e']),
   ],
-  spawns: mirror([[-15, -9.5], [15, -9.5], [-5, 0], [-15, 0]]),
+  spawns: mirror([[-15, -9.5], [15, -9.5], [-5, 0], [-15.2, 0]]),
   goals: [], bases: [{ team: 0, x: -15.2, y: -4 }, { team: 1, x: 15.2, y: 4 }],
   props: [
-    P('crate', -10, -5.5), P('crate', 0, -5.5), P('crate', 10, -5.5), P('crate', -10, 5.5), P('crate', 0, 5.5), P('crate', 10, 5.5),
-    P('barrel', -5, -9.6), P('barrel', 5, 9.6), P('bush', 10.3, 0), P('bush', -10.3, 0),
+    P('crate', -11, -5.5), P('crate', -1, -6), P('crate', 9.5, -5.2), P('crate', -9, 5.8), P('crate', 1.5, 5.3), P('crate', 11.5, 6),
+    P('barrel', -5, -9.6), P('barrel', 5, 9.6), P('bush', 10.3, 0.5), P('bush', -10.3, -0.5), P('grass', 0, 0.2), P('grass', -4.5, 9.7),
   ],
 };
 
@@ -295,8 +312,43 @@ const links: Level = {
   props: [P('bush', -13, -1), P('bush', 13, 1), P('tree', 0, 6), P('tree', 3, -6)],
 };
 
+
+// Islands within throwing distance; channels too wide to dash across, with
+// railed bridges between some of them and crates along the shores.
+const islands: Level = {
+  id: 'islands', name: 'Islands', w: 18, h: 11, floor: ['#e8d7a8', '#e0cd99'], outside: '#4aa3df', open: true, water: true,
+  pits: [
+    // Channels between the three columns (gaps are bridges).
+    R(-9.3, -11, -3.8, -7.9), R(-9.3, -6.1, -3.8, 11),
+    R(3.8, -11, 9.3, 6.1), R(3.8, 7.9, 9.3, 11),
+    // Channel between the rows (gaps at x = +-13 are bridges).
+    R(-18, -2.9, -13.9, 2.9), R(-12.1, -2.9, 12.1, 2.9), R(13.9, -2.9, 18, 2.9),
+  ],
+  walls: [
+    // Railings along the bridges (low: hats fly over).
+    W(-6.55, -7.95, 2.75, 0.12, 'low'), W(-6.55, -6.05, 2.75, 0.12, 'low'),
+    W(6.55, 7.95, 2.75, 0.12, 'low'), W(6.55, 6.05, 2.75, 0.12, 'low'),
+    W(-13.95, 0, 0.12, 2.9, 'low'), W(-12.05, 0, 0.12, 2.9, 'low'),
+    W(13.95, 0, 0.12, 2.9, 'low'), W(12.05, 0, 0.12, 2.9, 'low'),
+  ],
+  spawns: [S(-14.5, -7), S(14.5, 7), S(0, -7), S(0, 7), S(-14.5, 7.5), S(14.5, -7.5), S(-0.5, -4.5), S(0.5, 4.5)],
+  goals: [], bases: [{ team: 0, x: -15, y: -7 }, { team: 1, x: 15, y: 7 }],
+  props: [
+    // Crates along the shores for cover.
+    ...[-10.5, -11.5, -10.5].map((y, k) => P('crate', -10.4, -9 + k * 2.3)),
+    P('crate', -10.4, 4.5), P('crate', -10.4, 7), P('crate', -10.4, 9.4),
+    P('crate', 10.4, -4.5), P('crate', 10.4, -7), P('crate', 10.4, -9.4),
+    P('crate', 10.4, 4.5), P('crate', 10.4, 9.4),
+    P('crate', -2.5, -3.9), P('crate', 2.5, -3.9), P('crate', -2.5, 3.9), P('crate', 2.5, 3.9),
+    P('crate', -15.5, -3.9), P('crate', -16.8, -3.9), P('crate', 15.5, 3.9), P('crate', 16.8, 3.9),
+    P('barrel', -2.4, -9.8), P('barrel', 2.4, 9.8),
+    // Tall grass to hide in.
+    P('grass', -15.5, -9.5), P('grass', 15.5, 9.5), P('grass', -2, 8.5), P('grass', 2, -8.5), P('grass', -15.5, 9.6), P('grass', 15.5, -9.6),
+  ],
+};
+
 export const MORE_LEVELS: Record<string, Level> = {
   shop, daycare, bowling, rooftops, lockers, stadium,
   icerink, pitarena, factory, pinball, temple, cliffs,
-  lavarising, nightmarket, downtown, canyon, platform, links,
+  lavarising, nightmarket, downtown, canyon, platform, links, islands,
 };

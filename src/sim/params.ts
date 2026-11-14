@@ -109,6 +109,7 @@ export const PARAM_DEFS: ParamDef[] = [
   D('treeRegrowTime', 'Regrow time (s)', 'Lumberjacks', 0, 30, 0.5),
   D('treeRadius', 'Tree trunk radius', 'Lumberjacks', 0.2, 1.5, 0.05),
   D('propRegrowTime', 'Level breakables regrow (s)', 'Breakables', 1, 120, 1),
+  D('grassRegrowTime', 'Tall grass regrows after (s)', 'Breakables', 0.5, 60, 0.5),
   D('crateDropChance', 'Crate power-up drop chance', 'Breakables', 0, 1, 0.05),
   D('barrelBlastRadius', 'Barrel blast radius', 'Breakables', 0.5, 6, 0.1),
   D('golfSwing', 'Golf: slash power', 'Golf', 2, 40, 0.5),

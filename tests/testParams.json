@@ -109,5 +109,6 @@
   "iceSlide": 0.08,
   "iceBallFriction": 0.25,
   "windOnHats": 2.5,
-  "ghostRevealTime": 0.3
+  "ghostRevealTime": 0.3,
+  "grassRegrowTime": 6
 }

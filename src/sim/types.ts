@@ -66,6 +66,7 @@ export interface Player {
   botT: number; botMx: number; botMy: number; botStrafe: number; botAimT: number;
   lastHitBy: number; lastHitT: number;   // who last shoved us (credit for falls)
   portalCd: number;
+  inGrass: boolean;     // hidden in tall grass
 }
 
 export interface Hat {
@@ -131,7 +132,7 @@ export interface Flag {
   dropT: number;         // frames until auto-return when dropped
 }
 
-export type PropKind = 'tree' | 'crate' | 'barrel' | 'rock' | 'bush';
+export type PropKind = 'tree' | 'crate' | 'barrel' | 'rock' | 'bush' | 'grass';
 
 /** A breakable prop. */
 export interface Prop {

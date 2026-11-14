@@ -557,7 +557,12 @@ export class Renderer {
       if (invis) {
         // A faint dust tell when moving.
         v.dustT -= dt;
-        if (v.dustT <= 0 && Math.hypot(p.vx, p.vy) > 2) { v.dustT = s.cfg.mode === 'ghost' ? 0.6 : 0.35; this.effects.puff(p.x, p.y, '#e8e4da', 2); }
+        if (v.dustT <= 0 && Math.hypot(p.vx, p.vy) > 2) {
+          v.dustT = s.cfg.mode === 'ghost' ? 0.6 : 0.35;
+          // In tall grass the tell is a rustle of clippings instead of dust.
+          if (p.inGrass) this.effects.burst(p.x, 0.9, p.y, ['#a6dd7a', '#6fbf55'], 3, 1.5, 0.4);
+          else this.effects.puff(p.x, p.y, '#e8e4da', 2);
+        }
       }
       v.ballMat.transparent = phasing || ghost < 1;
       v.ballMat.opacity = Math.min(ghost, phasing ? 0.55 + 0.2 * Math.sin(this.time * 10) : 1);
@@ -593,7 +598,7 @@ export class Renderer {
       }
       const ground = h.state === HAT_GROUND;
       const recall = h.state === HAT_RECALL;
-      hv.g.position.set(h.x, ground ? 0.08 : recall ? 1.0 + 0.6 * Math.min(1, h.t / 20) : 0.85, h.y);
+      hv.g.position.set(h.x, ground ? 0.08 : recall ? 0.3 + 0.5 * Math.min(1, h.t / 20) : 0.85, h.y);
       if (ground) {
         hv.g.rotation.set(0.35, hv.g.rotation.y, 0.2);
       } else {
@@ -712,6 +717,7 @@ export class Renderer {
       const sc = k < 1 ? 1 - Math.pow(1 - k, 3) + Math.sin(k * Math.PI) * 0.25 : 1;
       tv.g.scale.setScalar(Math.max(0.01, sc));
       // Damped wobble after a chop, leaning away from the hit.
+      if (t.kind === 'grass' && s.players.some((p) => p.inGrass && p.alive && Math.hypot(p.vx, p.vy) > 1 && (p.x - t.x) ** 2 + (p.y - t.y) ** 2 < 1.2)) tv.wobble = Math.max(tv.wobble, 0.35);
       tv.wobble = Math.max(0, tv.wobble - dt * 3);
       const lean = Math.sin(this.time * 38) * tv.wobble * 0.18;
       tv.g.rotation.x = tv.wz * lean;
@@ -915,7 +921,7 @@ export class Renderer {
         }
         const chips: Record<string, string[]> = {
           tree: ['#c98b4f', '#e9c99a', '#8a5a3b'], crate: ['#c98b4f', '#8a5a3b'], barrel: ['#d8392b', '#ffd23f'],
-          rock: ['#9aa3ab', '#cfd5da'], bush: ['#4a9e4f', '#5cb35e'],
+          rock: ['#9aa3ab', '#cfd5da'], bush: ['#4a9e4f', '#5cb35e'], grass: ['#6fbf55', '#a6dd7a', '#4f9c3e'],
         };
         this.effects.burst(e.x, 0.7, e.y, chips[e.kind] ?? ['#fff'], 12, 6, 0.6);
         if (e.kind === 'tree') this.effects.burst(e.x, 2.2, e.y, ['#4fae62', '#5cbf6b'], 6, 2, 0.8);
@@ -931,6 +937,7 @@ export class Renderer {
           const bits: Record<string, [string[], number, number]> = {
             crate: [['#c98b4f', '#8a5a3b', '#e0a96b'], 26, 7], barrel: [['#d8392b', '#5a1a14', '#ffd23f'], 20, 10],
             rock: [['#9aa3ab', '#b4bcc3', '#7d858c'], 28, 6], bush: [['#4a9e4f', '#5cb35e', '#3f8f45'], 30, 5],
+            grass: [['#6fbf55', '#a6dd7a', '#4f9c3e'], 34, 4],
           };
           const [cols, n, sp] = bits[e.kind] ?? [['#fff'], 10, 5];
           this.effects.burst(e.x, 0.6, e.y, cols, n, sp, 0.9);

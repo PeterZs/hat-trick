@@ -736,3 +736,28 @@ describe('Ghost Brawl', () => {
     expect(rounds).toBeGreaterThan(0);
   });
 });
+
+describe('tall grass', () => {
+  it('hides players in it; a slash mows it (revealing them) and it regrows', async () => {
+    const { isInvisible } = await import('../src/sim/common');
+    const s = setup('ffa', 1);
+    const a = s.players[0];
+    a.x = -4; a.y = -2.6;
+    const g: Prop = { id: 501, kind: 'grass', x: -4, y: -2.6, hp: 1, regrowT: 0, grow: 30, fixed: true };
+    s.props.push(g);
+    run(s, 2, () => ({}));
+    expect(a.inGrass).toBe(true);
+    expect(isInvisible(a)).toBe(true);
+    // Walking through it is fine (not solid).
+    run(s, 20, () => ({ d0: makeInput(1, 0, 0, 0, 0) }));
+    expect(a.x).toBeGreaterThan(-3.5);
+    a.x = -5.4; a.y = -2.6; a.fx = 1; a.fy = 0;
+    run(s, 2, () => ({}));
+    const ev = run(s, 40, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(ev).toContain('fell');
+    expect(g.hp).toBe(0);
+    expect(isInvisible(a)).toBe(false);
+    run(s, Math.round(DEFAULT_PARAMS.grassRegrowTime * 60) + 5, () => ({}));
+    expect(s.props.find((t) => t.kind === 'grass')!.hp).toBe(1);
+  });
+});

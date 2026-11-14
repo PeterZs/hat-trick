@@ -63,7 +63,7 @@ function newPlayer(id: number, peer: number, device: string, name: string, ball:
     charging: false, aiming: false, holdT: 0, charge: 0, recalling: false, prevB: 0, stunT: 0, invulnT: 0,
     speedT: 0, phaseT: 0, shield: 0, maxHats: 1, slowT: 0, reverseT: 0, invisT: 0, revealT: 0, riding: -1, rider: -1, car: -1,
     cursorX: 0, cursorY: 0, bombCd: 0, lastBombX: 0, lastBombY: 0, kills: 0, deaths: 0, trees: 0,
-    botT: 0, botMx: 0, botMy: 0, botStrafe: 1, botAimT: 0, lastHitBy: -1, lastHitT: -9999, portalCd: 0,
+    botT: 0, botMx: 0, botMy: 0, botStrafe: 1, botAimT: 0, lastHitBy: -1, lastHitT: -9999, portalCd: 0, inGrass: false,
   };
 }
 

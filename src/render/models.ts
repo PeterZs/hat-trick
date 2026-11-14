@@ -442,6 +442,21 @@ export function makeProp(kind: string, seed: number): THREE.Group {
       b.position.set(0.45, 0.3, 0.25); b.rotation.set(seed * 3, 0, seed); g.add(b);
       break;
     }
+    case 'grass': {
+      // A patch of tall blades, tall enough to bury a ball.
+      const greens = ['#5fae4a', '#6fbf55', '#4f9c3e', '#82c95e'];
+      let k = seed * 7.13;
+      const rnd = () => { k = (k * 9301 + 49297) % 233280; return k / 233280; };
+      for (let i = 0; i < 26; i++) {
+        const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 0.9, h = 0.9 + rnd() * 0.6;
+        const blade = mesh(new THREE.ConeGeometry(0.09, h, 3), greens[i % greens.length]);
+        blade.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r);
+        blade.rotation.set((rnd() - 0.5) * 0.5, rnd() * 3, (rnd() - 0.5) * 0.5);
+        blade.castShadow = false;
+        g.add(blade);
+      }
+      break;
+    }
     case 'bush': {
       const greens = ['#4a9e4f', '#5cb35e', '#3f8f45'];
       for (let i = 0; i < 4; i++) {

@@ -60,7 +60,7 @@ export function reveal(s: GameState, p: Player): void {
 }
 
 export function isInvisible(p: Player): boolean {
-  return p.invisT > 0 && p.revealT <= 0 && p.slashT < 0 && !p.aiming;
+  return (p.invisT > 0 || p.inGrass) && p.revealT <= 0 && p.slashT < 0 && !p.aiming;
 }
 
 export function isFighter(p: Player): boolean {

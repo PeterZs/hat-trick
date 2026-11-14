@@ -515,6 +515,7 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
           metal(t, out, vary(220, 0.08), 0.35, 0.18, [1, 2.1, 3.3]);
           thump(t, out, 0.3, 150, 70, 0.1);
           break;
+        case 'grass':
         case 'bush': // leafy rustle
           swish(t, out, { dur: 0.18, f0: 4000, f1: 2500, type: 'highpass', q: 0.5, peak: 0.35, attack: 0.01 });
           crackle(t, out, 0.15, 6, 3500, 0.08);
@@ -540,7 +541,7 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
           thump(t, out, 0.7, 120, 40, 0.3);
           crackle(t, out, 0.5, 22, 1600, 0.2);
           swish(t, out, { dur: 0.5, f0: 900, f1: 200, type: 'lowpass', q: 0.7, peak: 0.35, attack: 0.01 });
-        } else if (e.kind === 'bush') {
+        } else if (e.kind === 'bush' || e.kind === 'grass') {
           swish(t, out, { dur: 0.35, f0: 5000, f1: 2000, type: 'highpass', q: 0.5, peak: 0.4, attack: 0.01 });
           crackle(t, out, 0.3, 10, 3000, 0.1);
         }

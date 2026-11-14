@@ -51,6 +51,8 @@ export interface Level {
   outside?: string;
   /** Only these modes can use this arena (default: any). */
   modes?: string[];
+  /** Multiplier for how fast this level's breakables regrow (default 1). */
+  regrowScale?: number;
   /** Mode this arena is made for (shown first / used as its default). */
   short?: string;
 }

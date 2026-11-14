@@ -472,8 +472,16 @@ export function updateHats(s: GameState): void {
     for (let k = 0; k < steps; k++) {
       h.x += (h.vx * DT) / steps; h.y += (h.vy * DT) / steps;
       if (h.state === HAT_OUT) h.dist += (h.speed * DT) / steps;
-      // Recalled hats lift up and fly over walls.
-      if (h.state === HAT_RECALL) continue;
+      // Recalled hats skim over low walls but slide along high ones.
+      if (h.state === HAT_RECALL) {
+        collideCircle(h.x, h.y, P.hatRadius * 0.6, L.walls, true, tmp);
+        if (tmp.hit) {
+          h.x = tmp.x; h.y = tmp.y;
+          const vn = h.vx * tmp.nx + h.vy * tmp.ny;
+          if (vn < 0) { h.vx -= vn * tmp.nx; h.vy -= vn * tmp.ny; }
+        }
+        continue;
+      }
       let nx = 0, ny = 0, hit = false;
       collideCircle(h.x, h.y, P.hatRadius * 0.6, L.walls, true, tmp);
       if (tmp.hit) { h.x = tmp.x; h.y = tmp.y; nx = tmp.nx; ny = tmp.ny; hit = true; }
@@ -670,6 +678,7 @@ export function updateCars(s: GameState): void {
     // Breakables: smash straight through at speed, bump off when slow.
     for (const t of s.props) {
       if (!isStanding(t)) continue;
+      if (!propInfo(s, t.kind).solid && Math.abs(c.speed) < P.carKillSpeed) continue;
       const r = 1.0 + propInfo(s, t.kind).r;
       if (dist2(c.x, c.y, t.x, t.y) >= r * r) continue;
       if (Math.abs(c.speed) >= P.carKillSpeed) {

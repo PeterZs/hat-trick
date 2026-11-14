@@ -17,7 +17,7 @@ a shield).
 | **Aimed throw** | Hold throw for **1 second** to enter *stationary aim mode*: you stand still, a ring fills while you wind up, then a dashed line shows the throw. In aim mode the movement stick (or aim stick / mouse) only aims. Power builds over 0.7 s up to distance 18 at speed 30. Release to throw. |
 | **Catch** | A returning hat is caught automatically when it reaches you. |
 | **Hats always come back** | An outbound hat that hits a wall, tree or ball bounces off and heads home early. A returning hat slides along walls to get around them. It only drops to the ground if it is **pinned** against a wall without getting closer to you for 0.25 s, collides with another flying hat, is slashed out of the air, is caught in a bomb blast, or its owner dies. Walk over a dropped hat to pick it up. |
-| **Recall** | With no hat in hand and your hat on the ground, hold throw: the hat lifts, flies over walls and accelerates toward you. It is lethal while moving fast. Release to let it slow down and drop. |
+| **Recall** | With no hat in hand and your hat on the ground, hold throw: the hat lifts and accelerates toward you, skimming over low walls and sliding along high ones. It is lethal while moving fast. Release to let it slow down and drop. |
 | **Kick** | Attacking without a hat kicks: a big shove that sends enemies flying ~5 units and stuns them for 0.5 s, but does no damage. Knocks riders off. |
 | **Parry** | A slash knocks an enemy's flying hat out of the air if the hat enters the arc at any point during the swing (windup + active). |
 | **Clash** | If two players slash each other nearly simultaneously, nobody dies: both are knocked back. Two flying hats from different players that collide both drop. |
@@ -52,7 +52,7 @@ power-up is an identical ❓ box until someone picks it up — good or bad is a 
 Every arena except the Pitch has breakables. They block bodies (bushes let hats
 through); slashes and thrown hats damage them (a hat that hits one bounces back
 to you); a car at speed smashes straight through. They regrow in place after
-20 s (never on top of someone).
+20 s (faster on Rooftops; never on top of someone). The regrow times are in settings → Breakables.
 
 | Breakable | Hits | When it breaks |
 |---|---|---|
@@ -61,12 +61,13 @@ to you); a car at speed smashes straight through. They regrow in place after
 | 🛢️ Barrel | 1 | **Explodes**: pops everyone within 2.4 units, *including whoever broke it*, knocks hats down and sets off nearby barrels. |
 | 🪨 Rock | 5 | Crumbles. |
 | 🌿 Bush | 1 | Bursts into leaves. Hats fly straight through bushes (chopping them). |
+| 🌾 Tall grass | 1 | Doesn't block anything, but **hides whoever is in it** (watch for rustling). A slash mows it; it regrows after 6 s. Thrown hats don't cut it. |
 
 ### Arena features
 
 | Feature | Arenas | What it does |
 |---|---|---|
-| Pits / open edges | Pit Arena, Windy Cliffs, Sniper Canyon, Crumbling Platform, Links (water) | Roll in and you're out. A dash skims over a small gap. Whoever shoved you in (kick, clash, dash bump) in the last 3 s gets the credit. Hats that land in one pop back to their owner. |
+| Pits / open edges | Pit Arena, Windy Cliffs, Sniper Canyon, Crumbling Platform, Islands (water, with railed bridges), Links (water) | Roll in and you're out. A dash skims over a small gap. Whoever shoved you in (kick, clash, dash bump) in the last 3 s gets the credit. Hats that land in one pop back to their owner. |
 | Lava / collapsing floor | Lava Rising, Crumbling Platform, Floor is Lava | Tiles flash red, then fall away (or turn to lava). |
 | Ice | Ice Rink | Very slippery: you speed up and stop slowly, kicks send you sliding far, and the ball glides (settings → Ice). |
 | Conveyors | Conveyor Factory | Carry players, grounded hats and balls. |

@@ -11,16 +11,18 @@ import { BAD_PICKUPS, GOOD_PICKUPS, HAT_GROUND, HAT_HELD, type GameState, type P
 import { canBeHit, dropHat, emit, hitstop, kill, level, newId, sec } from './common';
 import { safeSpot } from './hazards';
 
-export interface PropInfo { hp: number; r: number; blocksHats: boolean; name: string }
+export interface PropInfo { hp: number; r: number; blocksHats: boolean; solid: boolean; name: string }
 
 export function propInfo(s: GameState, kind: PropKind): PropInfo {
   const P = s.params;
   switch (kind) {
-    case 'tree': return { hp: Math.round(P.treeHp), r: P.treeRadius, blocksHats: true, name: 'Tree' };
-    case 'crate': return { hp: 2, r: 0.55, blocksHats: true, name: 'Crate' };
-    case 'barrel': return { hp: 1, r: 0.45, blocksHats: true, name: 'Barrel' };
-    case 'rock': return { hp: 5, r: 0.8, blocksHats: true, name: 'Rock' };
-    case 'bush': return { hp: 1, r: 0.55, blocksHats: false, name: 'Bush' };
+    case 'tree': return { hp: Math.round(P.treeHp), r: P.treeRadius, blocksHats: true, solid: true, name: 'Tree' };
+    case 'crate': return { hp: 2, r: 0.55, blocksHats: true, solid: true, name: 'Crate' };
+    case 'barrel': return { hp: 1, r: 0.45, blocksHats: true, solid: true, name: 'Barrel' };
+    case 'rock': return { hp: 5, r: 0.8, blocksHats: true, solid: true, name: 'Rock' };
+    case 'bush': return { hp: 1, r: 0.55, blocksHats: false, solid: true, name: 'Bush' };
+    // Tall grass: walk and throw straight through; hides whoever is in it.
+    case 'grass': return { hp: 1, r: 0.95, blocksHats: false, solid: false, name: 'Grass' };
   }
 }
 
@@ -65,8 +67,9 @@ export function chopProp(s: GameState, t: Prop, who: number, dx: number, dy: num
   if (t.hp > 0) return;
   const d = Math.max(1e-6, len(dx, dy));
   emit(s, { e: 'fell', prop: t.id, kind: t.kind, who, x: t.x, y: t.y, dx: dx / d, dy: dy / d });
-  t.regrowT = sec(s, t.fixed ? 'propRegrowTime' : 'treeRegrowTime');
-  hitstop(s, s.params.hitstopClash);
+  t.regrowT = t.kind === 'grass' ? sec(s, 'grassRegrowTime')
+    : t.fixed ? Math.round(sec(s, 'propRegrowTime') * (level(s).regrowScale ?? 1)) : sec(s, 'treeRegrowTime');
+  if (t.kind !== 'grass') hitstop(s, s.params.hitstopClash);
   const p = s.players[who];
   switch (t.kind) {
     case 'tree':
@@ -101,15 +104,24 @@ function explode(s: GameState, x: number, y: number, who: number): void {
 }
 
 export function updateProps(s: GameState): void {
+  // Who is hidden in tall grass?
+  const P = s.params;
+  for (const p of s.players) {
+    p.inGrass = false;
+    if (!p.active || !p.alive) continue;
+    for (const t of s.props) {
+      if (t.kind === 'grass' && isStanding(t) && dist2(p.x, p.y, t.x, t.y) < (propInfo(s, 'grass').r + P.playerRadius * 0.3) ** 2) { p.inGrass = true; break; }
+    }
+  }
   for (const t of s.props) {
     if (t.grow < 30) t.grow++;
     if (isStanding(t)) continue;
     if (t.regrowT > 0) { t.regrowT--; continue; }
-    if (t.fixed) {
-      // Regrow in place, but never on top of someone.
+    if (t.fixed && propInfo(s, t.kind).solid) {
+      // Regrow in place, but never on top of someone (grass can grow around you).
       const r = propInfo(s, t.kind).r + s.params.playerRadius + 0.2;
       if (s.players.some((p) => p.active && p.alive && dist2(p.x, p.y, t.x, t.y) < r * r)) continue;
-    } else {
+    } else if (!t.fixed) {
       const spot = treeSpot(s);
       if (!spot) continue;
       t.x = spot.x; t.y = spot.y;
@@ -125,6 +137,7 @@ export function collideProps(s: GameState, c: { x: number; y: number }, r: numbe
   for (const t of s.props) {
     if (!isStanding(t)) continue;
     const info = propInfo(s, t.kind);
+    if (!info.solid) continue;
     const dx = c.x - t.x, dy = c.y - t.y, m = r + info.r;
     const d2 = dx * dx + dy * dy;
     if (d2 >= m * m) continue;
