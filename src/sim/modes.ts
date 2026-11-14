@@ -12,7 +12,7 @@ import {
 import { canBeHit, die, dropHat, emit, giveHats, kill, level, newId, sec, spawnPlayer } from './common';
 import { bounceHat, isLethal, spawnCar } from './actors';
 import { collideProps, resetProps } from './props';
-import { resetTiles } from './hazards';
+import { resetTiles, safeSpot } from './hazards';
 import { getLevel, LEVEL_IDS, levelSupports } from './level';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
@@ -24,7 +24,7 @@ function freeSpot(s: GameState): { x: number; y: number } | null {
   const L = level(s);
   for (let tries = 0; tries < 12; tries++) {
     const x = randRange(s, -L.w + 1.5, L.w - 1.5), y = randRange(s, -L.h + 1.5, L.h - 1.5);
-    if (circleOverlapsWalls(x, y, 1.2, L.walls, false)) continue;
+    if (circleOverlapsWalls(x, y, 1.2, L.walls, false) || !safeSpot(s, x, y, 1.2)) continue;
     let ok = true;
     for (const p of s.players) if (p.active && p.alive && dist2(p.x, p.y, x, y) < 9) ok = false;
     for (const q of s.pickups) if (dist2(q.x, q.y, x, y) < 9) ok = false;

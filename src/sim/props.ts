@@ -9,6 +9,7 @@ import { circleOverlapsWalls } from './collision';
 import { rand, randInt, randRange } from './rng';
 import { BAD_PICKUPS, GOOD_PICKUPS, HAT_GROUND, HAT_HELD, type GameState, type Prop, type PropKind } from './types';
 import { canBeHit, dropHat, emit, hitstop, kill, level, newId, sec } from './common';
+import { safeSpot } from './hazards';
 
 export interface PropInfo { hp: number; r: number; blocksHats: boolean; name: string }
 
@@ -36,7 +37,7 @@ function treeSpot(s: GameState): { x: number; y: number } | null {
   const r = s.params.treeRadius;
   for (let tries = 0; tries < 16; tries++) {
     const x = randRange(s, -L.w + 1.5, L.w - 1.5), y = randRange(s, -L.h + 1.5, L.h - 1.5);
-    if (circleOverlapsWalls(x, y, r + 0.9, L.walls, false)) continue;
+    if (circleOverlapsWalls(x, y, r + 0.9, L.walls, false) || !safeSpot(s, x, y, r + 0.5)) continue;
     let ok = true;
     for (const t of s.props) if (isStanding(t) && dist2(t.x, t.y, x, y) < 3 * 3) ok = false;
     for (const p of s.players) if (p.active && p.alive && dist2(p.x, p.y, x, y) < 2.5 * 2.5) ok = false;
