@@ -48,7 +48,7 @@ Asymmetric gameplay where some players control the environment rather than chara
 
 ## Architecture
 
-Document the software architecture. Commit often.
+Document the software architecture. Commit often. Use git-bug for issue tracking.
 
 Players can join or leave the game at any time (and pair new controllers).
 

@@ -73,6 +73,7 @@ function startSession(s: Session): void {
   session = s;
   (window as unknown as { session: Session }).session = s; // for debugging in the console
   pendingJoin.clear();
+  pendingNames.clear();
   menu.show(false);
   hud.show(true);
   unlockAudio();
@@ -131,9 +132,13 @@ const aimCtx: AimContext = {
 
 function localName(): string {
   const s = session!.state;
-  const mine = s.players.filter((p) => p.active && p.peer === session!.peer && !p.isBot).length;
-  return mine === 0 ? prefs.name : `${prefs.name} ${mine + 1}`;
+  const taken = new Set(s.players.filter((p) => p.active).map((p) => p.name));
+  for (const n of pendingNames.values()) taken.add(n);
+  let name = prefs.name;
+  for (let i = 2; taken.has(name); i++) name = `${prefs.name} ${i}`;
+  return name;
 }
+const pendingNames = new Map<string, string>(); // device -> name requested
 
 function handleDevices(): Record<string, PlayerInput> {
   const inputs: Record<string, PlayerInput> = {};
@@ -145,12 +150,16 @@ function handleDevices(): Record<string, PlayerInput> {
     if (!d.connected()) continue;
     const p = s.players.find((p) => p.active && p.peer === session!.peer && p.device === d.key);
     if (d.key === 'touch') touchJoined = !!p;
+    if (p) pendingNames.delete(d.key);
     if (!p) {
+      if (now - (pendingJoin.get(d.key) ?? 0) > 1000) pendingNames.delete(d.key);
       if (hud.paused || settings.open && d.kind !== 'pad') continue;
       if (d.joinPressed() && now - (pendingJoin.get(d.key) ?? 0) > 1000) {
         if (s.players.filter((q) => q.active).length >= MAX_PLAYERS) continue;
         pendingJoin.set(d.key, now);
-        session.command({ t: 'join', device: d.key, name: localName(), ball: (s.players.length * 3 + devices.devices.indexOf(d)) % BALLS.length });
+        const name = localName();
+        pendingNames.set(d.key, name);
+        session.command({ t: 'join', device: d.key, name, ball: (s.players.length * 3 + devices.devices.indexOf(d)) % BALLS.length });
       }
       continue;
     }
