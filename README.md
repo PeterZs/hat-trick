@@ -34,5 +34,11 @@ stick and buttons. `` ` `` opens settings (all gameplay params, live), Esc the m
 Full rules for every mode: [docs/RULES.md](docs/RULES.md). Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 **Issues** are tracked in-repo with [git-bug](https://github.com/git-bug/git-bug):
-`git bug bug` lists them, `git bug termui` browses, `git bug push`/`pull` syncs
-with the remote.
+`git bug bug` lists them and `git bug termui` browses them. To sync with
+GitHub, `git bug push`/`pull` work, or use plain git (needed if git-bug's SSH
+client chokes on your `~/.ssh/known_hosts`):
+
+```sh
+git push origin 'refs/bugs/*:refs/bugs/*' 'refs/identities/*:refs/identities/*'
+git fetch origin 'refs/bugs/*:refs/bugs/*' 'refs/identities/*:refs/identities/*'
+```
