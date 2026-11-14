@@ -17,6 +17,7 @@ import { Hud } from './ui/hud';
 import { GamepadNav } from './ui/gamepadNav';
 import { SettingsPanel } from './ui/settings';
 import { loadPrefs, savePrefs } from './ui/prefs';
+import * as sfxModule from './audio/sfx';
 import { playCue, playEvent, setVolume, unlockAudio } from './audio/sfx';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -301,5 +302,5 @@ const joinCode = new URLSearchParams(location.search).get('join');
 if (joinCode) void joinOnline(joinCode.toUpperCase());
 
 // Dev hook for automated audio checks.
-(window as unknown as Record<string, unknown>).sfxDebug = () => import('./audio/sfx');
+(window as unknown as Record<string, unknown>).sfxDebug = async () => sfxModule;
 (window as unknown as Record<string, unknown>).renderer = renderer;

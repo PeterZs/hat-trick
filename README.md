@@ -1,5 +1,7 @@
 # Hat Trick 🎩⚽
 
+**▶ Play: https://yig.github.io/hat-trick/**
+
 A party brawler in the spirit of Boomerang Fu: you are a sports ball, your
 weapon is your hat. Throw it, it comes back. Browser-based, local multiplayer
 with any mix of keyboard/mouse, gamepads, and touch, plus online play with
@@ -11,6 +13,9 @@ npm run dev      # http://localhost:5173
 npm test         # sim, mechanics, and netcode tests
 npm run build
 ```
+
+Every push to `main` runs the tests, builds, and deploys to GitHub Pages
+(`.github/workflows/pages.yml`).
 
 **Modes:** Free-for-all, Teams, Capture the Flag, Soccer, Overlord (asymmetric:
 overlords drop bombs on runners), Lumberjacks (timed race to chop the most trees). **Power-ups:** speed, shield, double hat,
