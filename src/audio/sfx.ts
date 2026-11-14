@@ -219,11 +219,12 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
     case 'slash': {
       const out = v(0.08, 2.2);
       if (e.kind === 0) {
-        // Swift blade-like swipe: sweep up then down, with a faint ring.
-        const f = vary(1200, 0.15);
-        swish(t, out, { dur: 0.07, f0: f, f1: f * 3.2, q: 1.6, peak: 0.45, attack: 0.012 });
-        swish(t + 0.06, out, { dur: 0.12, f0: f * 3.2, f1: f * 1.2, q: 1.6, peak: 0.3, attack: 0.005 });
-        blip(t + 0.03, out, { f0: vary(3200), f1: vary(2600), dur: 0.12, peak: 0.03 });
+        // Low, airy whoosh: a wide band of noise sweeping up then down
+        // through the low-mids, with a soft rumble underneath.
+        const f = vary(380, 0.12);
+        swish(t, out, { dur: 0.11, f0: f, f1: f * 2.6, q: 0.7, peak: 0.55, attack: 0.04 });
+        swish(t + 0.1, out, { dur: 0.2, f0: f * 2.6, f1: f * 0.9, q: 0.7, peak: 0.4, attack: 0.01 });
+        swish(t, out, { dur: 0.22, f0: 260, f1: 140, type: 'lowpass', q: 0.9, peak: 0.25, attack: 0.05 });
       } else {
         swish(t, out, { dur: 0.08, f0: 700, f1: 1500, q: 1, peak: 0.3, attack: 0.01 });
       }
