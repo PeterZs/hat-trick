@@ -19,7 +19,7 @@ a shield).
 | **Hats always come back** | An outbound hat that hits a wall, tree or ball bounces off and heads home early. A returning hat slides along walls to get around them. It only drops to the ground if it is **pinned** against a wall without getting closer to you for 0.25 s, collides with another flying hat, is slashed out of the air, is caught in a bomb blast, or its owner dies. Walk over a dropped hat to pick it up. |
 | **Recall** | With no hat in hand and your hat on the ground, hold throw: the hat lifts, flies over walls and accelerates toward you. It is lethal while moving fast. Release to let it slow down and drop. |
 | **Kick** | Attacking without a hat kicks: a big shove that sends enemies flying ~5 units and stuns them for 0.5 s, but does no damage. Knocks riders off. |
-| **Parry** | A slash that touches an enemy's flying hat knocks it out of the air. |
+| **Parry** | A slash knocks an enemy's flying hat out of the air if the hat enters the arc at any point during the swing (windup + active). |
 | **Clash** | If two players slash each other nearly simultaneously, nobody dies: both are knocked back. Two flying hats from different players that collide both drop. |
 | **Hit-stop** | Kills, clashes, parries, hat collisions and felled trees freeze the game for 2 frames. |
 | **Spawn protection** | 1.2 s of invulnerability (blinking) after spawning. |
@@ -42,7 +42,7 @@ power-up is an identical ❓ box until someone picks it up — good or bad is a 
 | 🛡️ | Shield | Survive one hit (brief invulnerability after it pops). |
 | 🎩 | Double hat | Two hats: throw twice, or slash while one hat is out. Slash cooldown halves. |
 | 👻 | Phase dash | For 12 s, dashes pass through walls (never ending inside one). |
-| 🐌 | Slowpoke *(bad)* | Half running speed for 6 s. Cancels Speed (and Speed cancels it). |
+| 🐌 | Slowpoke *(bad)* | Half running and dash speed for 6 s. Cancels Speed (and Speed cancels it). |
 | 😵‍💫 | Reversed *(bad)* | Your movement stick is reversed for 6 s. |
 | 🚗 | Car | Occasionally a car is parked instead. Press **interact** next to it to get in. Car controls: up/down = gas/brake, left/right = steer. Running into enemies at speed kills them. A hat hitting the car wrecks it and kills the driver. The car lasts 15 s. Press interact again to get out. Not in Soccer or Lumberjacks. |
 

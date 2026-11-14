@@ -136,7 +136,8 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   const phasing = p.phaseT > 0 && p.dashT > 0;
   let vx = p.vx + p.kx, vy = p.vy + p.ky;
   if (p.dashT > 0) {
-    vx = p.dashDx * P.dashSpeed; vy = p.dashDy * P.dashSpeed;
+    const dashSpeed = P.dashSpeed * (p.slowT > 0 ? P.slowMult : 1); // Slowpoke slows dashes too
+    vx = p.dashDx * dashSpeed; vy = p.dashDy * dashSpeed;
     p.dashT--;
     p.vx = p.dashDx * speed; p.vy = p.dashDy * speed;
   }
@@ -264,8 +265,6 @@ export function resolveMelee(s: GameState): void {
   const clashF = sec(s, 'clashWindow');
   const cosArc = dcos((P.slashArcDeg * PI) / 360);
   const hitting = s.players.filter((p) => p.active && p.alive && p.slashT === windup && p.role === 'fighter');
-  if (hitting.length === 0) return;
-
   const inArc = (a: Player, x: number, y: number, range: number): boolean => {
     const dx = x - a.x, dy = y - a.y;
     const d = len(dx, dy);
@@ -273,6 +272,23 @@ export function resolveMelee(s: GameState): void {
     if (d < 0.3) return true;
     return (dx * a.fx + dy * a.fy) / d >= cosArc;
   };
+
+  // Parry: a slash knocks enemy hats out of the air at any point during the
+  // whole swing (windup + active), not just on the hit frame.
+  for (const a of s.players) {
+    if (!a.active || !a.alive || a.role !== 'fighter' || a.slashKind !== 0) continue;
+    if (a.slashT < 0 || a.slashT > windup + activeF) continue;
+    for (const h of s.hats) {
+      if (h.owner === a.id) continue;
+      if (h.state !== HAT_OUT && h.state !== HAT_RETURN && h.state !== HAT_RECALL) continue;
+      if (!inArc(a, h.x, h.y, P.slashRange + P.hatRadius)) continue;
+      dropHat(s, h);
+      emit(s, { e: 'parry', who: a.id, hat: h.id, x: h.x, y: h.y });
+      hitstop(s, P.hitstopClash);
+    }
+  }
+  if (hitting.length === 0) return;
+
 
   const kills: [Player, Player][] = [];
   const clashed = new Set<number>();
@@ -284,7 +300,8 @@ export function resolveMelee(s: GameState): void {
       if (b.car >= 0) continue;
       if (!inArc(a, b.x, b.y, range)) continue;
       if (a.slashKind === 0) {
-        // Clash: b is mid-slash (started within the clash window) and a is in b's reach.
+        // Clash: b is anywhere in its own swing (windup + active, or the clash
+        // window if longer) and a is within b's reach.
         const bRange = P.slashRange + P.hitRadius;
         const bSlashing = b.slashT >= 0 && b.slashKind === 0 && b.slashT <= windup + Math.max(clashF, activeF);
         if (bSlashing && !clashed.has(b.id) && dist2(a.x, a.y, b.x, b.y) <= bRange * bRange) {
@@ -320,20 +337,10 @@ export function resolveMelee(s: GameState): void {
     kill(s, b, a.id);
   }
 
-  // Slashes knock thrown hats out of the air; slashes and kicks hit the ball.
+  // Slashes chop trees; slashes and kicks hit the ball.
   for (const a of hitting) {
     if (clashed.has(a.id)) continue;
     const range = (a.slashKind === 0 ? P.slashRange : P.kickRange);
-    if (a.slashKind === 0) {
-      for (const h of s.hats) {
-        if (h.owner === a.id) continue;
-        if (h.state !== HAT_OUT && h.state !== HAT_RETURN && h.state !== HAT_RECALL) continue;
-        if (!inArc(a, h.x, h.y, range + P.hatRadius)) continue;
-        dropHat(s, h);
-        emit(s, { e: 'parry', who: a.id, hat: h.id, x: h.x, y: h.y });
-        hitstop(s, P.hitstopClash);
-      }
-    }
     if (a.slashKind === 0) {
       for (const t of s.trees) {
         if (isStanding(t) && inArc(a, t.x, t.y, range + P.treeRadius)) chopTree(s, t, a.id, t.x - a.x, t.y - a.y);

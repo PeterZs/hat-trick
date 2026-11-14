@@ -5,7 +5,7 @@
   "dashSpeed": 24,
   "dashTime": 0.2,
   "dashCooldown": 0.1,
-  "slashWindup": 0,
+  "slashWindup": 0.05,
   "slashActive": 0.1,
   "slashCooldown": 0.35,
   "slashRange": 1.9,

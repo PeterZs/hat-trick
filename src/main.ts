@@ -61,8 +61,10 @@ const menu = new Menu(uiRoot, prefs, {
 
 // Gamepads drive the menus: main menu, pause menu, and the settings panel.
 const nav = new GamepadNav(
-  () => settings.open ? settings.el : hud.paused ? hud.pauseEl : !session ? menu.el : null,
-  () => { if (settings.open) settings.toggle(false); else if (hud.paused) hud.togglePause(false); },
+  // While playing, the settings panel is left to mouse/keyboard so pads keep
+  // controlling their players (tune params while playing).
+  () => !session ? (settings.open ? settings.el : menu.el) : hud.paused ? hud.pauseEl : null,
+  () => { if (!session && settings.open) settings.toggle(false); else if (hud.paused) hud.togglePause(false); },
 );
 
 // Backdrop: a demo match with bots behind the menu.
@@ -161,7 +163,7 @@ function handleDevices(): Record<string, PlayerInput> {
     if (p) pendingNames.delete(d.key);
     if (!p) {
       if (now - (pendingJoin.get(d.key) ?? 0) > 1000) pendingNames.delete(d.key);
-      if (hud.paused || settings.open || (nav.active && d.kind === 'pad')) continue;
+      if (hud.paused || (settings.open && d.kind !== 'pad') || (nav.active && d.kind === 'pad')) continue;
       if (d.joinPressed() && now - (pendingJoin.get(d.key) ?? 0) > 1000) {
         if (s.players.filter((q) => q.active).length >= MAX_PLAYERS) continue;
         pendingJoin.set(d.key, now);
@@ -174,8 +176,7 @@ function handleDevices(): Record<string, PlayerInput> {
     if (d.leavePressed()) { session.command({ t: 'leave', device: d.key }); continue; }
     if (d.menuPressed()) {
       // Start: begin the match from the lobby (host), otherwise pause menu.
-      if (s.phase === 'lobby' && session.isHost && !hud.paused && !settings.open) session.command({ t: 'start', cfg: s.cfg });
-      else if (settings.open) settings.toggle(false);
+      if (s.phase === 'lobby' && session.isHost && !hud.paused) session.command({ t: 'start', cfg: s.cfg });
       else hud.togglePause();
       continue;
     }

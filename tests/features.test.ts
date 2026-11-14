@@ -323,3 +323,34 @@ describe('kicks and invisibility', () => {
     expect(isInvisible(a)).toBe(false);
   });
 });
+
+describe('slash duration and slowpoke dash', () => {
+  it('a hat entering the arc late in the swing is still knocked down', () => {
+    const s = setup('ffa', 2);
+    const [a, b] = s.players;
+    a.x = -12; a.y = -2.6; b.x = 0; b.y = -2.6;
+    const windup = Math.round(DEFAULT_PARAMS.slashWindup * 60), active = Math.round(DEFAULT_PARAMS.slashActive * 60);
+    // Put a's hat in flight toward b so that it reaches b's arc only near the end of b's swing.
+    const h = s.hats.find((x) => x.owner === a.id)!;
+    const reach = DEFAULT_PARAMS.slashRange + DEFAULT_PARAMS.hatRadius;
+    const framesToArc = windup + active - 1;
+    Object.assign(h, { state: HAT_OUT, x: b.x - reach - 20 * framesToArc / 60, y: b.y, vx: 20, vy: 0, speed: 20, dist: 0, range: 99, t: 0 });
+    const ev = run(s, windup + active + 2, (f) => ({ d1: makeInput(0, 0, -1, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(ev).toContain('parry');
+    expect(b.alive).toBe(true);
+  });
+
+  it('slowpoke also slows the dash', () => {
+    const dashDist = (slow: boolean) => {
+      const s = setup('ffa', 1);
+      const a = s.players[0];
+      a.x = -10; a.y = -2.6;
+      if (slow) a.slowT = 600;
+      const x0 = a.x;
+      run(s, Math.round(DEFAULT_PARAMS.dashTime * 60), (f) => ({ d0: makeInput(1, 0, 0, 0, f === 0 ? 1 : 0) }));
+      return a.x - x0;
+    };
+    const normal = dashDist(false), slowed = dashDist(true);
+    expect(slowed).toBeLessThan(normal * (DEFAULT_PARAMS.slowMult + 0.1));
+  });
+});
