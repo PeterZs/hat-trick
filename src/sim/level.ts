@@ -150,7 +150,29 @@ const clearing: Level = {
   bases: [{ team: 0, x: -12.5, y: 0 }, { team: 1, x: 12.5, y: 0 }],
 };
 
-export const LEVELS: Record<string, Level> = { courtyard, pitch, fortress, clearing };
+// Open loop around a central island: room to drive.
+const raceway: Level = {
+  id: 'raceway',
+  name: 'Raceway',
+  w: 18, h: 11,
+  floor: ['#b9c0c8', '#aeb5bd'],
+  walls: [
+    ...border(18, 11),
+    W(0, 0, 7, 1.6),                 // central island
+    W(-7.6, 0, 0.6, 0.6, 'box'), W(7.6, 0, 0.6, 0.6, 'box'),
+    W(-12, -6.5, 0.35, 1.6, 'low'), W(12, 6.5, 0.35, 1.6, 'low'),
+    W(-4, 7.2, 1.6, 0.35, 'low'), W(4, -7.2, 1.6, 0.35, 'low'),
+    W(-15.5, 8.5, 0.8, 0.8, 'box'), W(15.5, -8.5, 0.8, 0.8, 'box'),
+  ],
+  spawns: [
+    { x: -14, y: -5, team: -1 }, { x: 14, y: 5, team: -1 }, { x: 14, y: -5, team: -1 }, { x: -14, y: 5, team: -1 },
+    { x: 0, y: -8, team: -1 }, { x: 0, y: 8, team: -1 }, { x: -9, y: -4.5, team: -1 }, { x: 9, y: 4.5, team: -1 },
+  ],
+  goals: [],
+  bases: [{ team: 0, x: -14, y: 0 }, { team: 1, x: 14, y: 0 }],
+};
+
+export const LEVELS: Record<string, Level> = { courtyard, pitch, fortress, clearing, raceway };
 export const LEVEL_IDS = Object.keys(LEVELS);
 
 export function getLevel(id: string): Level {

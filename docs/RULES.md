@@ -100,3 +100,9 @@ to the lobby after 8 s.
 - A tree takes 3 chops. Whoever lands the last chop fells it and scores 1. A new tree grows elsewhere 4 s later.
 - Combat stays on: popped players respawn after 2.5 s.
 - **Timed:** after 90 s, the most trees wins (a tie is a draw). The target score is not used.
+
+### Cars
+- Free-for-all elimination rounds (like Free-for-all) on the Raceway arena.
+- There are always cars on the field: the host picks how many in the lobby (default 2, up to 8). A wrecked or expired car is replaced after 1.5 s, and if the last one goes, a new one honks its way in immediately.
+- Get in, run people over (anything at speed is lethal), and watch out for hats: a hat hitting your car wrecks it and pops you.
+- Car power-ups from pickups are off in this mode (cars are always available).

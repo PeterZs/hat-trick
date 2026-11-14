@@ -12,7 +12,7 @@ import type { Command, GameState, MatchConfig, PeerFrame, Player } from './types
 import { detach, die, emit, spawnPlayer } from './common';
 import { canAct, resolveHatHits, resolveMelee, separatePlayers, updateCars, updateHats, updatePlayer } from './actors';
 import {
-  resetArena, startRound, toLobby, updateBall, updateBombs, updateFlags, updateOverlord, updatePickups, updateRules,
+  resetArena, startRound, toLobby, updateBall, updateBombs, updateCarsMode, updateFlags, updateOverlord, updatePickups, updateRules,
 } from './modes';
 import { botInput } from './bot';
 import { updateTrees } from './trees';
@@ -38,6 +38,7 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
     scores: new Array(MAX_PLAYERS).fill(0),
     lastWinner: -1,
     pickupT: 0,
+    carSpawnT: 0,
     hitstop: 0,
     nextId: 1,
     events: [],
@@ -226,6 +227,7 @@ export function step(s: GameState, frame: PeerFrame[]): void {
     updateFlags(s);
     updateBombs(s);
     updateTrees(s);
+    updateCarsMode(s);
   } else {
     for (const p of s.players) if (p.active && inputs[p.id]) p.prevB = inputs[p.id].b;
   }

@@ -6,7 +6,7 @@
 import type { Params } from './params';
 import type { PlayerInput } from './input';
 
-export type ModeId = 'ffa' | 'teams' | 'ctf' | 'soccer' | 'hazard' | 'lumber';
+export type ModeId = 'ffa' | 'teams' | 'ctf' | 'soccer' | 'hazard' | 'lumber' | 'cars';
 export type Phase = 'lobby' | 'countdown' | 'playing' | 'roundOver' | 'matchOver';
 export type Role = 'fighter' | 'overlord';
 
@@ -143,13 +143,14 @@ export type SimEvent =
   | { e: 'match'; winner: number }
   | { e: 'join'; who: number }
   | { e: 'leave'; who: number }
-  | { e: 'car'; what: 'enter' | 'exit' | 'crash'; who: number; x: number; y: number }
+  | { e: 'car'; what: 'enter' | 'exit' | 'crash' | 'spawn'; who: number; x: number; y: number }
   | { e: 'piggy'; what: 'on' | 'off'; who: number; mount: number };
 
 export interface MatchConfig {
   mode: ModeId;
   level: string;
   winScore: number;
+  cars?: number;         // Cars mode: cars always on the field
 }
 
 export interface GameState {
@@ -172,6 +173,7 @@ export interface GameState {
   scores: number[];      // indexed by team (FFA: by slot)
   lastWinner: number;    // team, -1 = draw
   pickupT: number;
+  carSpawnT: number;     // Cars mode: frames until the next replacement car
   hitstop: number;       // frames of freeze remaining (impact pause)
   nextId: number;
   events: SimEvent[];    // emitted during the last step (render/audio only)

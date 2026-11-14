@@ -354,3 +354,32 @@ describe('slash duration and slowpoke dash', () => {
     expect(slowed).toBeLessThan(normal * (DEFAULT_PARAMS.slowMult + 0.1));
   });
 });
+
+describe('cars mode', () => {
+  it('keeps the chosen number of cars on the field and bots drive them', () => {
+    const cfg = { mode: 'cars' as const, level: 'raceway', winScore: 99, cars: 3 };
+    const s = createState(cfg, DEFAULT_PARAMS, 5);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'addBot' }, { t: 'addBot' }, { t: 'addBot' }, { t: 'addBot' }, { t: 'start', cfg }] }]);
+    expect(s.cars.length).toBe(3);
+    let carKills = 0, enters = 0, minCars = 99, rounds = 0, fullFrames = 0, playFrames = 0;
+    for (let f = 0; f < 60 * 60; f++) {
+      step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+      for (const e of s.events) {
+        if (e.e === 'car' && e.what === 'enter') enters++;
+        if (e.e === 'kill' && s.players[e.killer]?.car !== -1) carKills++;
+        if (e.e === 'round') rounds++;
+      }
+      if (s.phase === 'playing' && s.phaseT > 120) {
+        minCars = Math.min(minCars, s.cars.length);
+        playFrames++;
+        if (s.cars.length === 3) fullFrames++;
+      }
+    }
+    console.log('cars mode: enters', enters, 'car kills', carKills, 'rounds', rounds, 'min cars', minCars);
+    expect(enters).toBeGreaterThan(2);
+    expect(carKills).toBeGreaterThan(0);
+    expect(rounds).toBeGreaterThan(0);
+    expect(minCars).toBeGreaterThanOrEqual(1); // never an empty field
+    expect(fullFrames / playFrames).toBeGreaterThan(0.8); // wrecks are replaced quickly
+  });
+});

@@ -180,8 +180,9 @@ export class Hud {
           ${c.isHost ? `
             <select data-l="mode">${MODES.map((m) => `<option value="${m.id}" ${m.id === mode ? 'selected' : ''}>${m.name}</option>`).join('')}</select>
             <select data-l="level">${Object.values(LEVELS).map((l) => `<option value="${l.id}" ${l.id === s.cfg.level ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
-            <label class="hint">to <input data-l="win" type="number" min="1" max="50" value="${s.cfg.winScore}" style="width:56px"></label>`
-          : `<span class="hint">${MODES.find((m) => m.id === mode)?.name} · ${LEVELS[s.cfg.level]?.name}${mode === 'lumber' ? '' : ` · first to ${s.cfg.winScore}`} — waiting for host</span>`}
+            <label class="hint">to <input data-l="win" type="number" min="1" max="50" value="${s.cfg.winScore}" style="width:56px"></label>
+            ${mode === 'cars' ? `<label class="hint">🚗 cars <input data-l="cars" type="number" min="1" max="8" value="${s.cfg.cars ?? 2}" style="width:52px"></label>` : ''}`
+          : `<span class="hint">${MODES.find((m) => m.id === mode)?.name} · ${LEVELS[s.cfg.level]?.name}${mode === 'lumber' ? '' : ` · first to ${s.cfg.winScore}`}${mode === 'cars' ? ` · ${s.cfg.cars ?? 2} cars` : ''} — waiting for host</span>`}
           <span class="grow"></span>
           <button class="small" data-l="bot">+ Bot</button>
           <button class="small" data-l="rmbot">− Bot</button>
@@ -214,6 +215,7 @@ export class Hud {
       mode: (q<HTMLSelectElement>('[data-l=mode]')?.value ?? mode) as ModeId,
       level: q<HTMLSelectElement>('[data-l=level]')?.value ?? s.cfg.level,
       winScore: Math.max(1, parseInt(q<HTMLInputElement>('[data-l=win]')?.value ?? '') || s.cfg.winScore),
+      cars: Math.max(1, Math.min(8, parseInt(q<HTMLInputElement>('[data-l=cars]')?.value ?? '') || s.cfg.cars || 2)),
     });
     q('[data-l=mode]')?.addEventListener('change', () => {
       const cfg = cfgFrom();
@@ -222,6 +224,7 @@ export class Hud {
     });
     q('[data-l=level]')?.addEventListener('change', () => c.command({ t: 'lobby', cfg: cfgFrom() }));
     q('[data-l=win]')?.addEventListener('change', () => c.command({ t: 'lobby', cfg: cfgFrom() }));
+    q('[data-l=cars]')?.addEventListener('change', () => c.command({ t: 'lobby', cfg: cfgFrom() }));
     for (const b of this.lobby.querySelectorAll('[data-l=start]')) b.addEventListener('click', () => c.command({ t: 'start', cfg: s.cfg }));
     q('[data-l=bot]')?.addEventListener('click', () => c.command({ t: 'addBot' }));
     q('[data-l=rmbot]')?.addEventListener('click', () => c.command({ t: 'removeBot' }));

@@ -31,6 +31,28 @@ function freeSpot(s: GameState): { x: number; y: number } | null {
   return null;
 }
 
+/** Cars mode: keep cfg.cars cars on the field, replacing wrecks after a delay. */
+export function carCount(s: GameState): number {
+  return Math.max(1, Math.min(8, Math.round(s.cfg.cars ?? 2)));
+}
+
+function spawnModeCar(s: GameState): boolean {
+  const spot = freeSpot(s);
+  if (!spot) return false;
+  spawnCar(s, spot.x, spot.y, rand(s) * 6.283);
+  emit(s, { e: 'car', what: 'spawn', who: -1, x: spot.x, y: spot.y });
+  return true;
+}
+
+export function updateCarsMode(s: GameState): void {
+  if (s.cfg.mode !== 'cars' || s.phase === 'matchOver') return;
+  if (s.cars.length >= carCount(s)) { s.carSpawnT = sec(s, 'carRespawnTime'); return; }
+  // Never leave the field empty: the last car is replaced immediately.
+  if (--s.carSpawnT <= 0 || s.cars.length === 0) {
+    if (spawnModeCar(s)) s.carSpawnT = sec(s, 'carRespawnTime');
+  }
+}
+
 export function updatePickups(s: GameState): void {
   const P = s.params;
   if (s.phase !== 'playing' && s.phase !== 'lobby') return;
@@ -40,7 +62,7 @@ export function updatePickups(s: GameState): void {
     if (s.pickups.length < P.powerupMax) {
       const spot = freeSpot(s);
       if (spot) {
-        if (carCount === 0 && rand(s) < P.carChance && s.cfg.mode !== 'soccer' && s.cfg.mode !== 'lumber') {
+        if (carCount === 0 && rand(s) < P.carChance && s.cfg.mode !== 'soccer' && s.cfg.mode !== 'lumber' && s.cfg.mode !== 'cars') {
           spawnCar(s, spot.x, spot.y, rand(s) * 6.283);
         } else {
           const pool = rand(s) < P.badPowerupChance ? BAD_PICKUPS : GOOD_PICKUPS;
@@ -239,6 +261,7 @@ export function resetArena(s: GameState): void {
   s.bombs = [];
   s.pickupT = sec(s, 'powerupInterval');
   resetTrees(s);
+  if (s.cfg.mode === 'cars') { for (let i = 0; i < carCount(s); i++) spawnModeCar(s); s.carSpawnT = sec(s, 'carRespawnTime'); }
   s.ball = s.cfg.mode === 'soccer' ? { x: 0, y: 0, vx: 0, vy: 0, lastTouch: -1 } : null;
   if (s.cfg.mode === 'ctf') resetFlags(s); else s.flags = [];
   // Respawn everyone at deterministic spawn points.

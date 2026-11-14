@@ -5,7 +5,7 @@ import { allies } from './const';
 import { clamp, dist2, len } from './dmath';
 import { segmentBlocked } from './collision';
 import { rand } from './rng';
-import { BTN_ATTACK, BTN_DASH, BTN_THROW, makeInput, NEUTRAL, type PlayerInput } from './input';
+import { BTN_ATTACK, BTN_DASH, BTN_INTERACT, BTN_THROW, makeInput, NEUTRAL, type PlayerInput } from './input';
 import { navGrid } from './level';
 import { HAT_GROUND, HAT_HELD, type GameState, type Player } from './types';
 import { heldHats, isInvisible, level } from './common';
@@ -97,14 +97,33 @@ export function botInput(s: GameState, p: Player): PlayerInput {
   }
   if (!p.alive) return NEUTRAL;
   if (p.car >= 0) {
-    // Drive toward the nearest enemy.
-    const e = nearestEnemy(s, p);
-    if (!e) return makeInput(0, -1, 0, 0, 0);
+    // Drive toward the nearest enemy; back up if stuck against something.
     const car = s.cars.find((c) => c.id === p.car);
     if (!car) return NEUTRAL;
-    const dx = e.x - car.x, dy = e.y - car.y;
-    const cross = car.hx * dy - car.hy * dx;
-    return makeInput(clamp(cross, -1, 1), -1, 0, 0, 0);
+    if (p.botMy > 0) { p.botMy--; return makeInput(-p.botStrafe, 1, 0, 0, 0); } // reversing
+    if (Math.abs(car.speed) < 1.5) { if (++p.botAimT > 40) { p.botAimT = 0; p.botMy = 35; } } else p.botAimT = 0;
+    const e = nearestEnemy(s, p);
+    if (!e) return makeInput(0.3, -1, 0, 0, 0);
+    const dx = e.x - car.x, dy = e.y - car.y, d = Math.max(0.01, len(dx, dy));
+    const cross = (car.hx * dy - car.hy * dx) / d;
+    const ahead = (car.hx * dx + car.hy * dy) / d;
+    return makeInput(clamp(cross * 2.5 + (ahead < 0 ? p.botStrafe : 0), -1, 1), -1, 0, 0, 0);
+  }
+
+  // Cars mode: go get in a free car.
+  if (s.cfg.mode === 'cars') {
+    let best = null, bd = 12 * 12;
+    for (const c of s.cars) {
+      if (c.driver >= 0 || c.dead) continue;
+      const d = dist2(p.x, p.y, c.x, c.y);
+      if (d < bd) { bd = d; best = c; }
+    }
+    if (best) {
+      if (bd < 1.9 * 1.9) return makeInput(0, 0, 0, 0, (p.prevB & BTN_INTERACT) ? 0 : BTN_INTERACT);
+      const [mx, my] = pathDir(s, p.x, p.y, best.x, best.y);
+      // Still dodge hats on the way (handled below for non-car bots) — keep it simple here.
+      return makeInput(mx, my, 0, 0, 0);
+    }
   }
 
   let b = 0;

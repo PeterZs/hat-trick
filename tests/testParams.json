@@ -75,5 +75,6 @@
   "treeCount": 10,
   "treeHp": 3,
   "treeRegrowTime": 4,
-  "treeRadius": 0.6
+  "treeRadius": 0.6,
+  "carRespawnTime": 1.5
 }

@@ -592,6 +592,20 @@ export class Renderer {
       g.position.set(c.x, 0, c.y);
       g.rotation.y = -Math.atan2(c.hy, c.hx);
       g.visible = !(c.driver >= 0 && c.t < 3 * HZ && Math.floor(this.time * 8) % 2 === 0);
+      // "Get in" hint over free cars when one of this screen's players is near.
+      let hint = g.getObjectByName('hint') as THREE.Sprite | undefined;
+      if (!hint) {
+        const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+        const cx = cv.getContext('2d')!;
+        cx.font = '700 40px Fredoka, system-ui, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+        cx.lineWidth = 10; cx.strokeStyle = '#fff'; cx.lineJoin = 'round';
+        cx.strokeText('E / Y: drive', 128, 34); cx.fillStyle = '#2b2d42'; cx.fillText('E / Y: drive', 128, 34);
+        const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+        hint = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+        hint.name = 'hint'; hint.scale.set(2.4, 0.6, 1); hint.position.y = 2.1; hint.renderOrder = 6;
+        g.add(hint);
+      }
+      hint.visible = c.driver < 0 && s.players.some((p) => p.active && p.alive && !p.isBot && p.peer === this.localPeer && p.car < 0 && (p.x - c.x) ** 2 + (p.y - c.y) ** 2 < 3.5 * 3.5);
     }
     for (const [id, g] of this.cars) if (!carSeen.has(id)) { this.scene.remove(g); this.cars.delete(id); }
 
@@ -789,7 +803,7 @@ export class Renderer {
         this.shake = 0.4;
         break;
       }
-      case 'car': if (e.what === 'crash') { this.effects.burst(e.x, 0.6, e.y, ['#e8463c', '#222', '#bfe3ff'], 24, 8, 1); this.shake = 0.4; } break;
+      case 'car': if (e.what === 'spawn') { this.effects.ring(e.x, e.y, '#ffd23f', 3, 0.5); this.effects.puff(e.x, e.y, '#ffffff', 10); } else if (e.what === 'crash') { this.effects.burst(e.x, 0.6, e.y, ['#e8463c', '#222', '#bfe3ff'], 24, 8, 1); this.shake = 0.4; } break;
       case 'slash': {
         const v = this.players.get(e.who);
         if (v) {

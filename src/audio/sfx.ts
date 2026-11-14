@@ -395,6 +395,15 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
     }
     case 'car': {
       const out = v(0.15);
+      if (e.what === 'spawn') {
+        // Cartoon horn: two quick honks of a detuned square pair through a lowpass.
+        for (const [dt, f] of [[0, 392], [0.16, 330]] as const) {
+          const g = envGain(t + dt, 0.01, 0.12, 0.12, out);
+          const lp = filter('lowpass', 1800, 1.5, g);
+          for (const det of [-8, 8]) { const o = osc('square', t + dt, 0.14, f, null, lp); o.detune.value = det; }
+        }
+        break;
+      }
       if (e.what === 'crash') {
         swish(t, out, { dur: 0.6, f0: 2000, f1: 200, type: 'lowpass', q: 0.7, peak: 0.7, attack: 0.002 });
         metal(t, out, 310, 0.5, 0.15, [1, 1.7, 2.9, 4.4]);
@@ -502,6 +511,7 @@ export const SOUND_TEST: { name: string; ev: SimEvent | 'tick' | 'go' }[] = [
   { name: 'piggy on', ev: { e: 'piggy', what: 'on', who: -1, mount: -1 } },
   { name: 'car', ev: { e: 'car', what: 'enter', who: -1, x: 0, y: 0 } },
   { name: 'car crash', ev: { e: 'car', what: 'crash', who: -1, x: 0, y: 0 } },
+  { name: 'car arrives', ev: { e: 'car', what: 'spawn', who: -1, x: 0, y: 0 } },
   { name: 'chop', ev: { e: 'chop', tree: 0, who: -1, x: 0, y: 0 } },
   { name: 'fell', ev: { e: 'fell', tree: 0, who: -1, x: 0, y: 0, dx: 1, dy: 0 } },
   { name: 'bomb', ev: { e: 'boom', x: 0, y: 0 } },

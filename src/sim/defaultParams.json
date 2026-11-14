@@ -52,6 +52,7 @@
   "carTurnRate": 3.2,
   "carTime": 15,
   "carKillSpeed": 6,
+  "carRespawnTime": 1.5,
   "piggyMountSpeedMult": 2,
   "hitstopKill": 2,
   "hitstopClash": 2,
