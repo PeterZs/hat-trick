@@ -112,6 +112,7 @@ Bots have no device; their input is computed by `botInput` inside `step`.
   by (frame, event) because rollback can replay events.
 - `render/models.ts` — procedural low-poly models: 8 sports balls (patterns via
   per-face colors), 8 hats, car, flags, pick-ups.
+- `audio/sfx.ts` — procedural WebAudio sounds: layered transient/body/tail designs, random variation, stereo panning by event position, a shared compressor and generated reverb. Settings → "Sound test" plays every effect; `renderSoundTest()` renders them offline for level checks.
 - `ui/` — DOM UI: main menu, lobby (it is a sim phase, so it works online),
   HUD, pause menu, and the non-modal settings panel (params persisted in
   `localStorage`, downloadable as `defaultParams.json`).

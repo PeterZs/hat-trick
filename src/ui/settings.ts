@@ -2,6 +2,7 @@
 
 import { DEFAULT_PARAMS, PARAM_DEFS, cloneParams, type Params } from '../sim/params';
 import { loadParams, savePrefs, saveParams, type Prefs } from './prefs';
+import { soundTest } from '../audio/sfx';
 
 export class SettingsPanel {
   el: HTMLElement;
@@ -44,6 +45,7 @@ export class SettingsPanel {
         <details open><summary>Player</summary>
           <div class="prow"><label>Name</label><input data-pref="name" type="text" maxlength="14" value="${escapeHtml(pf.name)}" style="grid-column:1/3"></div>
           <div class="prow"><label>Volume <span>${Math.round(pf.volume * 100)}%</span></label><input data-pref="volume" type="range" min="0" max="1" step="0.05" value="${pf.volume}" style="grid-column:1/3"></div>
+          <div class="prow"><button class="small" data-act="soundtest" style="grid-column:1/3">🔊 Sound test (plays every effect)</button></div>
           <div class="prow"><label><span>Show hitboxes</span><input data-pref="showHitboxes" type="checkbox" ${pf.showHitboxes ? 'checked' : ''}></label></div>
           <div class="prow"><label>Online input delay (frames) <span>${pf.inputDelay}</span></label><input data-pref="inputDelay" type="range" min="0" max="6" step="1" value="${pf.inputDelay}" style="grid-column:1/3"></div>
         </details>
@@ -68,6 +70,7 @@ export class SettingsPanel {
 
     this.el.querySelector('[data-act=close]')!.addEventListener('click', () => this.toggle(false));
     this.el.querySelector('[data-act=download]')!.addEventListener('click', () => this.download());
+    this.el.querySelector('[data-act=soundtest]')!.addEventListener('click', () => soundTest());
     this.el.querySelector('[data-act=reset]')!.addEventListener('click', () => { this.params = cloneParams(DEFAULT_PARAMS); this.commit(); this.render(); });
     for (const a of this.el.querySelectorAll<HTMLElement>('[data-reset]')) {
       a.addEventListener('click', (e) => { e.preventDefault(); this.params[a.dataset.reset!] = DEFAULT_PARAMS[a.dataset.reset!]; this.commit(); this.render(); });

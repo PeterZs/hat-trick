@@ -11,12 +11,12 @@ import { TouchControls } from './input/touch';
 import { NEUTRAL, type PlayerInput } from './sim/input';
 import { BALLS, HZ, MAX_PLAYERS } from './sim/const';
 import { createState } from './sim/sim';
-import type { Command, MatchConfig } from './sim/types';
+import type { Command, GameState, MatchConfig } from './sim/types';
 import { Menu } from './ui/menu';
 import { Hud } from './ui/hud';
 import { SettingsPanel } from './ui/settings';
 import { loadPrefs, savePrefs } from './ui/prefs';
-import { playEvent, setVolume, unlockAudio } from './audio/sfx';
+import { playCue, playEvent, setVolume, unlockAudio } from './audio/sfx';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const uiRoot = document.getElementById('ui')!;
@@ -208,6 +208,16 @@ let acc = 0;
 let last = performance.now();
 const seenEvents = new Map<string, number>();
 
+// Countdown beeps (3, 2, 1) and GO! derived from the phase timer.
+let lastCue = '';
+function countdownCues(s: GameState): void {
+  let cue = '';
+  if (s.phase === 'countdown') cue = 'c' + Math.ceil(s.params.countdownTime - s.phaseT / HZ) + ':' + s.round;
+  else if (s.phase === 'playing' && s.phaseT < 30) cue = 'go:' + s.round;
+  if (cue && cue !== lastCue) playCue(cue.startsWith('go') ? 'go' : 'tick');
+  lastCue = cue;
+}
+
 function loop(now: number): void {
   requestAnimationFrame(loop);
   const elapsed = Math.min(250, now - last);
@@ -238,11 +248,11 @@ function loop(now: number): void {
       if (seenEvents.has(key)) continue;
       seenEvents.set(key, frame);
       renderer.onEvent(s, ev);
-      if (session) playEvent(ev);
+      if (session) playEvent(ev, s);
     }
     if (seenEvents.size > 2000) for (const [k, f] of seenEvents) if (f < s.frame - 300) seenEvents.delete(k);
     renderer.sync(s, elapsed / 1000);
-    if (session) hud.update(s);
+    if (session) { hud.update(s); countdownCues(s); }
   }
   renderer.render(elapsed / 1000);
 }
@@ -251,3 +261,6 @@ requestAnimationFrame(loop);
 // Deep link: ?join=CODE
 const joinCode = new URLSearchParams(location.search).get('join');
 if (joinCode) void joinOnline(joinCode.toUpperCase());
+
+// Dev hook for automated audio checks.
+(window as unknown as Record<string, unknown>).sfxDebug = () => import('./audio/sfx');
