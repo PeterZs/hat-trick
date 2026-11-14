@@ -6,7 +6,7 @@
 import type { Params } from './params';
 import type { PlayerInput } from './input';
 
-export type ModeId = 'ffa' | 'teams' | 'ctf' | 'soccer' | 'hazard' | 'lumber' | 'cars';
+export type ModeId = 'ffa' | 'teams' | 'ctf' | 'soccer' | 'hazard' | 'lumber' | 'cars' | 'bumper' | 'golf' | 'lava';
 export type Phase = 'lobby' | 'countdown' | 'playing' | 'roundOver' | 'matchOver';
 export type Role = 'fighter' | 'overlord';
 
@@ -64,6 +64,8 @@ export interface Player {
 
   // Bot memory (part of state for determinism).
   botT: number; botMx: number; botMy: number; botStrafe: number; botAimT: number;
+  lastHitBy: number; lastHitT: number;   // who last shoved us (credit for falls)
+  portalCd: number;
 }
 
 export interface Hat {
@@ -79,6 +81,7 @@ export interface Hat {
   stuck: number;         // frames pinned against an obstacle without getting closer to the owner
   lastD: number;         // distance to owner last frame (stuck detection)
   hitCd: number;         // frames until it can chop/smack again (trees, ball)
+  portalCd: number;
   bomb: boolean;         // launched by an Overlord bomb: returns to the bomb target, then vanishes
 }
 
@@ -100,7 +103,24 @@ export interface Car {
   dead: boolean;
 }
 
-export interface SoccerBall { x: number; y: number; vx: number; vy: number; lastTouch: number }
+export interface SoccerBall { x: number; y: number; vx: number; vy: number; lastTouch: number; portalCd?: number }
+
+export interface GolfBall {
+  team: number;
+  x: number; y: number; vx: number; vy: number;
+  strokes: number;
+  sunk: boolean;
+  restX: number; restY: number;   // where it last came to rest (water hazard returns here)
+  hitCd: number;
+  portalCd: number;
+}
+
+export interface GolfState {
+  hole: number;
+  cupX: number; cupY: number;
+  balls: GolfBall[];
+  t: number;                      // frames into the hole
+}
 
 export interface Flag {
   team: number;
@@ -127,7 +147,7 @@ export interface Prop {
 export interface Bomb { id: number; owner: number; x: number; y: number; t: number }
 
 export type SimEvent =
-  | { e: 'kill'; victim: number; killer: number; x: number; y: number }
+  | { e: 'kill'; victim: number; killer: number; x: number; y: number; cause?: 'fall' | 'lava' }
   | { e: 'shield'; who: number; x: number; y: number }
   | { e: 'clash'; a: number; b: number; x: number; y: number }
   | { e: 'slash'; who: number; kind: number }
@@ -145,6 +165,12 @@ export type SimEvent =
   | { e: 'goal'; team: number }
   | { e: 'flag'; what: 'take' | 'drop' | 'return' | 'score'; team: number; who: number }
   | { e: 'boom'; x: number; y: number }
+  | { e: 'bump'; x: number; y: number; i: number }
+  | { e: 'portal'; x: number; y: number; x2: number; y2: number }
+  | { e: 'tile'; i: number; what: 'warn' | 'fall' }
+  | { e: 'stroke'; team: number; x: number; y: number }
+  | { e: 'sunk'; team: number; strokes: number; x: number; y: number }
+  | { e: 'splash'; x: number; y: number }
   | { e: 'chop'; prop: number; kind: PropKind; who: number; x: number; y: number }
   | { e: 'fell'; prop: number; kind: PropKind; who: number; x: number; y: number; dx: number; dy: number }
   | { e: 'round'; winner: number }
@@ -166,6 +192,8 @@ export interface GameState {
   rng: number;
   params: Params;
   cfg: MatchConfig;
+  arena: string;         // the arena actually being played (cfg.level may be 'random')
+  arenaPrev: string;     // previous random pick (avoid repeats)
   phase: Phase;
   phaseT: number;        // frames in current phase
   round: number;
@@ -178,6 +206,9 @@ export interface GameState {
   flags: Flag[];
   bombs: Bomb[];
   props: Prop[];
+  tiles: number[];       // floor tiles: 0 solid, >0 warning frames left, -1 fallen, -2 never there
+  tileT: number;         // frames into the tile schedule this round
+  golf: GolfState | null;
   scores: number[];      // indexed by team (FFA: by slot)
   lastWinner: number;    // team, -1 = draw
   pickupT: number;

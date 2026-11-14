@@ -20,6 +20,7 @@ export const SKILL_NAMES = ['Extra easy', 'Easy', 'Normal', 'Hard'];
 import { navGrid } from './level';
 import { HAT_GROUND, HAT_HELD, type GameState, type Player } from './types';
 import { heldHats, isInvisible, level } from './common';
+import { safeSpot } from './hazards';
 import { isStanding } from './props';
 import { isLethal } from './actors';
 
@@ -87,6 +88,37 @@ export function pathDir(s: GameState, x: number, y: number, tx: number, ty: numb
   return [ax / al, ay / al];
 }
 
+/** Steer away from hazards: if standing somewhere unsafe, head for the nearest
+ *  safe ground; otherwise bend the move direction around unsafe ground ahead. */
+function avoidHazards(s: GameState, p: Player, mx: number, my: number): [number, number] {
+  if (!hasHazards(s)) return [mx, my];
+  if (!safeSpot(s, p.x, p.y, 0.3)) {
+    let best: [number, number] = [mx, my], bd = 1e9;
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * 6.283185307179586;
+      for (const r of [1, 2, 3, 4.5]) {
+        const x = p.x + dcos(a) * r, y = p.y + dsin(a) * r;
+        if (safeSpot(s, x, y, 0.5) && r < bd) { bd = r; best = [dcos(a), dsin(a)]; }
+      }
+    }
+    return best;
+  }
+  const l = len(mx, my);
+  if (l < 0.05) return [mx, my];
+  const ux = mx / l, uy = my / l;
+  for (const turn of [0, 0.5, -0.5, 1, -1, 1.6, -1.6]) {
+    const c = dcos(turn), sn = dsin(turn);
+    const dx = ux * c - uy * sn, dy = ux * sn + uy * c;
+    if (safeSpot(s, p.x + dx * 1.3, p.y + dy * 1.3, 0.4)) return [dx * l, dy * l];
+  }
+  return [0, 0];
+}
+
+function hasHazards(s: GameState): boolean {
+  const L = level(s);
+  return !!(L.pits?.length || L.open || s.tiles.length);
+}
+
 export function botInput(s: GameState, p: Player): PlayerInput {
   const inp = think(s, p);
   // Never throw our own rider off by accident.
@@ -139,7 +171,7 @@ function think(s: GameState, p: Player): PlayerInput {
     }
     if (best) {
       if (bd < 1.9 * 1.9) return makeInput(0, 0, 0, 0, (p.prevB & BTN_ATTACK) ? 0 : BTN_ATTACK); // slash to get in
-      const [mx, my] = pathDir(s, p.x, p.y, best.x, best.y);
+      const [mx, my] = avoidHazards(s, p, ...pathDir(s, p.x, p.y, best.x, best.y));
       // Still dodge hats on the way (handled below for non-car bots) — keep it simple here.
       return makeInput(mx, my, 0, 0, 0);
     }
@@ -263,6 +295,8 @@ function think(s: GameState, p: Player): PlayerInput {
     mx += -my * p.botStrafe * 0.6; my += mx * p.botStrafe * 0.6;
   }
   if (gd < 0.3) { mx = 0; my = 0; }
+  // Stay off pits, lava and tiles about to fall.
+  [mx, my] = avoidHazards(s, p, mx, my);
   // Skill: sloppier aim and slower movement for easier bots.
   if ((aimX || aimY) && K.aimErr > 0) {
     const e = (rand(s) * 2 - 1) * K.aimErr, c = dcos(e), sn = dsin(e);

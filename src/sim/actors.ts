@@ -14,6 +14,7 @@ import {
   canBeHit, detach, die, dropHat, emit, heldHats, hitstop, isInvisible, kill, level, sec,
 } from './common';
 import { chopProp, collideProps, isStanding, propInfo } from './props';
+import { onIce, shovedBy } from './hazards';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
 
@@ -137,7 +138,8 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   if (p.aiming) speed *= P.aimMoveFactor;
   const control = p.stunT > 0 ? 0 : 1;
   const tx = mx * speed * control, ty = my * speed * control;
-  const a = Math.min(1, P.moveAccel * DT);
+  const slippery = onIce(s, p.x, p.y);
+  const a = Math.min(1, P.moveAccel * (slippery ? P.iceGrip : 1) * DT);
   p.vx += (tx - p.vx) * a;
   p.vy += (ty - p.vy) * a;
 
@@ -149,7 +151,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
     p.dashT--;
     p.vx = p.dashDx * speed; p.vy = p.dashDy * speed;
   }
-  const decay = Math.max(0, 1 - P.knockbackDecay * DT);
+  const decay = Math.max(0, 1 - P.knockbackDecay * (slippery ? P.iceGrip * 2 : 1) * DT);
   p.kx *= decay; p.ky *= decay;
 
   p.x += vx * DT; p.y += vy * DT;
@@ -274,6 +276,15 @@ export function separatePlayers(s: GameState): void {
       const push = (m - d) * 0.5;
       a.x -= nx * push; a.y -= ny * push;
       b.x += nx * push; b.y += ny * push;
+      // Dashing into someone bumps them away (no damage).
+      for (const [hit, by, sx] of [[b, a, 1], [a, b, -1]] as const) {
+        if (by.dashT <= 0 || hit.dashT > 0 || hit.invulnT > 0 || allies(s, hit, by)) continue;
+        hit.kx = nx * sx * s.params.dashBumpKnockback; hit.ky = ny * sx * s.params.dashBumpKnockback;
+        hit.stunT = Math.max(hit.stunT, sec(s, 'stunTime'));
+        shovedBy(s, hit, by.id);
+        by.dashT = 0;
+        emit(s, { e: 'kick', who: by.id, target: hit.id, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+      }
     }
   }
 }
@@ -336,6 +347,7 @@ export function resolveMelee(s: GameState): void {
           b.kx += (dx / d) * kb; b.ky += (dy / d) * kb;
           a.slashT = -1; b.slashT = -1;
           a.stunT = b.stunT = sec(s, 'stunTime');
+          shovedBy(s, a, b.id); shovedBy(s, b, a.id);
           emit(s, { e: 'clash', a: a.id, b: b.id, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
           hitstop(s, P.hitstopClash);
           break;
@@ -349,6 +361,7 @@ export function resolveMelee(s: GameState): void {
         b.vx = 0; b.vy = 0; b.dashT = 0;
         b.kx = (dx / d) * P.kickKnockback; b.ky = (dy / d) * P.kickKnockback;
         b.stunT = sec(s, 'kickStunTime');
+        shovedBy(s, b, a.id);
         resetCharge(b);
         if (b.rider >= 0 || b.riding >= 0) detach(s, b);
         emit(s, { e: 'kick', who: a.id, target: b.id, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });

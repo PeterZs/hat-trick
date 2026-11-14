@@ -12,6 +12,8 @@ import {
 import { canBeHit, die, dropHat, emit, giveHats, kill, level, newId, sec, spawnPlayer } from './common';
 import { bounceHat, isLethal, spawnCar } from './actors';
 import { collideProps, resetProps } from './props';
+import { resetTiles } from './hazards';
+import { getLevel, LEVEL_IDS, levelSupports } from './level';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
 
@@ -96,7 +98,7 @@ function applyPickup(s: GameState, p: Player, kind: string): void {
     case 'double':
       if (p.maxHats < 2) {
         p.maxHats = 2;
-        s.hats.push({ id: newId(s), owner: p.id, state: 0, x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, dist: 0, range: 0, t: 0, stuck: 0, lastD: 0, hitCd: 0, bomb: false });
+        s.hats.push({ id: newId(s), owner: p.id, state: 0, x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, dist: 0, range: 0, t: 0, stuck: 0, lastD: 0, hitCd: 0, portalCd: 0, bomb: false });
       }
       break;
   }
@@ -266,7 +268,7 @@ export function updateBombs(s: GameState): void {
       s.hats.push({
         id: newId(s), owner: b.owner, state: HAT_OUT, x: b.x + dx * 0.4, y: b.y + dy * 0.4,
         vx: dx * P.bombHatSpeed, vy: dy * P.bombHatSpeed, speed: P.bombHatSpeed, dist: 0, range: P.bombHatRange,
-        t: 0, stuck: 0, lastD: 1e9, hitCd: 0, bomb: true,
+        t: 0, stuck: 0, lastD: 1e9, hitCd: 0, portalCd: 0, bomb: true,
       });
     }
     return false;
@@ -283,6 +285,7 @@ export function resetArena(s: GameState): void {
   s.bombs = [];
   s.pickupT = sec(s, 'powerupInterval');
   resetProps(s);
+  resetTiles(s);
   if (s.cfg.mode === 'cars') { for (let i = 0; i < carCount(s); i++) spawnModeCar(s); s.carSpawnT = sec(s, 'carRespawnTime'); }
   s.ball = s.cfg.mode === 'soccer' ? { x: 0, y: 0, vx: 0, vy: 0, lastTouch: -1 } : null;
   if (s.cfg.mode === 'ctf') resetFlags(s); else s.flags = [];
@@ -299,6 +302,7 @@ export function resetArena(s: GameState): void {
 }
 
 export function toLobby(s: GameState): void {
+  pickArena(s, false);
   s.phase = 'lobby';
   s.phaseT = 0;
   s.round = 0;
@@ -307,8 +311,21 @@ export function toLobby(s: GameState): void {
   resetArena(s);
 }
 
+/** Choose the arena to play: the selected one, or a random one that suits the mode. */
+export function pickArena(s: GameState, newRound: boolean): void {
+  if (s.cfg.level !== 'random') { s.arena = s.cfg.level; return; }
+  const ok = LEVEL_IDS.filter((id) => levelSupports(getLevel(id), s.cfg.mode));
+  if (!ok.length) { s.arena = 'courtyard'; return; }
+  if (!newRound && ok.includes(s.arena)) return;
+  const pool = ok.length > 1 ? ok.filter((id) => id !== s.arena) : ok;
+  s.arenaPrev = s.arena;
+  s.arena = pool[randInt(s, pool.length)];
+}
+
 export function startRound(s: GameState): void {
   s.round++;
+  // Random arenas change every round (every match for Golf, which plays holes on one course).
+  if (s.cfg.mode !== 'golf' || s.round === 1) pickArena(s, true);
   s.phase = s.params.countdownTime > 0 ? 'countdown' : 'playing';
   s.phaseT = 0;
   s.timer = s.cfg.mode === 'hazard' ? sec(s, 'hazardRoundTime') : s.cfg.mode === 'lumber' ? sec(s, 'lumberTime') : 0;

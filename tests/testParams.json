@@ -82,5 +82,13 @@
   "carRespawnTime": 1.5,
   "propRegrowTime": 20,
   "crateDropChance": 0.5,
-  "barrelBlastRadius": 2.4
+  "barrelBlastRadius": 2.4,
+  "dashBumpKnockback": 14,
+  "fallCreditTime": 3,
+  "iceGrip": 0.12,
+  "bumperForce": 24,
+  "portalCooldown": 0.5,
+  "windOnPlayers": 0.35,
+  "tileWarnTime": 1.2,
+  "collapseTime": 50
 }

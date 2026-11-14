@@ -3,12 +3,13 @@
 import { DT, HZ, allies, teamOf } from './const';
 import { getLevel, type Level } from './level';
 import { circleOverlapsWalls } from './collision';
+import { anySafeSpot, safeSpot } from './hazards';
 import { rand } from './rng';
 import { frames } from './dmath';
 import { HAT_GROUND, HAT_HELD, type GameState, type Hat, type Player, type SimEvent } from './types';
 
 export function level(s: GameState): Level {
-  return getLevel(s.cfg.level);
+  return getLevel(s.arena);
 }
 
 export function emit(s: GameState, e: SimEvent): void {
@@ -41,7 +42,7 @@ export function hatsOf(s: GameState, p: Player): Hat[] {
 export function giveHats(s: GameState, p: Player): void {
   s.hats = s.hats.filter((h) => h.owner !== p.id);
   for (let i = 0; i < p.maxHats; i++) {
-    s.hats.push({ id: newId(s), owner: p.id, state: HAT_HELD, x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, dist: 0, range: 0, t: 0, stuck: 0, lastD: 0, hitCd: 0, bomb: false });
+    s.hats.push({ id: newId(s), owner: p.id, state: HAT_HELD, x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, dist: 0, range: 0, t: 0, stuck: 0, lastD: 0, hitCd: 0, portalCd: 0, bomb: false });
   }
 }
 
@@ -97,7 +98,7 @@ export function kill(s: GameState, victim: Player, killer: number): boolean {
   return true;
 }
 
-export function die(s: GameState, victim: Player, killer: number): void {
+export function die(s: GameState, victim: Player, killer: number, cause?: 'fall' | 'lava'): void {
   victim.alive = false;
   victim.deaths++;
   victim.respawnT = sec(s, 'respawnTime');
@@ -107,7 +108,7 @@ export function die(s: GameState, victim: Player, killer: number): void {
     if (k) k.kills++;
   }
   if (killer >= 0) hitstop(s, s.params.hitstopKill);
-  emit(s, { e: 'kill', victim: victim.id, killer, x: victim.x, y: victim.y });
+  emit(s, cause ? { e: 'kill', victim: victim.id, killer, x: victim.x, y: victim.y, cause } : { e: 'kill', victim: victim.id, killer, x: victim.x, y: victim.y });
   detach(s, victim);
   // Hats fall where they are; held hats tumble out around the body.
   let i = 0;
@@ -136,6 +137,13 @@ export function chooseSpawn(s: GameState, p: Player): { x: number; y: number } {
   const team = s.cfg.mode === 'ctf' || s.cfg.mode === 'soccer' ? p.team % 2 : -1;
   let cands = L.spawns.filter((sp) => sp.team === -1 || team === -1 || sp.team === team);
   if (cands.length === 0) cands = L.spawns;
+  // Never spawn over a pit, lava or a tile about to fall.
+  const safe = cands.filter((sp) => safeSpot(s, sp.x, sp.y));
+  if (safe.length) cands = safe;
+  else {
+    const spot = anySafeSpot(s);
+    if (spot) return spot;
+  }
   let best = cands[0], bestScore = -1;
   for (const sp of cands) {
     let nearest = 1e9;

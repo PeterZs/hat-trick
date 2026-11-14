@@ -25,13 +25,51 @@ export interface Level {
   floor: [string, string];
   /** Breakables placed by the level. */
   props: { kind: PropKind; x: number; y: number }[];
+  // --- Optional hazards and features ---------------------------------------
+  /** Holes you fall into (static). */
+  pits?: Rect[];
+  /** No border: anything outside [-w,w]x[-h,h] is a fall. */
+  open?: boolean;
+  /** Slippery floor. */
+  ice?: Rect[];
+  /** Belts that carry bodies, grounded hats and balls. */
+  conveyors?: Conveyor[];
+  /** Pinball bumpers that fling things away. */
+  bumpers?: Bumper[];
+  /** Teleporters; `to` is the index of the partner portal. */
+  portals?: Portal[];
+  /** Wind zones that push flying hats (and, gently, bodies). */
+  wind?: Wind[];
+  /** Floor made of tiles that can fall away (collapse / lava). */
+  tiles?: TileSpec;
+  /** Day/night lighting cycle (visual only). */
+  night?: boolean;
+  /** Golf holes (Golf mode). */
+  holes?: GolfHole[];
+  /** Ground color outside the arena (e.g. water around open levels). */
+  outside?: string;
 }
 
-const W = (x: number, y: number, hw: number, hh: number, kind: Wall['kind'] = 'wall'): Wall =>
+export interface Rect { x0: number; y0: number; x1: number; y1: number }
+export interface Conveyor extends Rect { vx: number; vy: number }
+export interface Bumper { x: number; y: number; r: number }
+export interface Portal { x: number; y: number; to: number }
+export interface Wind extends Rect { fx: number; fy: number }
+export interface TileSpec {
+  cell: number;               // tile size
+  circle?: number;            // only tiles within this radius exist (round platform)
+  collapse?: boolean;         // the floor shrinks toward the center during a round
+  lava?: boolean;             // fallen tiles are lava (else a drop into the void)
+}
+export interface GolfHole { tees: [number, number][]; cup: [number, number] }
+
+export const R = (x0: number, y0: number, x1: number, y1: number): Rect => ({ x0, y0, x1, y1 });
+
+export const W = (x: number, y: number, hw: number, hh: number, kind: Wall['kind'] = 'wall'): Wall =>
   ({ x, y, hw, hh, high: kind === 'wall' || kind === 'box' || kind === 'net', kind });
 
 /** Border walls around [-w,w]x[-h,h], with optional gaps on the left/right sides (|y| < gap). */
-function border(w: number, h: number, sideGap = 0): Wall[] {
+export function border(w: number, h: number, sideGap = 0): Wall[] {
   const t = 0.5;
   const out = [W(0, -h - t, w + 2 * t, t), W(0, h + t, w + 2 * t, t)];
   if (sideGap <= 0) {
@@ -46,7 +84,7 @@ function border(w: number, h: number, sideGap = 0): Wall[] {
   return out;
 }
 
-function spawnsRing(w: number, h: number): Spawn[] {
+export function spawnsRing(w: number, h: number): Spawn[] {
   const s: Spawn[] = [];
   const pts: [number, number][] = [
     [-0.8, -0.75], [0.8, 0.75], [0.8, -0.75], [-0.8, 0.75],
@@ -225,6 +263,14 @@ const raceway: Level = {
 export const LEVELS: Record<string, Level> = { courtyard, pitch, fortress, clearing, raceway };
 export const LEVEL_IDS = Object.keys(LEVELS);
 
+/** Can this arena host this mode? */
+export function levelSupports(l: Level, mode: string): boolean {
+  if (mode === 'soccer') return l.goals.length > 0;
+  if (mode === 'golf') return (l.holes?.length ?? 0) > 0;
+  if (l.holes?.length || l.goals.length) return false; // keep special courses for their modes
+  return true;
+}
+
 export function getLevel(id: string): Level {
   return LEVELS[id] ?? courtyard;
 }
@@ -262,6 +308,10 @@ export function navGrid(l: Level, clearance = 0.6): NavGrid {
           blocked[j * nx + i] = 1; break;
         }
       }
+      for (const p of l.pits ?? []) {
+        if (cx > p.x0 - clearance && cx < p.x1 + clearance && cy > p.y0 - clearance && cy < p.y1 + clearance) blocked[j * nx + i] = 1;
+      }
+      if (l.open && (Math.abs(cx) > l.w - clearance || Math.abs(cy) > l.h - clearance)) blocked[j * nx + i] = 1;
     }
   }
   g = { cell, nx, ny, x0: b.x0, y0: b.y0, blocked };

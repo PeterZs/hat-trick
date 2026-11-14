@@ -12,10 +12,11 @@ import type { Command, GameState, MatchConfig, PeerFrame, Player } from './types
 import { detach, die, emit, spawnPlayer } from './common';
 import { canAct, resolveHatHits, resolveMelee, separatePlayers, updateCars, updateHats, updatePlayer } from './actors';
 import {
-  resetArena, startRound, toLobby, updateBall, updateBombs, updateCarsMode, updateFlags, updateOverlord, updatePickups, updateRules,
+  pickArena, resetArena, startRound, toLobby, updateBall, updateBombs, updateCarsMode, updateFlags, updateOverlord, updatePickups, updateRules,
 } from './modes';
 import { botInput } from './bot';
 import { updateProps } from './props';
+import { applyFields, updateHazards } from './hazards';
 
 export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd): GameState {
   const s: GameState = {
@@ -23,6 +24,8 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
     rng: seed >>> 0,
     params: cloneParams(params),
     cfg: { ...cfg },
+    arena: cfg.level,
+    arenaPrev: '',
     phase: 'lobby',
     phaseT: 0,
     round: 0,
@@ -35,6 +38,9 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
     flags: [],
     bombs: [],
     props: [],
+    tiles: [],
+    tileT: 0,
+    golf: null,
     scores: new Array(MAX_PLAYERS).fill(0),
     lastWinner: -1,
     pickupT: 0,
@@ -43,6 +49,7 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
     nextId: 1,
     events: [],
   };
+  pickArena(s, true);
   resetArena(s);
   return s;
 }
@@ -55,7 +62,7 @@ function newPlayer(id: number, peer: number, device: string, name: string, ball:
     charging: false, aiming: false, holdT: 0, charge: 0, recalling: false, prevB: 0, stunT: 0, invulnT: 0,
     speedT: 0, phaseT: 0, shield: 0, maxHats: 1, slowT: 0, reverseT: 0, invisT: 0, revealT: 0, riding: -1, rider: -1, car: -1,
     cursorX: 0, cursorY: 0, bombCd: 0, lastBombX: 0, lastBombY: 0, kills: 0, deaths: 0, trees: 0,
-    botT: 0, botMx: 0, botMy: 0, botStrafe: 1, botAimT: 0,
+    botT: 0, botMx: 0, botMy: 0, botStrafe: 1, botAimT: 0, lastHitBy: -1, lastHitT: -9999, portalCd: 0,
   };
 }
 
@@ -232,6 +239,7 @@ export function step(s: GameState, frame: PeerFrame[]): void {
       }
     }
     separatePlayers(s);
+    applyFields(s);
     updateCars(s);
     updateHats(s);
     resolveMelee(s);
@@ -242,6 +250,7 @@ export function step(s: GameState, frame: PeerFrame[]): void {
     updateBombs(s);
     updateProps(s);
     updateCarsMode(s);
+    updateHazards(s);
   } else {
     for (const p of s.players) if (p.active && inputs[p.id]) p.prevB = inputs[p.id].b;
   }
