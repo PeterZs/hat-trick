@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createState, hashState, step, cloneState } from '../src/sim/sim';
-import { DEFAULT_PARAMS } from '../src/sim/params';
+import { TEST_PARAMS as DEFAULT_PARAMS } from './params';
 import type { GameState, ModeId, PeerFrame } from '../src/sim/types';
 import { dsin, dcos } from '../src/sim/dmath';
 import { makeInput, BTN_ATTACK, BTN_THROW } from '../src/sim/input';

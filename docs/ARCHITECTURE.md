@@ -138,6 +138,7 @@ elimination; CTF and Soccer respawn players and score objectives.
 
 ## Testing
 
+Tests use a fixed parameter set (`tests/testParams.json`), so tuning the defaults never breaks them.
 `npm test` runs: determinism (two runs → equal hash), snapshot/resimulate
 equivalence, mechanics (clash, parry, kick, throw/return/recall, piggyback,
 car), every mode with bots, and netcode sync under latency/jitter with late

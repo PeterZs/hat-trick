@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createState, step } from '../src/sim/sim';
-import { DEFAULT_PARAMS } from '../src/sim/params';
+import { TEST_PARAMS as DEFAULT_PARAMS } from './params';
 import { BTN_ATTACK, BTN_INTERACT, BTN_THROW, makeInput, type PlayerInput } from '../src/sim/input';
 import { HAT_GROUND, HAT_HELD, HAT_OUT, HAT_RECALL, HAT_RETURN, type GameState, type ModeId } from '../src/sim/types';
 import { spawnCar } from '../src/sim/actors';

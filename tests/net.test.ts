@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LoopbackHub } from '../src/net/link';
 import { RollbackSession } from '../src/net/rollback';
 import { createState } from '../src/sim/sim';
-import { DEFAULT_PARAMS } from '../src/sim/params';
+import { TEST_PARAMS as DEFAULT_PARAMS } from './params';
 import { makeInput, BTN_ATTACK, BTN_THROW, BTN_DASH } from '../src/sim/input';
 
 function randomInput(seed: number) {
