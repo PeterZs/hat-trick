@@ -46,6 +46,8 @@ Capture the Flag
 
 Soccer. Each team has a net. There is one ball.
 
+Lumberjacks. Players compete to cut down the most trees.
+
 Asymmetric gameplay where some players control the environment rather than characters.
 
 ## Architecture
