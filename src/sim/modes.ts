@@ -6,7 +6,7 @@ import { collideCircle, circleOverlapsWalls, type Push } from './collision';
 import { rand, randInt, randRange } from './rng';
 import { BTN_ATTACK, type PlayerInput } from './input';
 import {
-  HAT_GROUND, HAT_OUT, HAT_RECALL, HAT_RETURN, PICKUP_KINDS,
+  BAD_PICKUPS, GOOD_PICKUPS, HAT_GROUND, HAT_OUT, HAT_RECALL, HAT_RETURN,
   type GameState, type Player,
 } from './types';
 import { canBeHit, die, dropHat, emit, giveHats, kill, level, newId, sec, spawnPlayer } from './common';
@@ -43,7 +43,8 @@ export function updatePickups(s: GameState): void {
         if (carCount === 0 && rand(s) < P.carChance && s.cfg.mode !== 'soccer' && s.cfg.mode !== 'lumber') {
           spawnCar(s, spot.x, spot.y, rand(s) * 6.283);
         } else {
-          s.pickups.push({ id: newId(s), kind: PICKUP_KINDS[randInt(s, PICKUP_KINDS.length)], x: spot.x, y: spot.y, t: 0 });
+          const pool = rand(s) < P.badPowerupChance ? BAD_PICKUPS : GOOD_PICKUPS;
+          s.pickups.push({ id: newId(s), kind: pool[randInt(s, pool.length)], x: spot.x, y: spot.y, t: 0 });
         }
       }
     }
@@ -64,7 +65,9 @@ export function updatePickups(s: GameState): void {
 
 function applyPickup(s: GameState, p: Player, kind: string): void {
   switch (kind) {
-    case 'speed': p.speedT = sec(s, 'speedBoostTime'); break;
+    case 'speed': p.speedT = sec(s, 'speedBoostTime'); p.slowT = 0; break;
+    case 'slow': p.slowT = sec(s, 'slowTime'); p.speedT = 0; break;
+    case 'reverse': p.reverseT = sec(s, 'reverseTime'); break;
     case 'shield': p.shield = 1; break;
     case 'phase': p.phaseT = sec(s, 'phaseDashTime'); break;
     case 'double':

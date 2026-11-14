@@ -166,7 +166,7 @@ export class Hud {
     const link = c.roomCode ? `${location.origin}${location.pathname}?join=${c.roomCode}` : '';
 
     if (this.lobbyCollapsed) {
-      this.lobby.innerHTML = `<h3>Lobby · ${roster.length} players <span class="grow"></span>
+      this.lobby.innerHTML = `<h3>Lobby · ${roster.length} player${roster.length === 1 ? "" : "s"} <span class="grow"></span>
         ${c.isHost ? '<button class="primary small" data-l="start">Start ▶</button>' : ''}
         <button class="small" data-l="expand">▲</button></h3>`;
     } else {

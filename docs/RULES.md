@@ -29,6 +29,9 @@ Friendly fire is off in team modes. Your own hat never hurts you.
 ### Power-ups
 
 A random power-up appears every 7 s (max 3 on the field). Walk over it to take it.
+About 30% of them are **bad** — they look like dark, spiky lumps instead of shiny gems,
+so you can dodge them (or knock a rival into one). When you pick something up, its
+icon and name pop up over you; active effects show as icons next to your name.
 All are lost when you die.
 
 | Icon | Power-up | Effect |
@@ -37,6 +40,8 @@ All are lost when you die.
 | 🛡️ | Shield | Survive one hit (brief invulnerability after it pops). |
 | 🎩 | Double hat | Two hats: throw twice, or slash while one hat is out. Slash cooldown halves. |
 | 👻 | Phase dash | For 12 s, dashes pass through walls (never ending inside one). |
+| 🐌 | Slowpoke *(bad)* | Half running speed for 6 s. Cancels Speed (and Speed cancels it). |
+| 😵‍💫 | Reversed *(bad)* | Your movement stick is reversed for 6 s. |
 | 🚗 | Car | Occasionally a car is parked instead. Press **interact** next to it to get in. Car controls: up/down = gas/brake, left/right = steer. Running into enemies at speed kills them. A hat hitting the car wrecks it and kills the driver. The car lasts 15 s. Press interact again to get out. Not in Soccer or Lumberjacks. |
 
 ### Piggyback (team modes)

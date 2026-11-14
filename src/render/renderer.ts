@@ -5,7 +5,7 @@ import { getLevel, levelBounds, type Level } from '../sim/level';
 import { HAT_GROUND, HAT_HELD, HAT_RECALL, type GameState, type Player, type SimEvent } from '../sim/types';
 import { HZ, isSoloMode, isTeamMode } from '../sim/const';
 import {
-  PLAYER_COLORS, TEAM_COLORS, makeBall, makeBase, makeCar, makeEyes, makeFlag, makeHat, makePickup, makeStump, makeTree, mat, vertexColorMat,
+  PICKUP_INFO, PLAYER_COLORS, TEAM_COLORS, makeBall, makeBase, makeCar, makeEyes, makeFlag, makeHat, makePickup, makeStump, makeTree, mat, vertexColorMat,
 } from './models';
 import { Effects } from './effects';
 
@@ -409,6 +409,11 @@ export class Renderer {
       let txt = p.name;
       if (!p.alive && !overlord) txt = s.phase === 'lobby' || p.respawnT > 0 ? `💀 ${p.name}` : '';
       if (overlord) txt = `👁 ${p.name}`;
+      else if (p.alive) {
+        // Status icons for active (good and bad) power-ups.
+        const st = (p.speedT > 0 ? '⚡' : '') + (p.phaseT > 0 ? '👻' : '') + (p.maxHats > 1 ? '🎩' : '') + (p.slowT > 0 ? '🐌' : '') + (p.reverseT > 0 ? '😵‍💫' : '');
+        if (st) txt += ' ' + st;
+      }
       v.label.textContent = txt;
       v.label.style.color = color;
       v.label.style.display = (p.alive || overlord || p.respawnT > 0) && txt ? '' : 'none';
@@ -434,7 +439,7 @@ export class Renderer {
       }
       v.lastX = p.x; v.lastY = p.y;
       const yaw = -Math.atan2(p.fy, p.fx);
-      v.head.rotation.y = yaw;
+      v.head.rotation.y = yaw + (p.reverseT > 0 ? Math.sin(this.time * 9) * 0.5 : 0);
       v.aim.rotation.y = yaw;
       v.arc.rotation.y = yaw;
       v.kickArc.rotation.y = yaw;
@@ -745,7 +750,16 @@ export class Renderer {
         this.effects.burst(e.x, 0.5, e.y, ['#ff9f43', '#ffd23f', '#555'], 24, 9, 0.8);
         this.shake = Math.max(this.shake, 0.5);
         break;
-      case 'pickup': this.effects.ring(e.x, e.y, '#ffffff', 2.5); this.effects.burst(e.x, 1, e.y, ['#ffffff', '#ffd23f'], 12, 4, 0.5); break;
+      case 'pickup': {
+        const info = PICKUP_INFO[e.kind] ?? { name: e.kind, icon: '?', color: '#fff' };
+        const p = s.players[e.who];
+        const px = p ? p.x : e.x, pz = p ? p.y : e.y;
+        this.effects.announce(px, 2.4, pz, info.icon, info.name, info.bad ? '#c0392b' : info.color);
+        this.effects.ring(e.x, e.y, info.bad ? '#5a3a3a' : '#ffffff', 2.5);
+        this.effects.burst(e.x, 1, e.y, info.bad ? ['#5a5a5a', info.color] : ['#ffffff', info.color], 14, 4, 0.5);
+        if (info.bad) this.shake = Math.max(this.shake, 0.2);
+        break;
+      }
       case 'spawn': { const p = s.players[e.who]; if (p) this.effects.ring(p.x, p.y, pc(e.who), 2, 0.5); break; }
       case 'dash': { const p = s.players[e.who]; if (p) this.effects.puff(p.x, p.y, '#ffffff', 5); break; }
       case 'goal': {

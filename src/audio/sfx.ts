@@ -314,6 +314,17 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
     }
     case 'pickup': {
       const out = v(0.2);
+      if (e.kind === 'slow' || e.kind === 'reverse') {
+        // Sad "wah-wah": descending brass with a droopy pitch bend.
+        [311, 294, 277].forEach((fr, i) => brass(t + i * 0.16, out, fr / 2, 0.15, 0.09));
+        const g = envGain(t + 0.48, 0.02, 0.1, 0.6, out);
+        const lp = filter('lowpass', 900, 2, g);
+        const o = osc('sawtooth', t + 0.48, 0.65, 262 / 2, 220 / 2, lp);
+        const vib = ctx!.createOscillator(); vib.frequency.value = 6;
+        const vg = ctx!.createGain(); vg.gain.value = 4;
+        vib.connect(vg).connect(o.frequency); vib.start(t + 0.48); vib.stop(t + 1.2);
+        break;
+      }
       const base = vary(660, 0.03);
       notes(t, out, [base, base * 1.26, base * 1.5, base * 2], 0.055, { dur: 0.18, peak: 0.14 });
       for (let i = 0; i < 5; i++) blip(t + 0.12 + i * 0.03, out, { f0: rnd(3000, 5000), dur: 0.06, peak: 0.025 });
@@ -467,6 +478,7 @@ export const SOUND_TEST: { name: string; ev: SimEvent | 'tick' | 'go' }[] = [
   { name: 'shield', ev: { e: 'shield', who: -1, x: 0, y: 0 } },
   { name: 'spawn', ev: { e: 'spawn', who: -1 } },
   { name: 'pickup', ev: { e: 'pickup', who: -1, kind: 'speed', x: 0, y: 0 } },
+  { name: 'bad pickup', ev: { e: 'pickup', who: -1, kind: 'slow', x: 0, y: 0 } },
   { name: 'piggy on', ev: { e: 'piggy', what: 'on', who: -1, mount: -1 } },
   { name: 'car', ev: { e: 'car', what: 'enter', who: -1, x: 0, y: 0 } },
   { name: 'car crash', ev: { e: 'car', what: 'crash', who: -1, x: 0, y: 0 } },

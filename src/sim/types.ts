@@ -48,6 +48,8 @@ export interface Player {
   stunT: number; invulnT: number;
 
   speedT: number; phaseT: number; shield: number; maxHats: number;
+  slowT: number;        // bad: half speed
+  reverseT: number;     // bad: reversed movement controls
   riding: number;       // slot we ride on, -1
   rider: number;        // slot riding us, -1
   car: number;          // car id driven, -1
@@ -75,8 +77,10 @@ export interface Hat {
   hitCd: number;         // frames until it can chop/smack again (trees, ball)
 }
 
-export type PickupKind = 'speed' | 'shield' | 'double' | 'phase';
-export const PICKUP_KINDS: PickupKind[] = ['speed', 'shield', 'double', 'phase'];
+export type PickupKind = 'speed' | 'shield' | 'double' | 'phase' | 'slow' | 'reverse';
+export const GOOD_PICKUPS: PickupKind[] = ['speed', 'shield', 'double', 'phase'];
+/** Bad power-ups: picking one up hurts you. */
+export const BAD_PICKUPS: PickupKind[] = ['slow', 'reverse'];
 
 export interface Pickup { id: number; kind: PickupKind; x: number; y: number; t: number }
 

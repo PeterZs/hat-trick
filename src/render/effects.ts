@@ -2,7 +2,7 @@
 
 import * as THREE from 'three';
 
-interface Particle { m: THREE.Mesh | THREE.Sprite; vx: number; vy: number; vz: number; life: number; max: number; spin: number; grow: number; streak?: boolean; float?: boolean }
+interface Particle { m: THREE.Mesh | THREE.Sprite; vx: number; vy: number; vz: number; life: number; max: number; spin: number; grow: number; streak?: boolean; float?: boolean; announce?: boolean }
 
 const chunkGeo = new THREE.TetrahedronGeometry(0.14, 0);
 const puffGeo = new THREE.IcosahedronGeometry(0.22, 0);
@@ -63,6 +63,28 @@ export class Effects {
     this.parts.push({ m, vx: 0, vy: 1.6, vz: 0, life, max: life, spin: 0, grow: 0, float: true });
   }
 
+  /** Power-up announcement: big icon + name that scales up while fading out. */
+  announce(x: number, y: number, z: number, icon: string, name: string, color: string, life = 1.3): void {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 320;
+    const ctx = c.getContext('2d')!;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '150px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+    ctx.fillText(icon, 256, 110);
+    ctx.font = '700 72px Fredoka, system-ui, sans-serif';
+    ctx.lineWidth = 16; ctx.lineJoin = 'round'; ctx.strokeStyle = '#ffffff';
+    ctx.strokeText(name, 256, 255);
+    ctx.fillStyle = color; ctx.fillText(name, 256, 255);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+    m.renderOrder = 11;
+    m.position.set(x, y, z);
+    m.scale.set(0.1, 0.0625, 1);
+    this.scene.add(m);
+    this.parts.push({ m, vx: 0, vy: 0.9, vz: 0, life, max: life, spin: 0, grow: 0, float: true, announce: true });
+  }
+
   puff(x: number, z: number, color = '#ffffff', n = 6): void {
     this.burst(x, 0.3, z, [color], n, 2, 0.45, puffGeo);
   }
@@ -94,7 +116,16 @@ export class Effects {
         if (!p.float && p.m.geometry !== chunkGeo && p.m.geometry !== puffGeo && p.m.geometry !== ringGeo && p.m.geometry !== sparkGeo) p.m.geometry.dispose();
         return false;
       }
-      if (p.float) {
+      if (p.announce) {
+        // Pop in with overshoot, keep growing slowly, fade out at the end.
+        const age = p.max - p.life, k = age / p.max;
+        const pop = k < 0.15 ? (k / 0.15) * 1.25 : 1.25 - 0.25 * Math.min(1, (k - 0.15) / 0.1);
+        const sz = 3.2 * (pop + k * 0.9);
+        p.m.scale.set(sz, sz * 0.625, 1);
+        p.m.position.y += p.vy * dt;
+        (p.m.material as THREE.SpriteMaterial).opacity = k < 0.55 ? 1 : Math.max(0, 1 - (k - 0.55) / 0.45);
+        return true;
+      } else if (p.float) {
         p.m.position.y += p.vy * dt; p.vy *= 0.96;
         const age = p.max - p.life, sz = (p.m.userData.size as number) * (1 + 0.5 * Math.max(0, 1 - age * 8));
         p.m.scale.set(4 * sz, sz, 1);

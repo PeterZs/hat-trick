@@ -248,3 +248,38 @@ describe('boomerang path', () => {
     expect(maxDev).toBeGreaterThan(1);
   });
 });
+
+describe('bad power-ups', () => {
+  const grab = (s: GameState, kind: 'slow' | 'reverse') => {
+    const a = s.players[0];
+    s.pickups.push({ id: 999, kind, x: a.x, y: a.y, t: 0 });
+    const ev = run(s, 1, () => ({}));
+    expect(ev).toContain('pickup');
+  };
+
+  it('slowpoke halves running speed', () => {
+    const s = setup('ffa', 1);
+    const a = s.players[0];
+    a.x = -10; a.y = -2.6;
+    grab(s, 'slow');
+    const x0 = a.x;
+    run(s, 60, () => ({ d0: makeInput(1, 0, 0, 0, 0) }));
+    const dist = a.x - x0;
+    expect(dist).toBeLessThan(DEFAULT_PARAMS.moveSpeed * DEFAULT_PARAMS.slowMult * 1.05);
+    expect(dist).toBeGreaterThan(DEFAULT_PARAMS.moveSpeed * DEFAULT_PARAMS.slowMult * 0.8);
+  });
+
+  it('reversed controls flip the movement stick until it wears off', () => {
+    const s = setup('ffa', 1);
+    const a = s.players[0];
+    a.x = 0; a.y = -2.6;
+    grab(s, 'reverse');
+    const x0 = a.x;
+    run(s, 30, () => ({ d0: makeInput(1, 0, 0, 0, 0) }));
+    expect(a.x).toBeLessThan(x0 - 1);
+    run(s, Math.round(DEFAULT_PARAMS.reverseTime * 60), () => ({}));
+    const x1 = a.x;
+    run(s, 30, () => ({ d0: makeInput(1, 0, 0, 0, 0) }));
+    expect(a.x).toBeGreaterThan(x1 + 1);
+  });
+});

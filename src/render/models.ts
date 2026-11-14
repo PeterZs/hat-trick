@@ -227,8 +227,16 @@ export function makeBase(color: string): THREE.Mesh {
   return m;
 }
 
-const PICKUP_COLORS: Record<string, string> = { speed: '#ffd23f', shield: '#2ed3d3', double: '#ff6fb5', phase: '#a77dff' };
-const PICKUP_ICONS: Record<string, string> = { speed: '⚡', shield: '🛡️', double: '🎩', phase: '👻' };
+export const PICKUP_INFO: Record<string, { name: string; icon: string; color: string; bad?: boolean }> = {
+  speed: { name: 'Speed!', icon: '⚡', color: '#ffd23f' },
+  shield: { name: 'Shield!', icon: '🛡️', color: '#2ed3d3' },
+  double: { name: 'Double Hat!', icon: '🎩', color: '#ff6fb5' },
+  phase: { name: 'Phase Dash!', icon: '👻', color: '#a77dff' },
+  slow: { name: 'Slowpoke…', icon: '🐌', color: '#7a8a3a', bad: true },
+  reverse: { name: 'Reversed!', icon: '😵‍💫', color: '#c0392b', bad: true },
+};
+const PICKUP_COLORS: Record<string, string> = Object.fromEntries(Object.entries(PICKUP_INFO).map(([k, v]) => [k, v.color]));
+const PICKUP_ICONS: Record<string, string> = Object.fromEntries(Object.entries(PICKUP_INFO).map(([k, v]) => [k, v.icon]));
 
 function iconTexture(icon: string): THREE.Texture {
   const c = document.createElement('canvas');
@@ -244,7 +252,9 @@ function iconTexture(icon: string): THREE.Texture {
 
 export function makePickup(kind: string): THREE.Group {
   const g = new THREE.Group();
-  const box = mesh(new THREE.OctahedronGeometry(0.45, 0), PICKUP_COLORS[kind] ?? '#fff');
+  // Good power-ups are smooth gems; bad ones are dark, spiky lumps.
+  const bad = PICKUP_INFO[kind]?.bad;
+  const box = mesh(bad ? new THREE.TetrahedronGeometry(0.5, 0) : new THREE.OctahedronGeometry(0.45, 0), PICKUP_COLORS[kind] ?? '#fff');
   box.position.y = 0.7; box.name = 'gem';
   g.add(box);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTexture(PICKUP_ICONS[kind] ?? '?'), depthTest: false }));

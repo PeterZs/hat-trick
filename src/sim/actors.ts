@@ -36,6 +36,8 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   if (p.dashCd > 0) p.dashCd--;
   if (p.slashCd > 0) p.slashCd--;
   if (p.speedT > 0) p.speedT--;
+  if (p.slowT > 0) p.slowT--;
+  if (p.reverseT > 0) p.reverseT--;
   if (p.phaseT > 0) p.phaseT--;
   if (p.stunT > 0) p.stunT--;
 
@@ -49,6 +51,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   }
 
   let mx = inp.mx / 127, my = inp.my / 127;
+  if (p.reverseT > 0) { mx = -mx; my = -my; } // bad power-up: reversed movement stick
   const ml = len(mx, my);
   if (ml > 1) { mx /= ml; my /= ml; }
   const ax = inp.ax / 127, ay = inp.ay / 127;
@@ -118,6 +121,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   // --- Movement
   let speed = P.moveSpeed;
   if (p.speedT > 0) speed *= P.speedBoostMult;
+  if (p.slowT > 0) speed *= P.slowMult;
   if (p.rider >= 0) speed *= P.piggyMountSpeedMult;
   if (p.aiming) speed *= P.aimMoveFactor;
   const control = p.stunT > 0 ? 0 : 1;
