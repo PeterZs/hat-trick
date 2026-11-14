@@ -3,6 +3,8 @@
 
 export type Msg = Record<string, unknown> & { t: string };
 
+import { Reassembler, toWire } from './chunks';
+
 export interface NetLink {
   readonly isHost: boolean;
   /** Host: send to one client. Client: `to` must be 0 (host). */
@@ -46,15 +48,26 @@ export class LoopbackHub {
     this.links[0].onPeerDisconnect(id);
   }
 
+  private rx = new Map<string, Reassembler>();
+
   post(from: number, to: number, msg: Msg): void {
+    for (const part of toWire(msg)) this.postPart(from, to, part);
+  }
+
+  private postPart(from: number, to: number, msg: Msg): void {
     const target = this.links[to];
     if (!target || target.dead || this.links[from]?.dead) return;
-    const copy = JSON.parse(JSON.stringify(msg));
+    const key = from + ':' + to;
+    if (!this.rx.has(key)) this.rx.set(key, new Reassembler());
+    const rx = this.rx.get(key)!;
+    // Like PeerJS's JSON channel: refuse anything too big to send in one piece.
+    if (JSON.stringify(msg).length >= 16300) throw new Error('message too big for one data-channel message');
+    const raw = JSON.parse(JSON.stringify(msg));
     const j = this.jitter ? Math.floor(Math.random() * this.jitter) : 0;
     // Keep per-link ordering (reliable ordered channel).
     const at = Math.max(this.now + this.latency + j, this.lastAt(from, to));
     this.lastAtMap.set(from + ':' + to, at);
-    this.queue.push({ at, deliver: () => { if (!target.dead) target.onMessage(from, copy); } });
+    this.queue.push({ at, deliver: () => { if (target.dead) return; const m = rx.accept(raw); if (m) target.onMessage(from, m); } });
   }
 
   private lastAtMap = new Map<string, number>();

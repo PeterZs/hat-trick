@@ -82,3 +82,27 @@ describe('late join race', () => {
     expect(c.state.frame).toBeGreaterThan(50);
   });
 });
+
+describe('big games', () => {
+  it('a late joiner gets the welcome snapshot of a 15-player match (chunked)', () => {
+    const hub = new LoopbackHub(2, 1);
+    const clock = () => hub.now * 16;
+    const cfg = { mode: 'lumber' as const, level: 'clearing', winScore: 99 };
+    const host = new RollbackSession(hub.host(), createState(cfg, { ...DEFAULT_PARAMS, treeCount: 20 }, 3), { now: clock, hashInterval: 30 });
+    for (let i = 0; i < 4; i++) host.command({ t: 'join', device: 'd' + i, name: 'Spieler 🎩 ' + i, ball: i });
+    for (let i = 0; i < 11; i++) host.command({ t: 'addBot' });
+    host.command({ t: 'start', cfg });
+    for (let i = 0; i < 120; i++) { host.tick({}); hub.pump(); }
+    // Record the biggest message the host sends (the welcome snapshot).
+    let biggest = 0;
+    const post = hub.post.bind(hub);
+    hub.post = (from, to, msg) => { biggest = Math.max(biggest, JSON.stringify(msg).length); post(from, to, msg); };
+    const c = new RollbackSession(hub.connect(), null, { now: clock, hashInterval: 30 });
+    for (let i = 0; i < 200; i++) { host.tick({}); c.tick({}); hub.pump(); }
+    expect(biggest).toBeGreaterThan(16300); // would be rejected by a PeerJS JSON channel unless chunked
+    expect(c.started).toBe(true);
+    expect(c.state.players.filter((p) => p.active).length).toBe(15);
+    expect(c.desyncFrame).toBe(-1);
+    expect(host.desyncFrame).toBe(-1);
+  });
+});

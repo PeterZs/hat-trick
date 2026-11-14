@@ -3,6 +3,7 @@
 
 import Peer, { type DataConnection } from 'peerjs';
 import type { Msg, NetLink } from './link';
+import { Reassembler, toWire } from './chunks';
 
 const PREFIX = 'hat-trick-v1-';
 
@@ -53,7 +54,8 @@ export class PeerHostLink extends BaseLink implements NetLink {
       conn.on('open', () => {
         const id = this.nextPeer++;
         this.conns.set(id, conn);
-        conn.on('data', (d) => this.onMessage(id, d as Msg));
+        const rx = new Reassembler();
+        conn.on('data', (d) => { const m = rx.accept(d as Msg); if (m) this.onMessage(id, m); });
         const gone = () => {
           if (!this.conns.has(id)) return;
           this.conns.delete(id);
@@ -65,9 +67,13 @@ export class PeerHostLink extends BaseLink implements NetLink {
       });
     });
   }
-  send(to: number, msg: Msg): void { this.conns.get(to)?.send(msg); }
+  send(to: number, msg: Msg): void {
+    const c = this.conns.get(to);
+    if (c) for (const part of toWire(msg)) c.send(part);
+  }
   broadcast(msg: Msg, except?: number): void {
-    for (const [id, c] of this.conns) if (id !== except && c.open) c.send(msg);
+    const parts = toWire(msg);
+    for (const [id, c] of this.conns) if (id !== except && c.open) for (const part of parts) c.send(part);
   }
   get clientCount(): number { return this.conns.size; }
   close(): void { for (const c of this.conns.values()) c.close(); this.peer.destroy(); }
@@ -77,11 +83,12 @@ export class PeerClientLink extends BaseLink implements NetLink {
   readonly isHost = false;
   constructor(private peer: Peer, private conn: DataConnection) {
     super();
-    conn.on('data', (d) => this.onMessage(0, d as Msg));
+    const rx = new Reassembler();
+    conn.on('data', (d) => { const m = rx.accept(d as Msg); if (m) this.onMessage(0, m); });
     conn.on('close', () => this.onClose('Host disconnected'));
     conn.on('error', (e) => this.onClose('Connection error: ' + e));
   }
-  send(_to: number, msg: Msg): void { if (this.conn.open) this.conn.send(msg); }
+  send(_to: number, msg: Msg): void { if (this.conn.open) for (const part of toWire(msg)) this.conn.send(part); }
   broadcast(): void {}
   close(): void { this.conn.close(); this.peer.destroy(); }
 }
