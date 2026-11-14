@@ -241,11 +241,16 @@ export class Renderer {
     this.camTarget.copy(target);
     // Fog only for the scenery beyond the arena: start past its farthest corner.
     // (Narrow/portrait screens put the camera much farther back.)
-    let far = 0;
-    for (const c of corners) far = Math.max(far, c.distanceTo(this.camera.position));
+    let far = 0, near = Infinity;
+    for (const c of corners) {
+      const d = c.distanceTo(this.camera.position);
+      far = Math.max(far, d); near = Math.min(near, d);
+    }
     const fog = this.scene.fog as THREE.Fog;
     fog.near = far + 8;
     fog.far = far + 70;
+    // A tight near plane keeps depth precision for thin layers (decals, lids).
+    this.camera.near = Math.max(0.5, near - 15);
     this.camera.far = far + 200;
     this.camera.updateProjectionMatrix();
   }

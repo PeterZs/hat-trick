@@ -303,11 +303,16 @@ export function makeProp(kind: string, seed: number): THREE.Group {
   const g = new THREE.Group();
   switch (kind) {
     case 'crate': {
-      const box = mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0), '#c98b4f');
-      box.position.y = 0.5; g.add(box);
-      // Darker plank frame + diagonal brace on each side.
-      for (const [w, h, d, y] of [[1.04, 0.12, 1.04, 0.06], [1.04, 0.12, 1.04, 0.94]] as const) {
-        const b = mesh(new THREE.BoxGeometry(w, h, d), '#8a5a3b'); b.position.y = y; g.add(b);
+      // Light lid inside a darker rim of planks. The rim sits 0.03 above the lid
+      // so no faces are coplanar (they used to z-fight).
+      const box = mesh(new THREE.BoxGeometry(1.0, 0.97, 1.0), '#c98b4f');
+      box.position.y = 0.485; g.add(box);
+      for (const y of [0.06, 0.94]) {
+        for (const [w, d, x, z] of [[1.04, 0.14, 0, 0.45], [1.04, 0.14, 0, -0.45], [0.14, 0.76, 0.45, 0], [0.14, 0.76, -0.45, 0]] as const) {
+          const b = mesh(new THREE.BoxGeometry(w, 0.12, d), '#8a5a3b');
+          b.position.set(x, y, z);
+          g.add(b);
+        }
       }
       for (let i = 0; i < 4; i++) {
         const brace = mesh(new THREE.BoxGeometry(0.12, 1.2, 0.04), '#8a5a3b');
