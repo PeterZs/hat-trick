@@ -9,6 +9,7 @@ import {
   PICKUP_INFO, PLAYER_COLORS, TEAM_COLORS, makeBall, makeBase, makeCar, makeEyes, makeFlag, makeHat, makePickup, makeProp, makeStump, makeTree, mat, vertexColorMat,
 } from './models';
 import { Effects } from './effects';
+import { ArenaView } from './arena';
 
 const BALL_COLORS = [
   ['#ffffff', '#222222'], ['#f07a2a', '#3a1d0e'], ['#cfe83c', '#ffffff'], ['#f7f4ea', '#d8322e'],
@@ -74,6 +75,8 @@ export class Renderer {
   private camTarget = new THREE.Vector3();
   private labels: HTMLElement;
   private sun: THREE.DirectionalLight;
+  private hemi!: THREE.HemisphereLight;
+  private arena: ArenaView;
   private raycaster = new THREE.Raycaster();
   private aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.5);
   private time = 0;
@@ -93,6 +96,7 @@ export class Renderer {
     this.scene.fog = new THREE.Fog('#8fd3ff', 60, 120);
 
     const hemi = new THREE.HemisphereLight('#ffffff', '#7a9a6a', 1.6);
+    this.hemi = hemi;
     this.scene.add(hemi);
     this.sun = new THREE.DirectionalLight('#fff4e0', 1.9);
     this.sun.position.set(-12, 30, 14);
@@ -102,6 +106,7 @@ export class Renderer {
     this.scene.add(this.sun, this.sun.target);
     this.scene.add(this.levelGroup, this.hitboxes);
     this.effects = new Effects(this.scene);
+    this.arena = new ArenaView(this.scene);
     this.flashEl = document.createElement('div');
     this.flashEl.style.cssText = 'position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:4;mix-blend-mode:screen';
     document.body.appendChild(this.flashEl);
@@ -116,7 +121,7 @@ export class Renderer {
     const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
 
     // Surrounding ground.
-    const outside = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), mat('#79b765'));
+    const outside = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), mat(L.outside ?? '#79b765'));
     outside.rotation.x = -Math.PI / 2; outside.position.y = -0.02; outside.receiveShadow = true;
     this.levelGroup.add(outside);
 
@@ -180,10 +185,11 @@ export class Renderer {
       this.levelGroup.add(r);
     }
 
-    // Decorative trees and rocks around the arena.
+    this.arena.build(L);
+    // Decorative trees and rocks around the arena (not over water/void).
     let seed = 1;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < (L.outside ? 0 : 70); i++) {
       const a = rnd() * Math.PI * 2, d = 4 + rnd() * 18;
       const x = cx + Math.cos(a) * (b.x1 - b.x0 + d * 2) / 2, z = cy + Math.sin(a) * (b.y1 - b.y0 + d * 2) / 2;
       if (x > b.x0 - 1.5 && x < b.x1 + 1.5 && z > b.y0 - 1.5 && z < b.y1 + 1.5) continue;
@@ -401,7 +407,7 @@ export class Renderer {
     this.frozen = s.hitstop > 0;
     if (this.frozen) dt = 0;
     this.time += dt;
-    if (s.cfg.level !== this.levelId) { this.levelId = s.cfg.level; this.buildLevel(getLevel(this.levelId)); }
+    if (s.arena !== this.levelId) { this.levelId = s.arena; this.buildLevel(getLevel(this.levelId)); }
     const P = s.params;
     const r = P.playerRadius;
     const windup = Math.round(P.slashWindup * HZ), active = Math.round(P.slashActive * HZ);
@@ -710,6 +716,15 @@ export class Renderer {
     for (const [id, tv] of this.props) if (!tSeen.has(id)) { this.scene.remove(tv.g); this.props.delete(id); }
     this.animateFelled(dt, s);
 
+    this.arena.update(s, dt, this.time);
+    // Night: dim the sun and sky (player lights come from the arena view).
+    const d = this.arena.darkness;
+    this.hemi.intensity = 1.6 * (1 - 0.88 * d);
+    this.sun.intensity = 1.9 * (1 - 0.95 * d);
+    const sky = new THREE.Color('#8fd3ff').lerp(new THREE.Color('#0b1030'), d);
+    (this.scene.background as THREE.Color).copy(sky);
+    this.scene.fog!.color.copy(sky);
+
     this.syncHitboxes(s);
   }
 
@@ -771,6 +786,18 @@ export class Renderer {
       case 'kill': {
         const p = s.players[e.victim];
         const cols = p ? BALL_COLORS[p.ball % BALL_COLORS.length] : ['#fff'];
+        if (e.cause === 'lava') {
+          this.effects.burst(e.x, 0.4, e.y, ['#ff9f43', '#ffd23f', '#ff4a2a', '#333'], 30, 6, 1.0);
+          this.effects.text(e.x, 2, e.y, 'SIZZLE!', '#ff6a2a', 0.8, 0.9);
+          this.shake = Math.max(this.shake, 0.35);
+          break;
+        }
+        if (e.cause === 'fall') {
+          this.effects.ring(e.x, e.y, '#ffffff', 2.5, 0.5);
+          this.effects.text(e.x, 1.8, e.y, 'BYE!', '#4a8dff', 0.7, 0.9);
+          this.shake = Math.max(this.shake, 0.2);
+          break;
+        }
         this.effects.sphere(e.x, e.y, '#ffffff', 1.6, 0.18);
         this.effects.burst(e.x, 0.6, e.y, cols, 34, 9, 1.1);
         this.effects.sparks(e.x, 0.6, e.y, ['#ffffff', '#ffe680', pc(e.victim)], 18, 16, 0.35);
@@ -824,7 +851,7 @@ export class Renderer {
       case 'spawn': { const p = s.players[e.who]; if (p) this.effects.ring(p.x, p.y, pc(e.who), 2, 0.5); break; }
       case 'dash': { const p = s.players[e.who]; if (p) this.effects.puff(p.x, p.y, '#ffffff', 5); break; }
       case 'goal': {
-        const g = getLevel(s.cfg.level).goals.find((g) => g.team !== e.team);
+        const g = getLevel(s.arena).goals.find((g) => g.team !== e.team);
         if (g) this.effects.burst((g.x0 + g.x1) / 2, 1, 0, ['#ff5a5a', '#4a8dff', '#ffd23f', '#4fd17a', '#ffffff'], 60, 10, 1.4);
         this.shake = 0.4;
         break;
@@ -857,6 +884,21 @@ export class Renderer {
         break;
       case 'catch': { const p = s.players[e.who]; if (p) this.effects.puff(p.x, p.y, '#ffffff', 3); break; }
       case 'piggy': { const p = s.players[e.who]; if (p) this.effects.ring(p.x, p.y, '#ffffff', 1.5); break; }
+      case 'bump': this.arena.onBump(e.i); this.effects.sparks(e.x, 0.5, e.y, ['#fff3b0', '#ffffff'], 8, 9, 0.25); this.shake = Math.max(this.shake, 0.15); break;
+      case 'portal': this.effects.ring(e.x, e.y, '#c77dff', 1.8, 0.3); this.effects.ring(e.x2, e.y2, '#c77dff', 1.8, 0.3); this.effects.burst(e.x2, 0.6, e.y2, ['#ffffff', '#c77dff'], 10, 4, 0.4); break;
+      case 'splash': {
+        const L = getLevel(s.arena);
+        const water = L.outside === '#5aa0d8' || !!L.water;
+        this.effects.burst(e.x, 0.2, e.y, water ? ['#bfe3ff', '#ffffff'] : ['#3a3340', '#5a5160'], 12, 4, 0.5);
+        break;
+      }
+      case 'tile': if (e.what === 'fall') { /* the tile view switches; add a puff of dust */ } break;
+      case 'stroke': this.effects.puff(e.x, e.y, '#ffffff', 4); break;
+      case 'sunk':
+        this.effects.burst(e.x, 1, e.y, [TEAM_COLORS[e.team % 4], '#ffffff', '#ffd23f'], 40, 8, 1.2);
+        this.effects.text(e.x, 2.6, e.y, e.strokes <= 1 ? 'HOLE IN ONE!' : `${e.strokes} strokes`, TEAM_COLORS[e.team % 4], 1, 1.4);
+        this.shake = Math.max(this.shake, 0.3);
+        break;
       case 'chop': {
         const tv = this.props.get(e.prop);
         const p = s.players[e.who];

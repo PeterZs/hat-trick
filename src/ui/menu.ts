@@ -1,7 +1,7 @@
 // Main menu (mode selection, local / host / join).
 
 import { MODES } from '../sim/const';
-import { LEVELS } from '../sim/level';
+import { arenaChoices } from '../sim/level';
 import type { MatchConfig, ModeId } from '../sim/types';
 import { savePrefs, type Prefs } from './prefs';
 import { cleanRoomCode } from '../net/peerLink';
@@ -49,7 +49,7 @@ export class Menu {
           ${MODES.map((m) => `<button class="mode ${m.id === this.mode ? 'sel' : ''}" data-mode="${m.id}"><b>${m.name}</b><small>${m.desc}</small></button>`).join('')}
         </div>
         <div class="row">
-          <label>Arena <select data-level>${Object.values(LEVELS).map((l) => `<option value="${l.id}" ${l.id === this.level ? 'selected' : ''}>${l.name}</option>`).join('')}</select></label>
+          <label>Arena <select data-level><option value="random" ${this.level === 'random' ? 'selected' : ''}>🎲 Random</option>${arenaChoices(this.mode, MODES.find((m) => m.id === this.mode)?.level).map((l) => `<option value="${l.id}" ${l.id === this.level ? 'selected' : ''}>${l.name}</option>`).join('')}</select></label>
           <label>First to <input data-win type="number" min="1" max="50" value="${this.prefs.winScore}" style="width:64px"></label>
         </div>
         <div class="row center">

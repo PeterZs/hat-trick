@@ -175,6 +175,12 @@ const raceway: Level = {
 export const LEVELS: Record<string, Level> = { courtyard, pitch, fortress, clearing, raceway, ...MORE_LEVELS };
 export const LEVEL_IDS = Object.keys(LEVELS);
 
+/** Arena choices for a mode (for menus): compatible levels, the mode's own first. */
+export function arenaChoices(mode: string, preferred?: string): Level[] {
+  const ok = Object.values(LEVELS).filter((l) => levelSupports(l, mode));
+  return ok.sort((a, b) => (a.id === preferred ? -1 : b.id === preferred ? 1 : 0));
+}
+
 /** Can this arena host this mode? */
 export function levelSupports(l: Level, mode: string): boolean {
   if (l.modes && !l.modes.includes(mode)) return false;

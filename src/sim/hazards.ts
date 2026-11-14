@@ -90,17 +90,19 @@ function updateTiles(s: GameState): void {
   s.tileT++;
   const P = s.params;
   if (g.spec.collapse) {
-    // The edge creeps in: tiles beyond radius R(t) start to go.
+    // The edge creeps in. Distance is normalized so the outermost ring is 1
+    // (round floors by radius, rectangular ones by the larger axis ratio);
+    // tiles beyond the shrinking fraction start to go, beginning right away.
     const L = level(s);
-    const rMax = g.spec.circle ?? Math.max(L.w, L.h), rMin = g.cell * 1.5;
+    const ex = L.w - g.cell / 2, ey = L.h - g.cell / 2;
+    const fMin = (g.cell * 1.5) / (g.spec.circle ?? Math.max(ex, ey));
     const k = Math.min(1, s.tileT / Math.max(1, sec(s, 'collapseTime')));
-    const r = rMax - (rMax - rMin) * k;
+    const frac = 1 - (1 - fMin) * k;
     for (let i = 0; i < s.tiles.length; i++) {
       if (s.tiles[i] !== TILE_SOLID) continue;
       const [cx, cy] = tileCenter(g, i);
-      // Rectangular floors shrink as rectangles, round ones as circles.
-      const d = g.spec.circle ? len(cx, cy) : Math.max(Math.abs(cx) * rMax / L.w, Math.abs(cy) * rMax / L.h);
-      if (d > r) warnTile(s, i);
+      const d = g.spec.circle ? len(cx, cy) / g.spec.circle : Math.max(Math.abs(cx) / ex, Math.abs(cy) / ey);
+      if (d > frac - 0.02) warnTile(s, i);
     }
   }
   if (s.cfg.mode === 'lava') {

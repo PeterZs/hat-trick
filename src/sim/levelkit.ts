@@ -27,6 +27,8 @@ export interface Level {
   // --- Optional hazards and features ---------------------------------------
   /** Holes you fall into (static). */
   pits?: Rect[];
+  /** Pits are water (drawn blue). */
+  water?: boolean;
   /** No border: anything outside [-w,w]x[-h,h] is a fall. */
   open?: boolean;
   /** Slippery floor. */

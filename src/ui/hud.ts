@@ -1,7 +1,7 @@
 // In-game HUD: scores, banners, lobby roster/controls, pause menu.
 
 import { BALLS, HATS, HZ, MODES, isSoloMode, isTeamMode } from '../sim/const';
-import { LEVELS } from '../sim/level';
+import { arenaChoices, LEVELS } from '../sim/level';
 import type { Command, GameState, MatchConfig, ModeId, Player } from '../sim/types';
 import { PLAYER_COLORS, TEAM_COLORS, TEAM_NAMES } from '../render/models';
 import { escapeHtml } from './settings';
@@ -121,6 +121,10 @@ export class Hud {
     let html = '';
     if (s.phase === 'lobby') {
       html = `<div class="chip">${MODES.find((m) => m.id === mode)?.name} · Lobby</div>`;
+    } else if (mode === 'golf' && s.golf) {
+      const g = s.golf;
+      html = `<div class="chip">⛳ Hole ${g.hole + 1}</div>` + g.balls.map((b) =>
+        `<div class="chip ${b.sunk ? '' : ''}"><span class="dot" style="background:${TEAM_COLORS[b.team]}"></span>${TEAM_NAMES[b.team]} ${s.scores[b.team]} · ${b.strokes} stroke${b.strokes === 1 ? '' : 's'}${b.sunk ? ' ✅' : ''}</div>`).join('');
     } else if (isSoloMode(mode)) {
       const icon = mode === 'lumber' ? ' 🌲' : '';
       html = s.players.filter((p) => p.active).map((p) =>
@@ -134,6 +138,7 @@ export class Hud {
       html = teams.map((t) => `<div class="chip"><span class="dot" style="background:${TEAM_COLORS[t]}"></span>${TEAM_NAMES[t]} ${s.scores[t]}</div>`).join('');
     }
     if (s.phase !== 'lobby' && mode !== 'lumber') html += `<div class="chip" style="opacity:.7">to ${s.cfg.winScore}</div>`;
+    if (s.cfg.level === 'random') html += `<div class="chip" style="opacity:.7">🎲 ${LEVELS[s.arena]?.name ?? ''}</div>`;
     if (html !== this.scoreKey) { this.scoreKey = html; this.scores.innerHTML = html; }
   }
 
@@ -149,7 +154,7 @@ export class Hud {
       }
       case 'playing': if (t < 0.7) text = 'GO!'; break;
       case 'roundOver':
-        text = s.cfg.mode === 'soccer' ? `GOAL!<small>${winnerName(s, s.lastWinner)}</small>` : s.lastWinner < 0 ? 'Draw!' : `${escapeHtml(winnerName(s, s.lastWinner))}<small>wins the round</small>`;
+        text = s.cfg.mode === 'soccer' ? `GOAL!<small>${winnerName(s, s.lastWinner)}</small>` : s.lastWinner < 0 ? (s.cfg.mode === 'golf' ? 'Tied hole!' : 'Draw!') : `${escapeHtml(winnerName(s, s.lastWinner))}<small>wins the ${s.cfg.mode === 'golf' ? 'hole' : 'round'}</small>`;
         break;
       case 'matchOver':
         text = `${s.lastWinner < 0 ? "🤝 It's a tie!" : `🏆 ${escapeHtml(winnerName(s, s.lastWinner))} wins!`}<small>back to lobby in ${Math.max(0, Math.ceil(8 - t))}</small>`;
@@ -165,7 +170,7 @@ export class Hud {
     this.lobby.style.display = show ? '' : 'none';
     if (!show) { this.lobbyKey = ''; return; }
     const roster = s.players.filter((p) => p.active);
-    const key = JSON.stringify([s.cfg, roster.map((p) => [p.id, p.name, p.ball, p.team, p.role, p.peer, p.device, p.skill]), c.isHost, c.roomCode, c.peer, this.lobbyCollapsed]);
+    const key = JSON.stringify([s.cfg, s.arena, roster.map((p) => [p.id, p.name, p.ball, p.team, p.role, p.peer, p.device, p.skill]), c.isHost, c.roomCode, c.peer, this.lobbyCollapsed]);
     if (key === this.lobbyKey) return;
     // Don't rebuild under someone who is typing a name; refresh after they finish.
     if (this.lobby.contains(document.activeElement) && (document.activeElement as HTMLElement).tagName === 'INPUT' && (document.activeElement as HTMLInputElement).type === 'text') return;
@@ -190,7 +195,7 @@ export class Hud {
         </h3>
         <div class="row" style="margin-top:4px">
             <select data-l="mode">${MODES.map((m) => `<option value="${m.id}" ${m.id === mode ? 'selected' : ''}>${m.name}</option>`).join('')}</select>
-            <select data-l="level">${Object.values(LEVELS).map((l) => `<option value="${l.id}" ${l.id === s.cfg.level ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
+            <select data-l="level"><option value="random" ${s.cfg.level === 'random' ? 'selected' : ''}>🎲 Random</option>${arenaChoices(mode, MODES.find((m) => m.id === mode)?.level).map((l) => `<option value="${l.id}" ${l.id === s.cfg.level ? 'selected' : ''}>${l.name}</option>`).join('')}</select>${s.cfg.level === 'random' ? `<span class="hint">now: ${LEVELS[s.arena]?.name ?? s.arena}</span>` : ''}
             ${mode === 'lumber' ? '' : `<label class="hint">to <input data-l="win" type="number" min="1" max="50" value="${s.cfg.winScore}" style="width:56px"></label>`}
             ${mode === 'cars' ? `<label class="hint">🚗 cars <input data-l="cars" type="number" min="1" max="8" value="${s.cfg.cars ?? 2}" style="width:52px"></label>` : ''}
           <span class="grow"></span>

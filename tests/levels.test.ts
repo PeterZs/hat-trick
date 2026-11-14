@@ -37,3 +37,44 @@ describe('level layouts', () => {
     }
   });
 });
+
+describe('random arena', () => {
+  it('picks a compatible arena each round, avoiding repeats', () => {
+    for (const mode of ['ffa', 'soccer', 'golf', 'ctf'] as const) {
+      const cfg = { mode, level: 'random', winScore: 99 };
+      const s = createState(cfg, { ...TEST_PARAMS, countdownTime: 0, roundEndDelay: 0.1 }, 3);
+      step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'addBot' }, { t: 'addBot' }, { t: 'start', cfg }] }]);
+      const seen = new Set<string>();
+      let last = s.arena;
+      for (let r = 0; r < 6; r++) {
+        // End the round by force and let the next one start.
+        s.phase = 'roundOver'; s.phaseT = 0; s.scores.fill(0);
+        for (let f = 0; f < 20; f++) step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+        const L = LEVELS[s.arena];
+        expect(L, s.arena).toBeTruthy();
+        if (mode === 'soccer') expect(L.goals.length).toBeGreaterThan(0);
+        if (mode === 'golf') expect(L.holes?.length ?? 0).toBeGreaterThan(0);
+        if (mode === 'ctf') expect(L.open).toBeFalsy();
+        if (mode === 'ffa') expect(s.arena).not.toBe(last);
+        last = s.arena; seen.add(s.arena);
+      }
+      if (mode === 'ffa') expect(seen.size).toBeGreaterThan(3);
+    }
+  });
+});
+
+describe('collapsing floors', () => {
+  it('Lava Rising starts eating the edge right away and shrinks toward the middle', async () => {
+    const cfg = { mode: 'ffa' as const, level: 'lavarising', winScore: 99 };
+    const s = createState(cfg, { ...TEST_PARAMS, countdownTime: 0 }, 1);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'join', device: 'a', name: 'A', ball: 0 }, { t: 'start', cfg }] }]);
+    s.players[0].invulnT = 1e9;
+    const gone = () => s.tiles.filter((t) => t === -1).length;
+    for (let f = 0; f < 60 * 3; f++) step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+    const early = gone();
+    expect(early).toBeGreaterThan(10);
+    for (let f = 0; f < 60 * 30; f++) step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+    expect(gone()).toBeGreaterThan(early * 2);
+    expect(s.tiles.some((t) => t === 0)).toBe(true); // the middle survives
+  });
+});

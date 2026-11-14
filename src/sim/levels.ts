@@ -282,7 +282,7 @@ const platform: Level = {
 
 // Golf course with ponds.
 const links: Level = {
-  id: 'links', name: 'Links', w: 18, h: 11, floor: ['#8fd16f', '#86c866'], short: 'golf',
+  id: 'links', name: 'Links', w: 18, h: 11, floor: ['#8fd16f', '#86c866'], short: 'golf', water: true,
   walls: [...border(18, 11), W(-6, -4, 0.4, 2.2), W(6, 4, 0.4, 2.2), W(-12, 6, 0.6, 0.6, 'box'), W(12, -6, 0.6, 0.6, 'box')],
   pits: [R(-3, -2, 3, 2), R(6, -10, 10, -6.5), R(-10, 2.5, -7, 6)],
   holes: [
