@@ -12,8 +12,9 @@ function randomInput(seed: number) {
 }
 
 describe('rollback netcode', () => {
-  it('peers stay in sync with latency, late join and disconnect', () => {
-    const hub = new LoopbackHub(4, 3);
+  for (const [latency, jitter, reverse] of [[4, 3, false], [1, 0, true], [0, 2, true]] as const)
+  it(`peers stay in sync (latency ${latency}, jitter ${jitter}, ${reverse ? 'clients tick first' : 'host ticks first'})`, () => {
+    const hub = new LoopbackHub(latency, jitter);
     const clock = () => hub.now * (1000 / 60);
     const s0 = createState({ mode: 'ffa', level: 'courtyard', winScore: 99 }, DEFAULT_PARAMS, 42);
     const host = new RollbackSession(hub.host(), s0, { now: clock, hashInterval: 30 });
@@ -25,7 +26,7 @@ describe('rollback netcode', () => {
     let t = 0;
     const tickAll = () => {
       t++;
-      for (const s of sessions) {
+      for (const s of reverse ? [...sessions].reverse() : sessions) {
         // Change inputs only every few ticks (like real players) so prediction is sometimes right.
         const base = Math.floor(t / 7) + (seedOf.get(s) ?? 0) * 1000;
         s.tick(s.started ? { pad: randomInput(base) } : {});

@@ -71,6 +71,7 @@ function startSession(s: Session): void {
   demo?.dispose(); demo = null;
   session?.dispose();
   session = s;
+  (window as unknown as { session: Session }).session = s; // for debugging in the console
   pendingJoin.clear();
   menu.show(false);
   hud.show(true);

@@ -344,11 +344,13 @@ export class RollbackSession implements Session {
     if (!snap) { console.warn('no snapshot for welcome'); return; }
     const join = this.nextSend;
     this.pendingJoins.push(p);
+    // Register now: the new peer may answer before our next tick, and its
+    // messages must not be dropped. Frame `join` hasn't been simulated yet.
+    this.members.set(p, { start: join, end: INF });
     const log: FrameMsg[] = [];
     const frames = [...this.known.keys()].filter((f) => f >= base).sort((a, b) => a - b);
     for (const f of frames) for (const m of this.known.get(f)!.values()) log.push(m);
     const members: [number, number, number][] = [...this.members.entries()].map(([q, m]) => [q, m.start, m.end === INF ? -1 : m.end]);
-    members.push([p, join, -1]);
     this.link.send(p, { t: 'w', you: p, join, base, state: snap, log, members, delay: this.inputDelay } as unknown as Msg);
   }
 
