@@ -264,3 +264,4 @@ if (joinCode) void joinOnline(joinCode.toUpperCase());
 
 // Dev hook for automated audio checks.
 (window as unknown as Record<string, unknown>).sfxDebug = () => import('./audio/sfx');
+(window as unknown as Record<string, unknown>).renderer = renderer;

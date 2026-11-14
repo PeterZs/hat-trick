@@ -32,6 +32,9 @@ interface PlayerView {
   lastX: number; lastY: number;
   speedFx: THREE.Mesh;
   windup: THREE.Mesh;
+  slashAnim: number;   // seconds into the hat-swing animation, -1 = idle
+  slashSide: number;   // alternates the swing direction
+  kickAnim: number;    // seconds into the kick lunge, -1 = idle
 }
 
 export interface ViewOptions { showHitboxes: boolean }
@@ -317,7 +320,52 @@ export class Renderer {
     label.className = 'plabel';
     this.labels.appendChild(label);
     this.scene.add(root);
-    return { root, ballKind: p.ball, ball, ballMat, head, hatStack, hatCount: -1, ring, shield, aim, arc: arcG as unknown as THREE.Mesh, kickArc: kickG as unknown as THREE.Mesh, cursor, label, lastX: p.x, lastY: p.y, speedFx, windup };
+    return { root, ballKind: p.ball, ball, ballMat, head, hatStack, hatCount: -1, ring, shield, aim, arc: arcG as unknown as THREE.Mesh, kickArc: kickG as unknown as THREE.Mesh, cursor, label, lastX: p.x, lastY: p.y, speedFx, windup, slashAnim: -1, slashSide: 1, kickAnim: -1 };
+  }
+
+  /** Hat swing: out from the head to attack range, sweep across the arc
+   *  while spinning, then back onto the head. Timed to the sim's windup and
+   *  active frames so the hat crosses the target when the hit lands. */
+  private animateSwing(v: PlayerView, P: Record<string, number>, r: number, windup: number, active: number, dt: number): void {
+    const headY = r * 1.75;
+    if (v.slashAnim < 0) {
+      v.hatStack.position.set(0, headY, 0);
+      v.hatStack.rotation.set(0, 0, 0);
+      return;
+    }
+    v.slashAnim += dt;
+    const strike = Math.max(windup + active, 1) / HZ;   // swing across during windup+active
+    const total = strike + 0.09;                          // ...then fly home
+    const k = v.slashAnim / total;
+    if (k >= 1) { v.slashAnim = -1; this.animateSwing(v, P, r, windup, active, 0); return; }
+    const half = Math.min(Math.PI, (P.slashArcDeg * Math.PI) / 360);
+    const sweep = Math.min(1, v.slashAnim / strike);
+    const ease = sweep * sweep * (3 - 2 * sweep);
+    const theta = v.slashSide * (-half + 2 * half * ease);
+    // Reach: out quickly, hold during the sweep, back to the head at the end.
+    const out = v.slashAnim < strike ? Math.min(1, v.slashAnim / (strike * 0.35)) : 1 - (v.slashAnim - strike) / (total - strike);
+    const reach = Math.max(0, out) * Math.min(P.slashRange * 0.85, P.slashRange - 0.2);
+    const y = headY + (0.75 - headY) * Math.max(0, out);
+    v.hatStack.position.set(Math.cos(theta) * reach, y, Math.sin(theta) * reach);
+    // Spin flat like a thrown disc, tilted into the swing.
+    v.hatStack.rotation.set(0, -v.slashSide * v.slashAnim * 38, 0.25 * v.slashSide * Math.max(0, out));
+  }
+
+  /** Kick: the ball lunges forward with a hop and squash, then springs back. */
+  private animateKick(v: PlayerView, fx: number, fy: number, r: number, dt: number): void {
+    if (v.kickAnim < 0) { v.ball.position.set(0, r, 0); v.head.position.set(0, 0, 0); return; }
+    v.kickAnim += dt;
+    const dur = 0.3, k = v.kickAnim / dur;
+    if (k >= 1) { v.kickAnim = -1; this.animateKick(v, fx, fy, r, 0); v.ball.scale.set(1, 1, 1); return; }
+    // Fast lunge out (first 30%), slower spring back.
+    const lunge = k < 0.3 ? 1 - Math.pow(1 - k / 0.3, 3) : 1 - Math.pow((k - 0.3) / 0.7, 2) * (3 - 2 * ((k - 0.3) / 0.7));
+    const fwd = lunge * 0.75;
+    const hop = Math.sin(Math.min(1, k / 0.55) * Math.PI) * 0.28;
+    v.ball.position.set(fx * fwd, r + hop, fy * fwd);
+    v.head.position.set(fx * fwd, hop, fy * fwd);
+    // Stretch along the lunge, squash on the way back.
+    const st = k < 0.3 ? 1 + 0.18 * lunge : 1 - 0.12 * Math.sin(((k - 0.3) / 0.7) * Math.PI);
+    v.ball.scale.set(st, 2 - st, st);
   }
 
   private disposePlayerView(v: PlayerView): void {
@@ -405,10 +453,10 @@ export class Renderer {
         }
         v.hatCount = held;
       }
-      // Slash: spin the hat; show arc.
+      // Slash: the hat leaves the head and slices across the attack arc.
       const slashing = p.slashT >= 0;
-      const prog = slashing ? p.slashT / Math.max(1, windup + active) : 0;
-      v.hatStack.rotation.y = slashing && p.slashKind === 0 ? prog * Math.PI * 2 * 1.5 : 0;
+      this.animateSwing(v, P, r, windup, active, dt);
+      this.animateKick(v, p.fx, p.fy, r, dt);
       v.arc.visible = slashing && p.slashKind === 0 && p.slashT >= windup;
       v.kickArc.visible = slashing && p.slashKind === 1 && p.slashT >= windup;
       if (v.arc.visible) {
@@ -426,9 +474,9 @@ export class Renderer {
         const child = v.kickArc.children[0] as THREE.Mesh;
         child.scale.setScalar(P.kickRange);
       }
-      // Squash when kicking / stretched when dashing.
+      // Squash when dashing (the kick lunge sets its own squash).
       const dashing = p.dashT > 0;
-      v.ball.scale.set(1, dashing ? 0.85 : 1, 1);
+      if (v.kickAnim < 0) v.ball.scale.set(1, dashing ? 0.85 : 1, 1);
 
       // Aim indicator.
       const holdF = Math.max(1, Math.round(P.aimHoldTime * HZ));
@@ -707,6 +755,14 @@ export class Renderer {
         break;
       }
       case 'car': if (e.what === 'crash') { this.effects.burst(e.x, 0.6, e.y, ['#e8463c', '#222', '#bfe3ff'], 24, 8, 1); this.shake = 0.4; } break;
+      case 'slash': {
+        const v = this.players.get(e.who);
+        if (v) {
+          if (e.kind === 0) { v.slashAnim = 0; v.slashSide = -v.slashSide; }
+          else v.kickAnim = 0;
+        }
+        break;
+      }
       case 'kick': { const p = s.players[e.target]; if (p) this.effects.burst(p.x, 0.6, p.y, ['#ffe680'], 8, 5, 0.3); break; }
       case 'catch': { const p = s.players[e.who]; if (p) this.effects.puff(p.x, p.y, '#ffffff', 3); break; }
       case 'piggy': { const p = s.players[e.who]; if (p) this.effects.ring(p.x, p.y, '#ffffff', 1.5); break; }
