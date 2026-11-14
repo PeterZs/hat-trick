@@ -37,6 +37,7 @@ interface PlayerView {
   slashSide: number;   // alternates the swing direction
   kickAnim: number;    // seconds into the kick lunge, -1 = idle
   squash: number;      // impact squash on the victim of a kick (1 -> 0)
+  dustT: number;       // invisible dust-puff timer
 }
 
 export interface ViewOptions { showHitboxes: boolean }
@@ -77,6 +78,8 @@ export class Renderer {
   opts: ViewOptions = { showHitboxes: false };
   /** Peer id of this browser (own players stay faintly visible when invisible). */
   localPeer = 0;
+  /** Online: show own invisible players as a faint ghost. */
+  ghostOwn = false;
 
   constructor(private canvas: HTMLCanvasElement, labelLayer: HTMLElement) {
     this.labels = labelLayer;
@@ -324,7 +327,7 @@ export class Renderer {
     label.className = 'plabel';
     this.labels.appendChild(label);
     this.scene.add(root);
-    return { root, ballKind: p.ball, ball, ballMat, head, hatStack, hatCount: -1, ring, shield, aim, arc: arcG as unknown as THREE.Mesh, kickArc: kickG as unknown as THREE.Mesh, cursor, label, lastX: p.x, lastY: p.y, speedFx, windup, slashAnim: -1, slashSide: 1, kickAnim: -1, squash: 0 };
+    return { root, ballKind: p.ball, ball, ballMat, head, hatStack, hatCount: -1, ring, shield, aim, arc: arcG as unknown as THREE.Mesh, kickArc: kickG as unknown as THREE.Mesh, cursor, label, lastX: p.x, lastY: p.y, speedFx, windup, slashAnim: -1, slashSide: 1, kickAnim: -1, squash: 0, dustT: 0 };
   }
 
   /** Hat swing: out from the head to attack range, sweep across the arc
@@ -520,10 +523,16 @@ export class Renderer {
       v.speedFx.visible = p.speedT > 0;
       if (p.speedT > 0) v.speedFx.rotation.z = this.time * 12;
       const phasing = p.phaseT > 0;
-      // Invisible: hidden from everyone; your own players stay faintly visible.
+      // Invisible: hidden from everyone. Online, your own players stay a faint
+      // ghost (nobody else sees your screen); on a shared screen they vanish too.
       const invis = isInvisible(p);
-      const own = p.peer === this.localPeer && !p.isBot;
+      const own = this.ghostOwn && p.peer === this.localPeer && !p.isBot;
       const ghost = invis ? (own ? 0.22 : 0) : 1;
+      if (invis) {
+        // A faint dust tell when moving.
+        v.dustT -= dt;
+        if (v.dustT <= 0 && Math.hypot(p.vx, p.vy) > 2) { v.dustT = 0.35; this.effects.puff(p.x, p.y, '#e8e4da', 2); }
+      }
       v.ballMat.transparent = phasing || ghost < 1;
       v.ballMat.opacity = Math.min(ghost, phasing ? 0.55 + 0.2 * Math.sin(this.time * 10) : 1);
       v.root.visible = ghost > 0;
@@ -531,6 +540,7 @@ export class Renderer {
       v.shield.visible = v.shield.visible && !invis;
       v.speedFx.visible = v.speedFx.visible && !invis;
       if (invis && !own) v.label.style.display = 'none';
+      if (invis && !own) { v.lastX = p.x; v.lastY = p.y; continue; }
       for (const h of v.hatStack.children) h.visible = ghost > 0;
       // Spawn protection blink.
       v.ball.visible = !(p.invulnT > 0 && Math.floor(this.time * 12) % 2 === 0);
