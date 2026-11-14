@@ -76,6 +76,9 @@ interact button: slash does it all (riding, cars).
 Players can join (any device's join button) or leave at any time, including
 mid-match and online. A new player spawns immediately.
 
+Set your name on the main menu (or in settings). In the lobby, your players'
+names are editable right on their cards; press Enter to apply.
+
 ---
 
 ## Game modes

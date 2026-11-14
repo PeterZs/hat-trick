@@ -197,6 +197,7 @@ export type Command =
   | { t: 'setRole'; device: string; role: Role }
   | { t: 'addBot'; team?: number; skill?: number }
   | { t: 'setSkill'; device: string; skill: number }
+  | { t: 'setName'; device: string; name: string }
   | { t: 'removeBot' }
   | { t: 'start'; cfg: MatchConfig }
   | { t: 'lobby'; cfg?: MatchConfig }

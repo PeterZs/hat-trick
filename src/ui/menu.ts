@@ -3,7 +3,7 @@
 import { MODES } from '../sim/const';
 import { LEVELS } from '../sim/level';
 import type { MatchConfig, ModeId } from '../sim/types';
-import type { Prefs } from './prefs';
+import { savePrefs, type Prefs } from './prefs';
 import { escapeHtml } from './settings';
 
 export interface MenuActions {
@@ -51,6 +51,9 @@ export class Menu {
           <label>First to <input data-win type="number" min="1" max="50" value="${this.prefs.winScore}" style="width:64px"></label>
         </div>
         <div class="row center">
+          <label>Your name <input data-menu-name type="text" maxlength="16" value="${escapeHtml(this.prefs.name)}" style="width:150px"></label>
+        </div>
+        <div class="row center">
           <button class="primary" data-act="local" style="font-size:20px;padding:14px 26px">▶ Play</button>
           <button class="blue" data-act="host">🌐 Host online</button>
         </div>
@@ -86,6 +89,12 @@ export class Menu {
     this.el.querySelector<HTMLInputElement>('[data-win]')!.addEventListener('change', (e) => {
       this.prefs.winScore = Math.max(1, Math.min(50, parseInt((e.target as HTMLInputElement).value) || 5));
     });
+    const nameInput = this.el.querySelector<HTMLInputElement>('[data-menu-name]')!;
+    nameInput.addEventListener('input', () => {
+      const n = nameInput.value.trim().slice(0, 16);
+      if (n) { this.prefs.name = n; savePrefs(this.prefs); }
+    });
+    nameInput.addEventListener('keydown', (e) => e.stopPropagation());
     this.el.querySelector('[data-act=local]')!.addEventListener('click', () => this.actions.playLocal(this.cfg()));
     this.el.querySelector('[data-act=host]')!.addEventListener('click', () => this.actions.host(this.cfg()));
     this.el.querySelector('[data-act=settings]')!.addEventListener('click', () => this.actions.openSettings());

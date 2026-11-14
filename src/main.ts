@@ -39,7 +39,19 @@ const pendingJoin = new Map<string, number>(); // device -> time requested
 
 const settings = new SettingsPanel(uiRoot, prefs);
 settings.onParams = (p) => { if (session?.isHost) session.command({ t: 'params', params: p }); };
-settings.onPrefs = (p) => { setVolume(p.volume); renderer.opts.showHitboxes = p.showHitboxes; };
+settings.onPrefs = (p) => {
+  setVolume(p.volume);
+  renderer.opts.showHitboxes = p.showHitboxes;
+  renameFirstLocalPlayer(p.name);
+};
+
+/** The name setting also renames your first local player in the current game. */
+function renameFirstLocalPlayer(name: string): void {
+  const n = name.trim().slice(0, 16);
+  if (!session?.state || !n) return;
+  const p = session.state.players.find((q) => q.active && !q.isBot && q.peer === session!.peer);
+  if (p && p.name !== n) session.command({ t: 'setName', device: p.device, name: n });
+}
 
 const hud = new Hud(hudRoot, () => ({
   peer: session?.peer ?? 0,
@@ -48,6 +60,7 @@ const hud = new Hud(hudRoot, () => ({
   roomCode,
   status: session?.status() ?? '',
   command: (c: Command) => session?.command(c),
+  rememberName: (name: string) => { prefs.name = name; savePrefs(prefs); },
   openSettings: () => settings.toggle(),
   quit: () => quitToMenu(),
 }));

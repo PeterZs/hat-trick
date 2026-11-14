@@ -136,6 +136,12 @@ function applyCommand(s: GameState, peer: number, c: Command): void {
       if (bot && c.skill !== undefined) bot.skill = Math.max(0, Math.min(2, c.skill | 0));
       return;
     }
+    case 'setName': {
+      const p = findEditable(s, peer, c.device);
+      const name = String(c.name).trim().slice(0, 16);
+      if (p && name) p.name = name;
+      return;
+    }
     case 'setSkill': {
       const p = findEditable(s, peer, c.device);
       if (p && p.isBot) p.skill = Math.max(0, Math.min(2, c.skill | 0));

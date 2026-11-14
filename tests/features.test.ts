@@ -579,3 +579,14 @@ describe('overlord bomb hats', () => {
     expect(r.alive).toBe(false);
   });
 });
+
+describe('names', () => {
+  it('setName renames your own player (trimmed, max 16 chars)', () => {
+    const s = createState({ mode: 'ffa', level: 'courtyard', winScore: 5 }, DEFAULT_PARAMS, 1);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'join', device: 'kbm', name: 'Player', ball: 0 }] }]);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'setName', device: 'kbm', name: '  Yotam the Magnificent  ' }] }]);
+    expect(s.players[0].name).toBe('Yotam the Magnif');
+    step(s, [{ peer: 1, inputs: {}, cmds: [{ t: 'setName', device: 'kbm', name: 'Hacker' }] }]); // another peer can't
+    expect(s.players[0].name).toBe('Yotam the Magnif');
+  });
+});

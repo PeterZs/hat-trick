@@ -14,6 +14,8 @@ export interface HudContext {
   roomCode: string;
   status: string;
   command(c: Command): void;
+  /** Remember a typed name as the default for new local players. */
+  rememberName(name: string): void;
   openSettings(): void;
   quit(): void;
 }
@@ -158,6 +160,8 @@ export class Hud {
     const roster = s.players.filter((p) => p.active);
     const key = JSON.stringify([s.cfg, roster.map((p) => [p.id, p.name, p.ball, p.team, p.role, p.peer, p.device, p.skill]), c.isHost, c.roomCode, c.peer, this.lobbyCollapsed]);
     if (key === this.lobbyKey) return;
+    // Don't rebuild under someone who is typing a name; refresh after they finish.
+    if (this.lobby.contains(document.activeElement) && (document.activeElement as HTMLElement).tagName === 'INPUT' && (document.activeElement as HTMLInputElement).type === 'text') return;
     this.lobbyKey = key;
     const mode = s.cfg.mode;
     const teamMode = isTeamMode(mode) && mode !== 'hazard';
@@ -193,7 +197,8 @@ export class Hud {
           ${roster.map((p) => `
             <div class="pcard" style="border-color:${color(s, p)}">
               <span class="dot" style="width:12px;height:12px;border-radius:50%;background:${color(s, p)}"></span>
-              <span class="nm">${escapeHtml(p.name)}${p.isBot ? ' 🤖' : ''}${p.peer !== c.peer && !p.isBot ? ' 🌐' : ''}</span>
+              ${mine(p) ? `<input class="nm-input" data-name="${p.id}" type="text" maxlength="16" value="${escapeHtml(p.name)}" title="Your name" size="8">`
+                : `<span class="nm">${escapeHtml(p.name)}${p.isBot ? ' 🤖' : ''}${p.peer !== c.peer && !p.isBot ? ' 🌐' : ''}</span>`}
               ${canEdit(p) ? `<select data-ball="${p.id}">${BALLS.map((b, i) => `<option value="${i}" ${i === p.ball ? 'selected' : ''}>${b} · ${HATS[i]}</option>`).join('')}</select>`
                 : `<span class="hint">${BALLS[p.ball]}</span>`}
               ${teamMode ? (canEdit(p) ? `<select data-team="${p.id}">${TEAM_NAMES.slice(0, nTeams).map((t, i) => `<option value="${i}" ${i === p.team % nTeams ? 'selected' : ''}>${t}</option>`).join('')}</select>` : `<span class="hint">${TEAM_NAMES[p.team % nTeams]}</span>`) : ''}
@@ -239,6 +244,17 @@ export class Hud {
     for (const el of this.lobby.querySelectorAll<HTMLSelectElement>('[data-team]')) el.addEventListener('change', () => {
       const p = byId(el.dataset.team!); c.command({ t: 'setTeam', device: p.device, team: parseInt(el.value) });
     });
+    for (const el of this.lobby.querySelectorAll<HTMLInputElement>('[data-name]')) {
+      const commit = () => {
+        const p = byId(el.dataset.name!);
+        const name = el.value.trim().slice(0, 16);
+        if (p && name && name !== p.name) { c.command({ t: 'setName', device: p.device, name }); c.rememberName(name); }
+        this.lobbyKey = '';
+      };
+      el.addEventListener('change', commit);
+      el.addEventListener('blur', () => { this.lobbyKey = ''; });
+      el.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') el.blur(); });
+    }
     for (const el of this.lobby.querySelectorAll<HTMLSelectElement>('[data-skill]')) el.addEventListener('change', () => {
       const p = byId(el.dataset.skill!); c.command({ t: 'setSkill', device: p.device, skill: parseInt(el.value) });
     });
