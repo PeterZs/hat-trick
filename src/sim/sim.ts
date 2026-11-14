@@ -59,6 +59,11 @@ export function findPlayer(s: GameState, peer: number, device: string): Player |
   return s.players.find((p) => p.active && p.peer === peer && p.device === device);
 }
 
+/** Like findPlayer, but bots (unique device keys) can be edited by anyone. */
+function findEditable(s: GameState, peer: number, device: string): Player | undefined {
+  return findPlayer(s, peer, device) ?? s.players.find((p) => p.active && p.isBot && p.device === device);
+}
+
 function teamCounts(s: GameState): number[] {
   const c = [0, 0];
   for (const p of s.players) if (p.active && p.role === 'fighter') c[p.team % 2]++;
@@ -99,22 +104,22 @@ function applyCommand(s: GameState, peer: number, c: Command): void {
       return;
     }
     case 'leave': {
-      const p = findPlayer(s, peer, c.device);
+      const p = findEditable(s, peer, c.device);
       if (p) removePlayer(s, p);
       return;
     }
     case 'setBall': {
-      const p = findPlayer(s, peer, c.device);
+      const p = findEditable(s, peer, c.device);
       if (p) p.ball = c.ball | 0;
       return;
     }
     case 'setTeam': {
-      const p = findPlayer(s, peer, c.device);
+      const p = findEditable(s, peer, c.device);
       if (p) p.team = Math.max(0, c.team | 0) % 4;
       return;
     }
     case 'setRole': {
-      const p = findPlayer(s, peer, c.device);
+      const p = findEditable(s, peer, c.device);
       if (!p || s.phase !== 'lobby') return;
       p.role = c.role;
       if (p.role === 'overlord') { if (p.alive) { detach(s, p); p.alive = false; s.hats = s.hats.filter((h) => h.owner !== p.id); } }
