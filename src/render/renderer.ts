@@ -52,6 +52,11 @@ export class Renderer {
   private hitboxes = new THREE.Group();
   readonly effects: Effects;
   private shake = 0;
+  private punch = 0;        // camera punch-in (0..1)
+  private flash = 0;        // white screen flash (0..1)
+  private flashEl: HTMLDivElement;
+  private frozen = false;   // world is in hit-stop
+  private baseFov = 32;
   private camBase = new THREE.Vector3();
   private camTarget = new THREE.Vector3();
   private labels: HTMLElement;
@@ -80,6 +85,9 @@ export class Renderer {
     this.scene.add(this.sun, this.sun.target);
     this.scene.add(this.levelGroup, this.hitboxes);
     this.effects = new Effects(this.scene);
+    this.flashEl = document.createElement('div');
+    this.flashEl.style.cssText = 'position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:4;mix-blend-mode:screen';
+    document.body.appendChild(this.flashEl);
   }
 
   // -------------------------------------------------------------------------
@@ -191,6 +199,7 @@ export class Renderer {
     const b = levelBounds(L);
     const w = this.canvas.clientWidth || window.innerWidth, h = this.canvas.clientHeight || window.innerHeight;
     this.renderer.setSize(w, h, false);
+    this.camera.fov = this.baseFov;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     const cx = (b.x0 + b.x1) / 2, cz = (b.y0 + b.y1) / 2;
@@ -307,6 +316,9 @@ export class Renderer {
   }
 
   sync(s: GameState, dt: number): void {
+    // During hit-stop everything visual freezes too (except shake/flash).
+    this.frozen = s.hitstop > 0;
+    if (this.frozen) dt = 0;
     this.time += dt;
     if (s.cfg.level !== this.levelId) { this.levelId = s.cfg.level; this.buildLevel(getLevel(this.levelId)); }
     const P = s.params;
@@ -566,18 +578,39 @@ export class Renderer {
       case 'kill': {
         const p = s.players[e.victim];
         const cols = p ? BALL_COLORS[p.ball % BALL_COLORS.length] : ['#fff'];
-        this.effects.burst(e.x, 0.6, e.y, cols, 26, 7, 1.0);
-        this.effects.ring(e.x, e.y, pc(e.victim), 3, 0.4);
-        this.shake = Math.max(this.shake, 0.35);
+        this.effects.sphere(e.x, e.y, '#ffffff', 1.6, 0.18);
+        this.effects.burst(e.x, 0.6, e.y, cols, 34, 9, 1.1);
+        this.effects.sparks(e.x, 0.6, e.y, ['#ffffff', '#ffe680', pc(e.victim)], 18, 16, 0.35);
+        this.effects.ring(e.x, e.y, pc(e.victim), 3.5, 0.45);
+        this.effects.ring(e.x, e.y, '#ffffff', 2, 0.25, 0.6);
+        this.shake = Math.max(this.shake, 0.55);
+        this.punch = 1;
+        this.flash = Math.max(this.flash, 0.45);
         break;
       }
       case 'shield': this.effects.burst(e.x, 0.6, e.y, ['#7ff3ff', '#ffffff'], 18, 6, 0.6); this.effects.ring(e.x, e.y, '#7ff3ff', 2.5); break;
       case 'clash':
-        this.effects.burst(e.x, 0.8, e.y, ['#ffffff', '#ffe680', '#ffd23f'], 20, 9, 0.4);
-        this.effects.ring(e.x, e.y, '#ffffff', 2.2, 0.25, 0.7);
-        this.shake = Math.max(this.shake, 0.2);
+        this.effects.sparks(e.x, 0.8, e.y, ['#ffffff', '#ffe680', '#ffd23f'], 26, 18, 0.35);
+        this.effects.burst(e.x, 0.8, e.y, ['#ffffff', '#ffe680'], 10, 6, 0.4);
+        this.effects.ring(e.x, e.y, '#ffffff', 2.6, 0.22, 0.7);
+        this.effects.sphere(e.x, e.y, '#fff6c0', 0.9, 0.12);
+        this.shake = Math.max(this.shake, 0.4);
+        this.punch = Math.max(this.punch, 0.6);
+        this.flash = Math.max(this.flash, 0.25);
         break;
-      case 'parry': this.effects.burst(e.x, 0.85, e.y, ['#ffffff', '#ffe680'], 10, 6, 0.3); break;
+      case 'hatclash':
+        this.effects.sparks(e.x, 0.85, e.y, ['#ffffff', '#ffd23f', '#ff9f43'], 22, 15, 0.3);
+        this.effects.ring(e.x, e.y, '#ffd23f', 2, 0.2, 0.85);
+        this.shake = Math.max(this.shake, 0.3);
+        this.punch = Math.max(this.punch, 0.4);
+        this.flash = Math.max(this.flash, 0.15);
+        break;
+      case 'parry':
+        this.effects.sparks(e.x, 0.85, e.y, ['#ffffff', '#ffe680'], 14, 12, 0.25);
+        this.effects.ring(e.x, e.y, '#ffffff', 1.4, 0.18, 0.85);
+        this.shake = Math.max(this.shake, 0.25);
+        this.punch = Math.max(this.punch, 0.3);
+        break;
       case 'clank': this.effects.puff(e.x, e.y, '#e6dccb', 4); break;
       case 'boom':
         this.effects.sphere(e.x, e.y, '#ff9f43', s.params.bombRadius * 1.1, 0.35);
@@ -602,10 +635,17 @@ export class Renderer {
   }
 
   render(dt: number): void {
-    this.effects.update(dt);
-    this.shake = Math.max(0, this.shake - dt);
-    const k = this.shake * this.shake * 1.2;
+    this.effects.update(this.frozen ? 0 : dt);
+    // Trauma-style shake: offset grows with shake^2 and decays over time.
+    this.shake = Math.max(0, this.shake - dt * 1.3);
+    const k = this.shake * this.shake * 1.4;
     this.camera.position.set(this.camBase.x + (Math.random() - 0.5) * k, this.camBase.y + (Math.random() - 0.5) * k, this.camBase.z + (Math.random() - 0.5) * k);
+    // Camera punch-in: narrow the FOV briefly, ease back out.
+    this.punch = Math.max(0, this.punch - dt * 5);
+    const fov = this.baseFov - 2.2 * this.punch * this.punch;
+    if (this.camera.fov !== fov) { this.camera.fov = fov; this.camera.updateProjectionMatrix(); }
+    this.flash = Math.max(0, this.flash - dt * 4);
+    this.flashEl.style.opacity = this.flash.toFixed(3);
     this.renderer.render(this.scene, this.camera);
   }
 

@@ -57,6 +57,28 @@ function noise(dur: number, vol = 0.2, filter = 2000, q = 1, sweep = 1): void {
   src.start(t); src.stop(t + dur);
 }
 
+/** Metallic clang: FM synthesis with an inharmonic modulator ratio. */
+function clang(freq: number, dur: number, vol = 0.2, ratio = 1.41, index = 3): void {
+  if (!ctx || !master) return;
+  const t = ctx.currentTime;
+  const car = ctx.createOscillator(), mod = ctx.createOscillator();
+  const modGain = ctx.createGain(), g = ctx.createGain();
+  car.frequency.value = freq;
+  mod.frequency.value = freq * ratio;
+  modGain.gain.setValueAtTime(freq * index, t);
+  modGain.gain.exponentialRampToValueAtTime(freq * 0.1, t + dur);
+  mod.connect(modGain).connect(car.frequency);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  car.connect(g).connect(master);
+  car.start(t); mod.start(t); car.stop(t + dur + 0.02); mod.stop(t + dur + 0.02);
+}
+
+/** Low "thump" felt more than heard. */
+function thump(vol = 0.5): void {
+  tone(150, 0.22, 'sine', vol, 0.25);
+}
+
 export function playEvent(e: SimEvent): void {
   if (!ctx) return;
   switch (e.e) {
@@ -64,10 +86,27 @@ export function playEvent(e: SimEvent): void {
     case 'throw': noise(0.25, 0.18, 1200, 3, 2.5); break;
     case 'catch': tone(880, 0.06, 'triangle', 0.15); tone(1320, 0.08, 'triangle', 0.12, 0, 0.05); break;
     case 'clank': tone(180, 0.12, 'triangle', 0.2, 0.6); break;
-    case 'kill': tone(520, 0.25, 'square', 0.18, 0.25); noise(0.3, 0.25, 600, 1, 0.3); break;
+    case 'kill':
+      thump(0.55);
+      noise(0.08, 0.35, 4000, 0.8, 0.5);          // crack
+      tone(700, 0.22, 'square', 0.14, 0.3, 0.03);  // pop going down
+      noise(0.35, 0.2, 900, 1, 0.25);             // debris
+      break;
     case 'shield': tone(1200, 0.2, 'sine', 0.2, 0.5); break;
-    case 'clash': tone(1800, 0.25, 'square', 0.1, 0.9); tone(2400, 0.2, 'sine', 0.12, 0.95); break;
-    case 'parry': tone(1500, 0.1, 'square', 0.1, 0.7); break;
+    case 'clash':
+      clang(620, 0.6, 0.22, 1.41, 4);
+      clang(930, 0.45, 0.12, 2.76, 2);
+      noise(0.06, 0.3, 5000, 0.7);
+      thump(0.3);
+      break;
+    case 'hatclash':
+      clang(480, 0.4, 0.2, 1.73, 3);
+      noise(0.05, 0.25, 3000, 0.7);
+      break;
+    case 'parry':
+      clang(1100, 0.25, 0.14, 2.41, 2);
+      noise(0.04, 0.2, 6000, 0.7);
+      break;
     case 'dash': noise(0.12, 0.12, 900, 1, 2); break;
     case 'kick': tone(140, 0.1, 'sine', 0.3, 0.5); break;
     case 'pickup': [660, 880, 1100].forEach((f, i) => tone(f, 0.1, 'triangle', 0.15, 0, i * 0.06)); break;

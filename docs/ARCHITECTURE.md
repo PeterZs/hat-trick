@@ -129,6 +129,7 @@ elimination; CTF and Soccer respawn players and score objectives.
 - **Power-up:** add to `PickupKind`/`PICKUP_KINDS` (types.ts), apply in
   `applyPickup` (modes.ts), add a color/icon in `models.ts`.
 - **Level:** add to `LEVELS` in `level.ts` (walls are AABBs; `high` walls stop hats).
+- **Juice:** hit-stop is sim state (`state.hitstop`, params `hitstopKill`/`hitstopClash` in frames) so it stays deterministic online; flash, camera punch, shake and sparks are render-only (`renderer.onEvent`).
 - **Param:** add to `PARAM_DEFS` and `defaultParams.json`; read via `s.params.key`.
 - **Mode:** add to `ModeId` and `MODES`, then hook into `updateRules` / `modes.ts`.
 

@@ -99,3 +99,23 @@ describe('features', () => {
     expect(b.x).toBeGreaterThan(2);
   });
 });
+
+describe('hit-stop', () => {
+  it('freezes the world for hitstopKill frames after a kill', () => {
+    const s = setup('ffa', 2);
+    const [a, b] = s.players;
+    a.x = 0; a.y = 4; b.x = 1.2; b.y = 4; a.fx = 1; a.fy = 0;
+    const windup = Math.round(DEFAULT_PARAMS.slashWindup * 60);
+    run(s, windup + 2, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(b.alive).toBe(false);
+    expect(s.hitstop).toBeGreaterThan(0);
+    // While frozen, movement input has no effect; a press made during the freeze still registers after.
+    const x0 = a.x;
+    const left = s.hitstop;
+    run(s, left, () => ({ d0: makeInput(1, 0, 1, 0, 0) }));
+    expect(a.x).toBe(x0);
+    expect(s.hitstop).toBe(0);
+    run(s, 5, () => ({ d0: makeInput(1, 0, 1, 0, 0) }));
+    expect(a.x).toBeGreaterThan(x0);
+  });
+});
