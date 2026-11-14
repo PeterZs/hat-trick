@@ -278,6 +278,7 @@ function loop(now: number): void {
       if (session) playEvent(ev, s);
     }
     if (seenEvents.size > 2000) for (const [k, f] of seenEvents) if (f < s.frame - 300) seenEvents.delete(k);
+    renderer.localPeer = session?.peer ?? 0;
     renderer.sync(s, elapsed / 1000);
     if (session) { hud.update(s); countdownCues(s); }
   }

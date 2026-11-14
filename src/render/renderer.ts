@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { getLevel, levelBounds, type Level } from '../sim/level';
 import { HAT_GROUND, HAT_HELD, HAT_RECALL, type GameState, type Player, type SimEvent } from '../sim/types';
+import { isInvisible } from '../sim/common';
 import { HZ, isSoloMode, isTeamMode } from '../sim/const';
 import {
   PICKUP_INFO, PLAYER_COLORS, TEAM_COLORS, makeBall, makeBase, makeCar, makeEyes, makeFlag, makeHat, makePickup, makeStump, makeTree, mat, vertexColorMat,
@@ -35,6 +36,7 @@ interface PlayerView {
   slashAnim: number;   // seconds into the hat-swing animation, -1 = idle
   slashSide: number;   // alternates the swing direction
   kickAnim: number;    // seconds into the kick lunge, -1 = idle
+  squash: number;      // impact squash on the victim of a kick (1 -> 0)
 }
 
 export interface ViewOptions { showHitboxes: boolean }
@@ -73,6 +75,8 @@ export class Renderer {
   private aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.5);
   private time = 0;
   opts: ViewOptions = { showHitboxes: false };
+  /** Peer id of this browser (own players stay faintly visible when invisible). */
+  localPeer = 0;
 
   constructor(private canvas: HTMLCanvasElement, labelLayer: HTMLElement) {
     this.labels = labelLayer;
@@ -320,7 +324,7 @@ export class Renderer {
     label.className = 'plabel';
     this.labels.appendChild(label);
     this.scene.add(root);
-    return { root, ballKind: p.ball, ball, ballMat, head, hatStack, hatCount: -1, ring, shield, aim, arc: arcG as unknown as THREE.Mesh, kickArc: kickG as unknown as THREE.Mesh, cursor, label, lastX: p.x, lastY: p.y, speedFx, windup, slashAnim: -1, slashSide: 1, kickAnim: -1 };
+    return { root, ballKind: p.ball, ball, ballMat, head, hatStack, hatCount: -1, ring, shield, aim, arc: arcG as unknown as THREE.Mesh, kickArc: kickG as unknown as THREE.Mesh, cursor, label, lastX: p.x, lastY: p.y, speedFx, windup, slashAnim: -1, slashSide: 1, kickAnim: -1, squash: 0 };
   }
 
   /** Hat swing: out from the head to attack range, sweep across the arc
@@ -411,7 +415,7 @@ export class Renderer {
       if (overlord) txt = `👁 ${p.name}`;
       else if (p.alive) {
         // Status icons for active (good and bad) power-ups.
-        const st = (p.speedT > 0 ? '⚡' : '') + (p.phaseT > 0 ? '👻' : '') + (p.maxHats > 1 ? '🎩' : '') + (p.slowT > 0 ? '🐌' : '') + (p.reverseT > 0 ? '😵‍💫' : '');
+        const st = (p.speedT > 0 ? '⚡' : '') + (p.phaseT > 0 ? '👻' : '') + (p.maxHats > 1 ? '🎩' : '') + (p.slowT > 0 ? '🐌' : '') + (p.reverseT > 0 ? '😵‍💫' : '') + (p.invisT > 0 ? '🕶️' : '');
         if (st) txt += ' ' + st;
       }
       v.label.textContent = txt;
@@ -481,7 +485,12 @@ export class Renderer {
       }
       // Squash when dashing (the kick lunge sets its own squash).
       const dashing = p.dashT > 0;
-      if (v.kickAnim < 0) v.ball.scale.set(1, dashing ? 0.85 : 1, 1);
+      if (v.squash > 0) {
+        // Kicked: flatten hard then wobble back.
+        v.squash = Math.max(0, v.squash - dt * 3);
+        const w = Math.sin((1 - v.squash) * Math.PI * 3) * v.squash * 0.35;
+        v.ball.scale.set(1 + w, 1 - w, 1 + w);
+      } else if (v.kickAnim < 0) v.ball.scale.set(1, dashing ? 0.85 : 1, 1);
 
       // Aim indicator.
       const holdF = Math.max(1, Math.round(P.aimHoldTime * HZ));
@@ -511,8 +520,18 @@ export class Renderer {
       v.speedFx.visible = p.speedT > 0;
       if (p.speedT > 0) v.speedFx.rotation.z = this.time * 12;
       const phasing = p.phaseT > 0;
-      v.ballMat.transparent = phasing;
-      v.ballMat.opacity = phasing ? 0.55 + 0.2 * Math.sin(this.time * 10) : 1;
+      // Invisible: hidden from everyone; your own players stay faintly visible.
+      const invis = isInvisible(p);
+      const own = p.peer === this.localPeer && !p.isBot;
+      const ghost = invis ? (own ? 0.22 : 0) : 1;
+      v.ballMat.transparent = phasing || ghost < 1;
+      v.ballMat.opacity = Math.min(ghost, phasing ? 0.55 + 0.2 * Math.sin(this.time * 10) : 1);
+      v.root.visible = ghost > 0;
+      v.ring.visible = v.ring.visible && !invis;
+      v.shield.visible = v.shield.visible && !invis;
+      v.speedFx.visible = v.speedFx.visible && !invis;
+      if (invis && !own) v.label.style.display = 'none';
+      for (const h of v.hatStack.children) h.visible = ghost > 0;
       // Spawn protection blink.
       v.ball.visible = !(p.invulnT > 0 && Math.floor(this.time * 12) % 2 === 0);
       v.head.visible = v.ball.visible;
@@ -779,7 +798,23 @@ export class Renderer {
         }
         break;
       }
-      case 'kick': { const p = s.players[e.target]; if (p) this.effects.burst(p.x, 0.6, p.y, ['#ffe680'], 8, 5, 0.3); break; }
+      case 'kick': {
+        this.effects.sparks(e.x, 0.6, e.y, ['#ffffff', '#ffe680', '#ffd23f'], 16, 14, 0.3);
+        this.effects.ring(e.x, e.y, '#ffffff', 2.4, 0.22, 0.6);
+        this.effects.text(e.x, 2.2, e.y, 'BONK!', '#ff9f43', 0.8, 0.8);
+        const v = this.players.get(e.target);
+        if (v) v.squash = 1;
+        this.shake = Math.max(this.shake, 0.45);
+        this.punch = Math.max(this.punch, 0.5);
+        this.flash = Math.max(this.flash, 0.12);
+        break;
+      }
+      case 'ballkick':
+        this.effects.sparks(e.x, 0.6, e.y, ['#ffffff', '#ffe680'], 14, 14, 0.3);
+        this.effects.ring(e.x, e.y, '#ffffff', 2, 0.2, 0.5);
+        this.shake = Math.max(this.shake, 0.35);
+        this.punch = Math.max(this.punch, 0.35);
+        break;
       case 'catch': { const p = s.players[e.who]; if (p) this.effects.puff(p.x, p.y, '#ffffff', 3); break; }
       case 'piggy': { const p = s.players[e.who]; if (p) this.effects.ring(p.x, p.y, '#ffffff', 1.5); break; }
       case 'chop': {

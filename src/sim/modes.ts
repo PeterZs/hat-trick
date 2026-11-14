@@ -68,6 +68,7 @@ function applyPickup(s: GameState, p: Player, kind: string): void {
     case 'speed': p.speedT = sec(s, 'speedBoostTime'); p.slowT = 0; break;
     case 'slow': p.slowT = sec(s, 'slowTime'); p.speedT = 0; break;
     case 'reverse': p.reverseT = sec(s, 'reverseTime'); break;
+    case 'invis': p.invisT = sec(s, 'invisTime'); p.revealT = 0; break;
     case 'shield': p.shield = 1; break;
     case 'phase': p.phaseT = sec(s, 'phaseDashTime'); break;
     case 'double':

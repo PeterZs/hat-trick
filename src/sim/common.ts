@@ -52,6 +52,11 @@ export function dropHat(s: GameState, h: Hat): void {
   emit(s, { e: 'clank', hat: h.id, x: h.x, y: h.y });
 }
 
+/** Invisible to others: has the power-up and isn't attacking / aiming / just attacked. */
+export function isInvisible(p: Player): boolean {
+  return p.invisT > 0 && p.revealT <= 0 && p.slashT < 0 && !p.aiming;
+}
+
 export function isFighter(p: Player): boolean {
   return p.active && p.role === 'fighter';
 }
@@ -122,7 +127,7 @@ export function die(s: GameState, victim: Player, killer: number): void {
     }
   }
   // Power-ups are lost on death.
-  victim.speedT = 0; victim.phaseT = 0; victim.shield = 0; victim.maxHats = 1; victim.slowT = 0; victim.reverseT = 0;
+  victim.speedT = 0; victim.phaseT = 0; victim.shield = 0; victim.maxHats = 1; victim.slowT = 0; victim.reverseT = 0; victim.invisT = 0; victim.revealT = 0;
 }
 
 /** Pick the spawn point farthest from enemies (deterministic tie-breaking). */
@@ -159,7 +164,7 @@ export function spawnPlayer(s: GameState, p: Player, at?: { x: number; y: number
   p.charging = false; p.aiming = false; p.holdT = 0; p.charge = 0; p.recalling = false;
   p.stunT = 0; p.invulnT = sec(s, 'spawnInvulnTime');
   p.riding = -1; p.rider = -1; p.car = -1;
-  p.speedT = 0; p.phaseT = 0; p.shield = 0; p.maxHats = 1; p.slowT = 0; p.reverseT = 0;
+  p.speedT = 0; p.phaseT = 0; p.shield = 0; p.maxHats = 1; p.slowT = 0; p.reverseT = 0; p.invisT = 0; p.revealT = 0;
   p.respawnT = 0;
   giveHats(s, p);
   emit(s, { e: 'spawn', who: p.id });

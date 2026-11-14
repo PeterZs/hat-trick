@@ -283,3 +283,43 @@ describe('bad power-ups', () => {
     expect(a.x).toBeGreaterThan(x1 + 1);
   });
 });
+
+describe('kicks and invisibility', () => {
+  it('a kick knocks a player far back without hurting them', () => {
+    const s = setup('ffa', 2);
+    const [a, b] = s.players;
+    a.x = -4; a.y = -2.6; b.x = -2.9; b.y = -2.6;
+    s.hats.find((h) => h.owner === a.id)!.state = HAT_GROUND;
+    const ev = run(s, 60, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(ev).toContain('kick');
+    expect(b.alive).toBe(true);
+    expect(b.x - -2.9).toBeGreaterThan(3.5);
+  });
+
+  it('kicking the soccer ball sends it flying', () => {
+    const s = createState({ mode: 'soccer', level: 'pitch', winScore: 5 }, { ...DEFAULT_PARAMS, powerupMax: 0 }, 3);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'join', device: 'd0', name: 'A', ball: 0, team: 0 }] }]);
+    const a = s.players[0];
+    s.hats.find((h) => h.owner === a.id)!.state = HAT_GROUND;
+    a.x = -1.5; a.y = 0.5; s.ball = { x: 0, y: 0.5, vx: 0, vy: 0, lastTouch: -1 };
+    const ev = run(s, 4, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(ev).toContain('ballkick');
+    expect(s.ball!.vx).toBeGreaterThan(DEFAULT_PARAMS.ballKickImpulse * 0.9);
+  });
+
+  it('invisibility hides you except while attacking', async () => {
+    const { isInvisible } = await import('../src/sim/common');
+    const s = setup('ffa', 1);
+    const a = s.players[0];
+    a.x = 0; a.y = -2.6;
+    s.pickups.push({ id: 999, kind: 'invis', x: a.x, y: a.y, t: 0 });
+    run(s, 1, () => ({}));
+    expect(isInvisible(a)).toBe(true);
+    run(s, 1, () => ({ d0: makeInput(0, 0, 1, 0, BTN_ATTACK) }));
+    expect(isInvisible(a)).toBe(false);
+    run(s, Math.round((DEFAULT_PARAMS.invisRevealTime + 0.3) * 60), () => ({}));
+    expect(isInvisible(a)).toBe(true);
+    run(s, Math.round(DEFAULT_PARAMS.invisTime * 60), () => ({}));
+    expect(isInvisible(a)).toBe(false);
+  });
+});

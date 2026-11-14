@@ -8,7 +8,7 @@ import { rand } from './rng';
 import { BTN_ATTACK, BTN_DASH, BTN_THROW, makeInput, NEUTRAL, type PlayerInput } from './input';
 import { navGrid } from './level';
 import { HAT_GROUND, HAT_HELD, type GameState, type Player } from './types';
-import { heldHats, level } from './common';
+import { heldHats, isInvisible, level } from './common';
 import { isStanding } from './trees';
 import { isLethal } from './actors';
 
@@ -17,6 +17,7 @@ function nearestEnemy(s: GameState, p: Player): Player | null {
   for (const o of s.players) {
     if (!o.active || !o.alive || o.role !== 'fighter' || allies(s, p, o)) continue;
     const d = dist2(p.x, p.y, o.x, o.y);
+    if (isInvisible(o) && d > 2 * 2) continue; // can't see them
     if (d < bd) { bd = d; best = o; }
   }
   return best;

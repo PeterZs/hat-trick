@@ -18,7 +18,7 @@ a shield).
 | **Catch** | A returning hat is caught automatically when it reaches you. |
 | **Hats always come back** | An outbound hat that hits a wall, tree or ball bounces off and heads home early. A returning hat slides along walls to get around them. It only drops to the ground if it is **pinned** against a wall without getting closer to you for 0.25 s, collides with another flying hat, is slashed out of the air, is caught in a bomb blast, or its owner dies. Walk over a dropped hat to pick it up. |
 | **Recall** | With no hat in hand and your hat on the ground, hold throw: the hat lifts, flies over walls and accelerates toward you. It is lethal while moving fast. Release to let it slow down and drop. |
-| **Kick** | Attacking without a hat kicks: knocks enemies back and stuns briefly, no damage. |
+| **Kick** | Attacking without a hat kicks: a big shove that sends enemies flying ~5 units and stuns them for 0.5 s, but does no damage. Knocks riders off. |
 | **Parry** | A slash that touches an enemy's flying hat knocks it out of the air. |
 | **Clash** | If two players slash each other nearly simultaneously, nobody dies: both are knocked back. Two flying hats from different players that collide both drop. |
 | **Hit-stop** | Kills, clashes, parries, hat collisions and felled trees freeze the game for 2 frames. |
@@ -38,6 +38,7 @@ power-up is an identical ❓ box until someone picks it up — good or bad is a 
 | Icon | Power-up | Effect |
 |---|---|---|
 | ⚡ | Speed | 1.5× running speed for 10 s. |
+| 🕶️ | Invisible | For 10 s nobody can see you (your own screen shows a faint ghost). You flash visible while slashing, kicking or aiming, and for 0.6 s after attacking or throwing. Bots lose track of you unless you're very close. |
 | 🛡️ | Shield | Survive one hit (brief invulnerability after it pops). |
 | 🎩 | Double hat | Two hats: throw twice, or slash while one hat is out. Slash cooldown halves. |
 | 👻 | Phase dash | For 12 s, dashes pass through walls (never ending inside one). |
@@ -83,7 +84,7 @@ to the lobby after 8 s.
 
 ### Soccer
 - Two teams, one ball, a net at each end (Pitch arena).
-- Push the ball by rolling into it; slashes, kicks and thrown hats smack it harder (hats bounce off it and come back).
+- Push the ball by rolling into it; slashes and thrown hats smack it harder (hats bounce off it and come back), and a **kick** (attack without your hat) really sends it flying.
 - A goal scores for the attacking team and resets positions.
 - Players can still pop each other and respawn after 2.5 s. First to the target score wins.
 

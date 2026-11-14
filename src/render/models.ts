@@ -232,6 +232,7 @@ export const PICKUP_INFO: Record<string, { name: string; icon: string; color: st
   shield: { name: 'Shield!', icon: '🛡️', color: '#2ed3d3' },
   double: { name: 'Double Hat!', icon: '🎩', color: '#ff6fb5' },
   phase: { name: 'Phase Dash!', icon: '👻', color: '#a77dff' },
+  invis: { name: 'Invisible!', icon: '🕶️', color: '#7f9fb8' },
   slow: { name: 'Slowpoke…', icon: '🐌', color: '#7a8a3a', bad: true },
   reverse: { name: 'Reversed!', icon: '😵‍💫', color: '#c0392b', bad: true },
 };

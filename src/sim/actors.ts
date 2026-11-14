@@ -11,7 +11,7 @@ import {
   type Car, type GameState, type Hat, type Player,
 } from './types';
 import {
-  canBeHit, detach, die, dropHat, emit, heldHats, hitstop, kill, level, sec,
+  canBeHit, detach, die, dropHat, emit, heldHats, hitstop, isInvisible, kill, level, sec,
 } from './common';
 import { chopTree, collideTrees, isStanding } from './trees';
 
@@ -38,6 +38,8 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   if (p.speedT > 0) p.speedT--;
   if (p.slowT > 0) p.slowT--;
   if (p.reverseT > 0) p.reverseT--;
+  if (p.invisT > 0) p.invisT--;
+  if (p.revealT > 0) p.revealT--;
   if (p.phaseT > 0) p.phaseT--;
   if (p.stunT > 0) p.stunT--;
 
@@ -74,6 +76,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
     const cd = sec(s, 'slashCooldown') + sec(s, 'slashWindup') + sec(s, 'slashActive');
     p.slashCd = p.maxHats > 1 && held > 0 ? Math.ceil(cd / 2) : cd;
     emit(s, { e: 'slash', who: p.id, kind: p.slashKind });
+    p.revealT = sec(s, 'invisRevealTime') + sec(s, 'slashWindup') + sec(s, 'slashActive');
   } else if (p.slashT >= 0) {
     p.slashT++;
     if (p.slashT > sec(s, 'slashWindup') + sec(s, 'slashActive')) p.slashT = -1;
@@ -221,6 +224,7 @@ function throwHat(s: GameState, p: Player): void {
   h.x = p.x + p.fx * 0.5; h.y = p.y + p.fy * 0.5;
   h.dist = 0; h.t = 0; h.stuck = 0; h.hitCd = 0; h.lastD = 1e9;
   resetCharge(p);
+  p.revealT = sec(s, 'invisRevealTime');
   emit(s, { e: 'throw', who: p.id, hat: h.id, charge: t });
 }
 
@@ -300,10 +304,14 @@ export function resolveMelee(s: GameState): void {
         // Kick: knockback, no damage.
         if (b.invulnT > 0) continue;
         const dx = b.x - a.x, dy = b.y - a.y, d = Math.max(0.01, len(dx, dy));
-        b.kx += (dx / d) * P.kickKnockback; b.ky += (dy / d) * P.kickKnockback;
-        b.stunT = sec(s, 'stunTime');
+        // Big shove, no damage: replace their motion with the kick.
+        b.vx = 0; b.vy = 0; b.dashT = 0;
+        b.kx = (dx / d) * P.kickKnockback; b.ky = (dy / d) * P.kickKnockback;
+        b.stunT = sec(s, 'kickStunTime');
+        resetCharge(b);
         if (b.rider >= 0 || b.riding >= 0) detach(s, b);
-        emit(s, { e: 'kick', who: a.id, target: b.id });
+        emit(s, { e: 'kick', who: a.id, target: b.id, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+        hitstop(s, P.hitstopKick);
       }
     }
   }
@@ -333,9 +341,11 @@ export function resolveMelee(s: GameState): void {
     }
     const ball = s.ball;
     if (ball && inArc(a, ball.x, ball.y, range + P.ballRadius)) {
-      const imp = P.ballSlashImpulse * (a.slashKind === 0 ? 1 : 0.8);
+      const kick = a.slashKind === 1;
+      const imp = kick ? P.ballKickImpulse : P.ballSlashImpulse;
       ball.vx = a.fx * imp + a.vx * 0.5; ball.vy = a.fy * imp + a.vy * 0.5;
       ball.lastTouch = a.id;
+      if (kick) { emit(s, { e: 'ballkick', who: a.id, x: ball.x, y: ball.y }); hitstop(s, P.hitstopKick); }
     }
   }
 }

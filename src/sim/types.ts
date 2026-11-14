@@ -50,6 +50,8 @@ export interface Player {
   speedT: number; phaseT: number; shield: number; maxHats: number;
   slowT: number;        // bad: half speed
   reverseT: number;     // bad: reversed movement controls
+  invisT: number;       // invisible (except while/just after attacking)
+  revealT: number;      // frames left visible after an attack
   riding: number;       // slot we ride on, -1
   rider: number;        // slot riding us, -1
   car: number;          // car id driven, -1
@@ -77,8 +79,8 @@ export interface Hat {
   hitCd: number;         // frames until it can chop/smack again (trees, ball)
 }
 
-export type PickupKind = 'speed' | 'shield' | 'double' | 'phase' | 'slow' | 'reverse';
-export const GOOD_PICKUPS: PickupKind[] = ['speed', 'shield', 'double', 'phase'];
+export type PickupKind = 'speed' | 'shield' | 'double' | 'phase' | 'invis' | 'slow' | 'reverse';
+export const GOOD_PICKUPS: PickupKind[] = ['speed', 'shield', 'double', 'phase', 'invis'];
 /** Bad power-ups: picking one up hurts you. */
 export const BAD_PICKUPS: PickupKind[] = ['slow', 'reverse'];
 
@@ -128,7 +130,8 @@ export type SimEvent =
   | { e: 'bounce'; hat: number; x: number; y: number }
   | { e: 'hatclash'; a: number; b: number; x: number; y: number }
   | { e: 'dash'; who: number }
-  | { e: 'kick'; who: number; target: number }
+  | { e: 'kick'; who: number; target: number; x: number; y: number }
+  | { e: 'ballkick'; who: number; x: number; y: number }
   | { e: 'pickup'; who: number; kind: string; x: number; y: number }
   | { e: 'spawn'; who: number }
   | { e: 'goal'; team: number }

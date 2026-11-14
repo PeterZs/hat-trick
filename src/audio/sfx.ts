@@ -233,9 +233,22 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
       break;
     }
     case 'kick': {
-      const out = v(0.05);
-      thump(t, out, 0.7, vary(160), 55, 0.14);
-      swish(t, out, { dur: 0.03, f0: 2500, f1: 1200, q: 0.8, peak: 0.25, attack: 0.001 });
+      // Big body hit: crack + punchy mid "whump" + heavy sub drop, a little room.
+      const out = v(0.25, 1.4);
+      swish(t, out, { dur: 0.035, f0: 4500, f1: 2000, type: 'highpass', q: 0.6, peak: 0.8, attack: 0.001 });
+      swish(t, out, { dur: 0.16, f0: vary(380, 0.1), f1: 160, q: 1.4, peak: 1.0, attack: 0.002 });
+      thump(t, out, 1.0, vary(130, 0.08), 32, 0.4);
+      blip(t, out, { type: 'triangle', f0: vary(260, 0.08), f1: 90, dur: 0.12, peak: 0.35, attack: 0.001 });
+      swish(t + 0.05, out, { dur: 0.25, f0: 600, f1: 2200, q: 0.8, peak: 0.18, attack: 0.03 }); // victim whooshes away
+      break;
+    }
+    case 'ballkick': {
+      // Hollow "thwack" of a ball, then it whistles away.
+      const out = v(0.2, 1.3);
+      swish(t, out, { dur: 0.03, f0: 5000, f1: 2500, type: 'highpass', q: 0.6, peak: 0.7, attack: 0.001 });
+      swish(t, out, { dur: 0.1, f0: vary(900, 0.1), f1: 600, q: 5, peak: 0.9, attack: 0.001 });
+      thump(t, out, 0.8, vary(200, 0.08), 70, 0.2);
+      swish(t + 0.04, out, { dur: 0.45, f0: 900, f1: 2600, q: 1.2, peak: 0.2, attack: 0.04 });
       break;
     }
     case 'throw': {
@@ -314,6 +327,12 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
     }
     case 'pickup': {
       const out = v(0.2);
+      if (e.kind === 'invis') {
+        // Shimmering fade-out.
+        for (let i = 0; i < 6; i++) blip(t + i * 0.04, out, { f0: 1600 - i * 180, dur: 0.2, peak: 0.07 });
+        swish(t, out, { dur: 0.5, f0: 6000, f1: 1500, type: 'highpass', q: 0.5, peak: 0.12, attack: 0.02 });
+        break;
+      }
       if (e.kind === 'slow' || e.kind === 'reverse') {
         // Sad "wah-wah": descending brass with a droopy pitch bend.
         [311, 294, 277].forEach((fr, i) => brass(t + i * 0.16, out, fr / 2, 0.15, 0.09));
@@ -464,7 +483,8 @@ export function playCue(cue: 'tick' | 'go'): void {
 export const SOUND_TEST: { name: string; ev: SimEvent | 'tick' | 'go' }[] = [
   { name: 'tick', ev: 'tick' }, { name: 'go', ev: 'go' },
   { name: 'slash', ev: { e: 'slash', who: -1, kind: 0 } },
-  { name: 'kick', ev: { e: 'kick', who: -1, target: -1 } },
+  { name: 'kick', ev: { e: 'kick', who: -1, target: -1, x: 0, y: 0 } },
+  { name: 'ball kick', ev: { e: 'ballkick', who: -1, x: 0, y: 0 } },
   { name: 'dash', ev: { e: 'dash', who: -1 } },
   { name: 'throw', ev: { e: 'throw', who: -1, hat: 0, charge: 0 } },
   { name: 'throw (charged)', ev: { e: 'throw', who: -1, hat: 0, charge: 1 } },
