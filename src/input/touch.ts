@@ -113,6 +113,7 @@ export class TouchControls {
 
   setEnabled(on: boolean): void {
     this.enabled = on;
+    document.body.classList.toggle('touch', on);
     this.refresh();
   }
 

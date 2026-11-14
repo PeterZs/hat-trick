@@ -113,3 +113,5 @@ input, select { font: inherit; border-radius: 10px; border: 2px solid #dde; padd
   .lobby { max-height: 40vh; padding: 8px; }
   .chip { font-size: 13px; padding: 3px 8px; }
 }
+/* On touch devices the lobby sits at the top so it doesn't cover the buttons. */
+body.touch .lobby { top: calc(max(8px, env(safe-area-inset-top)) + 52px); bottom: auto; max-height: 38vh; width: min(860px, calc(100% - 120px)); }
