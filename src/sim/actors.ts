@@ -26,7 +26,9 @@ export function canAct(s: GameState): boolean {
 
 export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   const P = s.params;
-  const pressed = inp.b & ~p.prevB;
+  // A player carrying a rider can't attack or throw (the rider does that).
+  const b = p.rider >= 0 ? inp.b & ~(BTN_ATTACK | BTN_THROW) : inp.b;
+  const pressed = b & ~p.prevB;
   const released = p.prevB & ~inp.b;
   p.prevB = inp.b;
 
@@ -78,7 +80,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   // Tap / short hold: quick throw on release while moving normally.
   // Hold for aimHoldTime: enter stationary aim mode (stand still, the
   // movement stick aims); power then charges over chargeTime.
-  if (inp.b & BTN_THROW) {
+  if (b & BTN_THROW) {
     if (held > 0 && (p.charging || (pressed & BTN_THROW))) {
       p.charging = true;
       p.holdT++;
@@ -192,6 +194,7 @@ function interact(s: GameState, p: Player): void {
   }
   if (best) {
     p.riding = best.id; best.rider = p.id;
+    resetCharge(best); best.recalling = false;
     p.dashT = 0;
     emit(s, { e: 'piggy', what: 'on', who: p.id, mount: best.id });
   }

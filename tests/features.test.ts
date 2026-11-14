@@ -34,6 +34,14 @@ describe('features', () => {
     const x0 = b.x;
     run(s, 30, () => ({ d1: makeInput(-1, 0, 0, 0, 0) }));
     expect(a.x).toBeCloseTo(b.x, 5);
+    // The carrier can't attack or throw while carrying.
+    const evm = run(s, 20, (f) => ({ d1: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : f < 5 ? BTN_THROW : 0) }));
+    expect(evm).not.toContain('slash');
+    expect(evm).not.toContain('throw');
+    expect(b.charging).toBe(false);
+    // ...but the rider can.
+    const evr = run(s, 5, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(evr).toContain('slash');
     // 0.5 s at ~2x speed (minus acceleration).
     expect(x0 - b.x).toBeGreaterThan(DEFAULT_PARAMS.moveSpeed * 0.5 * 1.4);
     run(s, 2, (f) => ({ d0: makeInput(0, 0, 0, 0, f === 0 ? BTN_INTERACT : 0) }));

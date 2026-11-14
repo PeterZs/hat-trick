@@ -42,7 +42,8 @@ All are lost when you die.
 ### Piggyback (team modes)
 
 Press **interact** next to a teammate to hop on their back. The rider can't
-move but aims and attacks freely in any direction; the carrier runs at 2× speed.
+move but aims, slashes and throws freely in any direction; the carrier runs at
+2× speed and can dash, but can't attack or throw while carrying.
 Press interact again to hop off. A kick or the carrier's death splits you up.
 
 ### Joining and leaving
