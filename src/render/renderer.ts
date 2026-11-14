@@ -6,7 +6,7 @@ import { HAT_GROUND, HAT_HELD, HAT_RECALL, type GameState, type Player, type Sim
 import { isInvisible } from '../sim/common';
 import { HZ, isSoloMode, isTeamMode } from '../sim/const';
 import {
-  PICKUP_INFO, PLAYER_COLORS, TEAM_COLORS, makeBall, makeBase, makeCar, makeEyes, makeFlag, makeHat, makePickup, makeStump, makeTree, mat, vertexColorMat,
+  PICKUP_INFO, PLAYER_COLORS, TEAM_COLORS, makeBall, makeBase, makeCar, makeEyes, makeFlag, makeHat, makePickup, makeProp, makeStump, makeTree, mat, vertexColorMat,
 } from './models';
 import { Effects } from './effects';
 
@@ -55,7 +55,7 @@ export class Renderer {
   private flags: THREE.Group[] = [];
   private bombs = new Map<number, { shadow: THREE.Mesh; bomb: THREE.Mesh }>();
   private ballView: THREE.Mesh | null = null;
-  private trees = new Map<number, { g: THREE.Group; wobble: number; wx: number; wz: number }>();
+  private props = new Map<number, { g: THREE.Group; wobble: number; wx: number; wz: number }>();
   /** Render-only animations of felled trees and leftover stumps. */
   private falling: { g: THREE.Group; axis: THREE.Vector3; t: number; landed: boolean; x: number; z: number }[] = [];
   private stumps: { g: THREE.Group; t: number; life: number }[] = [];
@@ -667,18 +667,18 @@ export class Renderer {
     }
     for (const [id, bv] of this.bombs) if (!bSeen.has(id)) { this.scene.remove(bv.shadow, bv.bomb); this.bombs.delete(id); }
 
-    // --- Trees
+    // --- Breakable props
     const tSeen = new Set<number>();
-    for (const t of s.trees) {
+    for (const t of s.props) {
       if (t.hp <= 0) continue;
       tSeen.add(t.id);
-      let tv = this.trees.get(t.id);
+      let tv = this.props.get(t.id);
       if (!tv) {
-        const g = makeTree(t.id);
+        const g = makeProp(t.kind, t.id);
         g.rotation.y = t.id * 1.3;
         this.scene.add(g);
         tv = { g, wobble: 0, wx: 1, wz: 0 };
-        this.trees.set(t.id, tv);
+        this.props.set(t.id, tv);
       }
       tv.g.position.set(t.x, 0, t.y);
       // Sprout pop-in with a little overshoot.
@@ -691,7 +691,7 @@ export class Renderer {
       tv.g.rotation.x = tv.wz * lean;
       tv.g.rotation.z = -tv.wx * lean;
     }
-    for (const [id, tv] of this.trees) if (!tSeen.has(id)) { this.scene.remove(tv.g); this.trees.delete(id); }
+    for (const [id, tv] of this.props) if (!tSeen.has(id)) { this.scene.remove(tv.g); this.props.delete(id); }
     this.animateFelled(dt, s);
 
     this.syncHitboxes(s);
@@ -842,21 +842,39 @@ export class Renderer {
       case 'catch': { const p = s.players[e.who]; if (p) this.effects.puff(p.x, p.y, '#ffffff', 3); break; }
       case 'piggy': { const p = s.players[e.who]; if (p) this.effects.ring(p.x, p.y, '#ffffff', 1.5); break; }
       case 'chop': {
-        const tv = this.trees.get(e.tree);
+        const tv = this.props.get(e.prop);
         const p = s.players[e.who];
         if (tv) {
           tv.wobble = 1;
           if (p) { const dx = e.x - p.x, dz = e.y - p.y, d = Math.hypot(dx, dz) || 1; tv.wx = dx / d; tv.wz = dz / d; }
         }
-        this.effects.burst(e.x, 0.7, e.y, ['#c98b4f', '#e9c99a', '#8a5a3b'], 12, 6, 0.6);
-        this.effects.burst(e.x, 2.2, e.y, ['#4fae62', '#5cbf6b'], 6, 2, 0.8);
+        const chips: Record<string, string[]> = {
+          tree: ['#c98b4f', '#e9c99a', '#8a5a3b'], crate: ['#c98b4f', '#8a5a3b'], barrel: ['#d8392b', '#ffd23f'],
+          rock: ['#9aa3ab', '#cfd5da'], bush: ['#4a9e4f', '#5cb35e'],
+        };
+        this.effects.burst(e.x, 0.7, e.y, chips[e.kind] ?? ['#fff'], 12, 6, 0.6);
+        if (e.kind === 'tree') this.effects.burst(e.x, 2.2, e.y, ['#4fae62', '#5cbf6b'], 6, 2, 0.8);
+        if (e.kind === 'rock') this.effects.sparks(e.x, 0.6, e.y, ['#ffffff', '#ffe680'], 6, 8, 0.2);
         this.shake = Math.max(this.shake, 0.15);
         break;
       }
       case 'fell': {
-        const old = this.trees.get(e.tree);
-        const g = makeTree(e.tree);
-        if (old) { g.rotation.copy(old.g.rotation); this.scene.remove(old.g); this.trees.delete(e.tree); }
+        const old = this.props.get(e.prop);
+        if (old) { this.scene.remove(old.g); this.props.delete(e.prop); }
+        if (e.kind !== 'tree') {
+          // Crates splinter, rocks crumble, bushes burst, barrels blow (the boom event adds the blast).
+          const bits: Record<string, [string[], number, number]> = {
+            crate: [['#c98b4f', '#8a5a3b', '#e0a96b'], 26, 7], barrel: [['#d8392b', '#5a1a14', '#ffd23f'], 20, 10],
+            rock: [['#9aa3ab', '#b4bcc3', '#7d858c'], 28, 6], bush: [['#4a9e4f', '#5cb35e', '#3f8f45'], 30, 5],
+          };
+          const [cols, n, sp] = bits[e.kind] ?? [['#fff'], 10, 5];
+          this.effects.burst(e.x, 0.6, e.y, cols, n, sp, 0.9);
+          this.effects.puff(e.x, e.y, e.kind === 'rock' ? '#cfd5da' : '#e6dccb', 8);
+          this.shake = Math.max(this.shake, 0.25);
+          break;
+        }
+        const g = makeTree(e.prop);
+        if (old) g.rotation.copy(old.g.rotation);
         const pivot = new THREE.Group();
         pivot.position.set(e.x, 0, e.y);
         pivot.add(g);
@@ -867,11 +885,12 @@ export class Renderer {
         const stump = makeStump();
         stump.position.set(e.x, 0, e.y);
         this.scene.add(stump);
-        this.stumps.push({ g: stump, t: 0, life: s.params.treeRegrowTime + 0.3 });
+        const fixed = s.props.find((t) => t.id === e.prop)?.fixed;
+        this.stumps.push({ g: stump, t: 0, life: (fixed ? s.params.propRegrowTime : s.params.treeRegrowTime) + 0.3 });
         this.effects.burst(e.x, 0.6, e.y, ['#c98b4f', '#e9c99a'], 18, 8, 0.7);
         this.effects.text(e.x, 3.4, e.y, 'TIMBER!', '#8a5a3b', 1.1);
         const p = s.players[e.who];
-        if (p && s.phase === 'playing') this.effects.text(p.x, 2.6, p.y, '+1 🌲', this.playerColor(s, p), 0.8, 1.0);
+        if (p && s.phase === 'playing' && s.cfg.mode === 'lumber') this.effects.text(p.x, 2.6, p.y, '+1 🌲', this.playerColor(s, p), 0.8, 1.0);
         this.punch = Math.max(this.punch, 0.4);
         break;
       }

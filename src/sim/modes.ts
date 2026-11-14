@@ -11,7 +11,7 @@ import {
 } from './types';
 import { canBeHit, die, dropHat, emit, giveHats, kill, level, newId, sec, spawnPlayer } from './common';
 import { bounceHat, isLethal, spawnCar } from './actors';
-import { resetTrees } from './trees';
+import { collideProps, resetProps } from './props';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
 
@@ -155,6 +155,14 @@ export function updateBall(s: GameState): void {
       const vn = b.vx * tmp.nx + b.vy * tmp.ny;
       if (vn < 0) { b.vx -= 1.75 * vn * tmp.nx; b.vy -= 1.75 * vn * tmp.ny; }
     }
+    if (s.props.length) {
+      const t = collideProps(s, b, P.ballRadius);
+      if (t) {
+        const dx = b.x - t.x, dy = b.y - t.y, d = Math.max(1e-6, len(dx, dy));
+        const vn = (b.vx * dx + b.vy * dy) / d;
+        if (vn < 0) { b.vx -= (1.75 * vn * dx) / d; b.vy -= (1.75 * vn * dy) / d; }
+      }
+    }
   }
   if (s.phase !== 'playing') return;
   for (const g of L.goals) {
@@ -260,7 +268,7 @@ export function resetArena(s: GameState): void {
   s.cars = [];
   s.bombs = [];
   s.pickupT = sec(s, 'powerupInterval');
-  resetTrees(s);
+  resetProps(s);
   if (s.cfg.mode === 'cars') { for (let i = 0; i < carCount(s); i++) spawnModeCar(s); s.carSpawnT = sec(s, 'carRespawnTime'); }
   s.ball = s.cfg.mode === 'soccer' ? { x: 0, y: 0, vx: 0, vy: 0, lastTouch: -1 } : null;
   if (s.cfg.mode === 'ctf') resetFlags(s); else s.flags = [];

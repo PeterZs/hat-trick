@@ -449,16 +449,48 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
       break;
     }
     case 'chop': {
-      // Axe into wood: hard click, resonant woody body, short low knock.
       const out = v(0.1, 1.3);
-      swish(t, out, { dur: 0.02, f0: 3500, f1: 2000, q: 1, peak: 0.5, attack: 0.001 });
-      const body = vary(480, 0.12);
-      swish(t, out, { dur: 0.12, f0: body, f1: body * 0.85, q: 12, peak: 0.9, attack: 0.001 });
-      blip(t, out, { type: 'triangle', f0: vary(210, 0.1), f1: 120, dur: 0.09, peak: 0.35, attack: 0.001 });
-      crackle(t + 0.01, out, 0.12, 4, 4000, 0.06); // chips
+      switch (e.kind) {
+        case 'rock': // stone clack
+          swish(t, out, { dur: 0.03, f0: 5000, f1: 3000, q: 1, peak: 0.6, attack: 0.001 });
+          blip(t, out, { type: 'triangle', f0: vary(900, 0.1), f1: 500, dur: 0.06, peak: 0.25, attack: 0.001 });
+          thump(t, out, 0.3, 180, 90, 0.08);
+          break;
+        case 'barrel': // hollow metal dong
+          metal(t, out, vary(220, 0.08), 0.35, 0.18, [1, 2.1, 3.3]);
+          thump(t, out, 0.3, 150, 70, 0.1);
+          break;
+        case 'bush': // leafy rustle
+          swish(t, out, { dur: 0.18, f0: 4000, f1: 2500, type: 'highpass', q: 0.5, peak: 0.35, attack: 0.01 });
+          crackle(t, out, 0.15, 6, 3500, 0.08);
+          break;
+        default: { // wood: tree and crate
+          swish(t, out, { dur: 0.02, f0: 3500, f1: 2000, q: 1, peak: 0.5, attack: 0.001 });
+          const body = vary(e.kind === 'crate' ? 650 : 480, 0.12);
+          swish(t, out, { dur: 0.12, f0: body, f1: body * 0.85, q: 12, peak: 0.9, attack: 0.001 });
+          blip(t, out, { type: 'triangle', f0: vary(210, 0.1), f1: 120, dur: 0.09, peak: 0.35, attack: 0.001 });
+          crackle(t + 0.01, out, 0.12, 4, 4000, 0.06);
+        }
+      }
       break;
     }
     case 'fell': {
+      if (e.kind !== 'tree') {
+        const out = v(0.25, 1.2);
+        if (e.kind === 'crate') { // splintering wood
+          crackle(t, out, 0.3, 16, 2500, 0.25);
+          swish(t, out, { dur: 0.25, f0: 1200, f1: 300, type: 'lowpass', q: 0.8, peak: 0.5, attack: 0.002 });
+          thump(t, out, 0.5, 160, 60, 0.15);
+        } else if (e.kind === 'rock') { // crumble
+          thump(t, out, 0.7, 120, 40, 0.3);
+          crackle(t, out, 0.5, 22, 1600, 0.2);
+          swish(t, out, { dur: 0.5, f0: 900, f1: 200, type: 'lowpass', q: 0.7, peak: 0.35, attack: 0.01 });
+        } else if (e.kind === 'bush') {
+          swish(t, out, { dur: 0.35, f0: 5000, f1: 2000, type: 'highpass', q: 0.5, peak: 0.4, attack: 0.01 });
+          crackle(t, out, 0.3, 10, 3000, 0.1);
+        }
+        break; // barrels: the boom event plays the explosion
+      }
       // Creak (bandpassed saw with wobble), then the crash and a leafy rustle.
       const out = v(0.3, 1.1);
       const g = envGain(t, 0.08, 0.12, 0.5, out);
@@ -512,8 +544,15 @@ export const SOUND_TEST: { name: string; ev: SimEvent | 'tick' | 'go' }[] = [
   { name: 'car', ev: { e: 'car', what: 'enter', who: -1, x: 0, y: 0 } },
   { name: 'car crash', ev: { e: 'car', what: 'crash', who: -1, x: 0, y: 0 } },
   { name: 'car arrives', ev: { e: 'car', what: 'spawn', who: -1, x: 0, y: 0 } },
-  { name: 'chop', ev: { e: 'chop', tree: 0, who: -1, x: 0, y: 0 } },
-  { name: 'fell', ev: { e: 'fell', tree: 0, who: -1, x: 0, y: 0, dx: 1, dy: 0 } },
+  { name: 'chop', ev: { e: 'chop', prop: 0, kind: 'tree', who: -1, x: 0, y: 0 } },
+  { name: 'fell', ev: { e: 'fell', prop: 0, kind: 'tree', who: -1, x: 0, y: 0, dx: 1, dy: 0 } },
+  { name: 'hit crate', ev: { e: 'chop', prop: 0, kind: 'crate', who: -1, x: 0, y: 0 } },
+  { name: 'break crate', ev: { e: 'fell', prop: 0, kind: 'crate', who: -1, x: 0, y: 0, dx: 1, dy: 0 } },
+  { name: 'hit rock', ev: { e: 'chop', prop: 0, kind: 'rock', who: -1, x: 0, y: 0 } },
+  { name: 'break rock', ev: { e: 'fell', prop: 0, kind: 'rock', who: -1, x: 0, y: 0, dx: 1, dy: 0 } },
+  { name: 'hit barrel', ev: { e: 'chop', prop: 0, kind: 'barrel', who: -1, x: 0, y: 0 } },
+  { name: 'hit bush', ev: { e: 'chop', prop: 0, kind: 'bush', who: -1, x: 0, y: 0 } },
+  { name: 'break bush', ev: { e: 'fell', prop: 0, kind: 'bush', who: -1, x: 0, y: 0, dx: 1, dy: 0 } },
   { name: 'bomb', ev: { e: 'boom', x: 0, y: 0 } },
   { name: 'flag take', ev: { e: 'flag', what: 'take', team: 0, who: -1 } },
   { name: 'flag score', ev: { e: 'flag', what: 'score', team: 0, who: -1 } },

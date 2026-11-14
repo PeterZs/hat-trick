@@ -76,5 +76,8 @@
   "bombFallTime": 1,
   "bombRadius": 2.2,
   "cursorSpeed": 14,
-  "hazardRoundTime": 45
+  "hazardRoundTime": 45,
+  "propRegrowTime": 20,
+  "crateDropChance": 0.5,
+  "barrelBlastRadius": 2.4
 }

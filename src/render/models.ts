@@ -229,7 +229,7 @@ export function makeBase(color: string): THREE.Mesh {
 
 export const PICKUP_INFO: Record<string, { name: string; icon: string; color: string; bad?: boolean }> = {
   speed: { name: 'Speed!', icon: '⚡', color: '#ffd23f' },
-  shield: { name: 'Shield!', icon: '🛡️', color: '#2ed3d3' },
+  shield: { name: 'Bubble Shield!', icon: '🫧', color: '#2ed3d3' },
   double: { name: 'Double Hat!', icon: '🎩', color: '#ff6fb5' },
   phase: { name: 'Phase Dash!', icon: '👻', color: '#a77dff' },
   invis: { name: 'Invisible!', icon: '🕶️', color: '#7f9fb8' },
@@ -294,6 +294,58 @@ export function makeTree(seed: number): THREE.Group {
     canopy.add(c);
   }
   g.add(canopy);
+  return g;
+}
+
+/** Breakable prop model for a kind, origin at its base. */
+export function makeProp(kind: string, seed: number): THREE.Group {
+  if (kind === 'tree') return makeTree(seed);
+  const g = new THREE.Group();
+  switch (kind) {
+    case 'crate': {
+      const box = mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0), '#c98b4f');
+      box.position.y = 0.5; g.add(box);
+      // Darker plank frame + diagonal brace on each side.
+      for (const [w, h, d, y] of [[1.04, 0.12, 1.04, 0.06], [1.04, 0.12, 1.04, 0.94]] as const) {
+        const b = mesh(new THREE.BoxGeometry(w, h, d), '#8a5a3b'); b.position.y = y; g.add(b);
+      }
+      for (let i = 0; i < 4; i++) {
+        const brace = mesh(new THREE.BoxGeometry(0.12, 1.2, 0.04), '#8a5a3b');
+        const a = (i * Math.PI) / 2;
+        brace.position.set(Math.sin(a) * 0.51, 0.5, Math.cos(a) * 0.51);
+        brace.rotation.y = a; brace.rotation.z = Math.PI / 4;
+        g.add(brace);
+      }
+      break;
+    }
+    case 'barrel': {
+      const body = mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.0, 12), '#d8392b');
+      body.position.y = 0.5; g.add(body);
+      for (const y of [0.18, 0.82]) {
+        const band = mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.08, 12), '#5a1a14'); band.position.y = y; g.add(band);
+      }
+      const stripe = mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.16, 12), '#ffd23f'); stripe.position.y = 0.5; g.add(stripe);
+      const lid = mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.04, 12), '#b02a1e'); lid.position.y = 1.01; g.add(lid);
+      break;
+    }
+    case 'rock': {
+      const a = mesh(new THREE.DodecahedronGeometry(0.75, 0), '#9aa3ab');
+      a.position.y = 0.45; a.scale.set(1, 0.8, 1); a.rotation.set(seed, seed * 2, 0); g.add(a);
+      const b = mesh(new THREE.DodecahedronGeometry(0.4, 0), '#b4bcc3');
+      b.position.set(0.45, 0.3, 0.25); b.rotation.set(seed * 3, 0, seed); g.add(b);
+      break;
+    }
+    case 'bush': {
+      const greens = ['#4a9e4f', '#5cb35e', '#3f8f45'];
+      for (let i = 0; i < 4; i++) {
+        const blob = mesh(new THREE.IcosahedronGeometry(0.42 - i * 0.04, 0), greens[(i + seed) % 3]);
+        const a = i * 2.1 + seed;
+        blob.position.set(i ? Math.cos(a) * 0.3 : 0, i ? 0.35 : 0.55, i ? Math.sin(a) * 0.3 : 0);
+        g.add(blob);
+      }
+      break;
+    }
+  }
   return g;
 }
 

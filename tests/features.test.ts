@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createState, step } from '../src/sim/sim';
 import { TEST_PARAMS as DEFAULT_PARAMS } from './params';
 import { BTN_ATTACK, BTN_DASH, BTN_THROW, makeInput, type PlayerInput } from '../src/sim/input';
-import { HAT_GROUND, HAT_HELD, HAT_OUT, HAT_RECALL, HAT_RETURN, type GameState, type ModeId } from '../src/sim/types';
+import { HAT_GROUND, HAT_HELD, HAT_OUT, HAT_RECALL, HAT_RETURN, type GameState, type ModeId, type Prop } from '../src/sim/types';
+import { propInfo } from '../src/sim/props';
 import { spawnCar } from '../src/sim/actors';
 
 function setup(mode: ModeId = 'teams', n = 2): GameState {
@@ -11,6 +12,7 @@ function setup(mode: ModeId = 'teams', n = 2): GameState {
   for (let i = 0; i < n; i++) cmds.push({ t: 'join' as const, device: 'd' + i, name: 'P' + i, ball: i, team: mode === 'teams' ? 0 : undefined });
   step(s, [{ peer: 0, inputs: {}, cmds }]);
   for (const p of s.players) { p.invulnT = 0; }
+  s.props = []; // mechanics tests run on a clear arena
   return s;
 }
 
@@ -160,7 +162,7 @@ describe('lumberjacks', () => {
     step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'join', device: 'd0', name: 'A', ball: 0 }, { t: 'start', cfg: s.cfg }] }]);
     while (s.phase !== 'playing') step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
     const [a] = s.players;
-    const t = s.trees[0];
+    const t = s.props.find((t) => t.kind === 'tree' && !t.fixed)!;
     a.x = t.x - 1.4; a.y = t.y;
     const ev: string[] = [];
     for (let i = 0; i < DEFAULT_PARAMS.treeHp; i++) {
@@ -171,7 +173,7 @@ describe('lumberjacks', () => {
     expect(s.scores[a.id]).toBe(1);
     // Regrows somewhere after the regrow time.
     run(s, Math.round(DEFAULT_PARAMS.treeRegrowTime * 60) + 5, () => ({}));
-    expect(s.trees.filter((t) => t.hp > 0).length).toBe(DEFAULT_PARAMS.treeCount);
+    expect(s.props.filter((t) => t.kind === 'tree' && !t.fixed && t.hp > 0).length).toBe(DEFAULT_PARAMS.treeCount);
   });
 
   it('bots play a timed match to the end', () => {
@@ -449,5 +451,88 @@ describe('lobby commands', () => {
     expect(b1.skill).toBe(2);
     expect(b2.skill).toBe(1);
     expect(b2.active).toBe(true);
+  });
+});
+
+describe('breakables', () => {
+  const place = (s: GameState, kind: Prop['kind'], x: number, y: number): Prop => {
+    const t: Prop = { id: 777, kind, x, y, hp: propInfo(s, kind).hp, regrowT: 0, grow: 30, fixed: true };
+    s.props.push(t);
+    return t;
+  };
+  const slashAt = (s: GameState, times: number) => {
+    const ev: string[] = [];
+    for (let i = 0; i < times; i++) ev.push(...run(s, 40, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : 0) })));
+    return ev;
+  };
+
+  it('levels place several kinds of breakables', () => {
+    const s = createState({ mode: 'ffa', level: 'courtyard', winScore: 5 }, DEFAULT_PARAMS, 1);
+    const kinds = new Set(s.props.map((t) => t.kind));
+    expect([...kinds].sort()).toEqual(['barrel', 'bush', 'crate', 'rock', 'tree']);
+  });
+
+  it('rocks take 5 hits, crates 2', () => {
+    const s = setup('ffa', 1);
+    const a = s.players[0];
+    a.x = -4; a.y = -2.6;
+    const rock = place(s, 'rock', -2.4, -2.6);
+    slashAt(s, 4);
+    expect(rock.hp).toBe(1);
+    expect(slashAt(s, 1)).toContain('fell');
+    const crate = place(s, 'crate', -2.4, -2.6); crate.id = 778;
+    slashAt(s, 1);
+    expect(crate.hp).toBe(1);
+  });
+
+  it('an explosive barrel pops everyone nearby, including whoever broke it', () => {
+    const s = setup('ffa', 2);
+    const [a, b] = s.players;
+    a.x = -4; a.y = -2.6; b.x = -1.5; b.y = -1.2;
+    place(s, 'barrel', -2.7, -2.6);
+    const ev = slashAt(s, 1);
+    expect(ev).toContain('boom');
+    expect(a.alive).toBe(false);
+    expect(b.alive).toBe(false);
+  });
+
+  it('hats bounce off crates but pass through bushes', () => {
+    const s = setup('ffa', 1);
+    const a = s.players[0];
+    a.x = -12; a.y = -2.6;
+    const bush = place(s, 'bush', -9, -2.6);
+    run(s, 3, (f) => ({ d0: makeInput(0, 0, 1, 0, f < 2 ? BTN_THROW : 0) }));
+    const ev = run(s, 20, () => ({}));
+    expect(ev).toContain('chop');
+    expect(ev).not.toContain('bounce');
+    expect(bush.hp).toBe(0);
+  });
+
+  it('level breakables regrow in place', () => {
+    const s = setup('ffa', 1);
+    const a = s.players[0];
+    a.x = -4; a.y = -2.6;
+    const crate = place(s, 'crate', -2.4, -2.6);
+    slashAt(s, 2);
+    expect(crate.hp).toBe(0);
+    a.x = 5; a.y = 5;
+    run(s, Math.round(DEFAULT_PARAMS.propRegrowTime * 60) + 2, () => ({}));
+    const back = s.props.find((t) => t.kind === 'crate' && t.x === -2.4)!;
+    expect(back.hp).toBe(2);
+  });
+});
+
+describe('level layouts', () => {
+  it('placed breakables are clear of walls and spawn points', async () => {
+    const { LEVELS } = await import('../src/sim/level');
+    const { circleOverlapsWalls } = await import('../src/sim/collision');
+    const s = createState({ mode: 'ffa', level: 'courtyard', winScore: 5 }, DEFAULT_PARAMS, 1);
+    for (const L of Object.values(LEVELS)) {
+      for (const pr of L.props) {
+        const r = propInfo(s, pr.kind).r;
+        expect(circleOverlapsWalls(pr.x, pr.y, r + 0.3, L.walls, false), `${L.id} ${pr.kind} @${pr.x},${pr.y} hits a wall`).toBe(false);
+        for (const sp of L.spawns) expect(Math.hypot(sp.x - pr.x, sp.y - pr.y), `${L.id} ${pr.kind} near spawn`).toBeGreaterThan(r + 1.2);
+      }
+    }
   });
 });

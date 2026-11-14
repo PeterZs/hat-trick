@@ -28,9 +28,9 @@ is a layer around it.
 | `sim.ts` | `createState`, `step`, command application, `cloneState`, `hashState` |
 | `actors.ts` | player movement/dash/slash/throw, hats (boomerangs), melee resolution & clashes, cars, piggyback |
 | `modes.ts` | power-ups, soccer ball, flags (CTF), Overlord bombs, round/match flow |
-| `trees.ts` | Lumberjacks: choppable trees (block bodies and hats), felling, regrowth |
+| `props.ts` | Breakables (trees, crates, explosive barrels, rocks, bushes): collision, damage, drops, explosions, regrowth; Lumberjacks tree scattering |
 | `bot.ts` | bot AI (runs *inside* the sim, using the sim RNG, so it is deterministic) |
-| `level.ts` | static level data (walls, spawns, goals, bases) + bot nav grid |
+| `level.ts` | static level data (walls, spawns, goals, bases, placed breakables) + bot nav grid |
 | `params.ts`, `defaultParams.json` | tunable parameters (metadata + defaults) |
 | `input.ts` | quantized `PlayerInput` (int8 sticks + button bits) |
 | `dmath.ts`, `rng.ts` | deterministic trig and PRNG |

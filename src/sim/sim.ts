@@ -15,7 +15,7 @@ import {
   resetArena, startRound, toLobby, updateBall, updateBombs, updateCarsMode, updateFlags, updateOverlord, updatePickups, updateRules,
 } from './modes';
 import { botInput } from './bot';
-import { updateTrees } from './trees';
+import { updateProps } from './props';
 
 export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd): GameState {
   const s: GameState = {
@@ -34,7 +34,7 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
     ball: null,
     flags: [],
     bombs: [],
-    trees: [],
+    props: [],
     scores: new Array(MAX_PLAYERS).fill(0),
     lastWinner: -1,
     pickupT: 0,
@@ -232,7 +232,7 @@ export function step(s: GameState, frame: PeerFrame[]): void {
     updateBall(s);
     updateFlags(s);
     updateBombs(s);
-    updateTrees(s);
+    updateProps(s);
     updateCarsMode(s);
   } else {
     for (const p of s.players) if (p.active && inputs[p.id]) p.prevB = inputs[p.id].b;

@@ -18,7 +18,7 @@ export const SKILL_NAMES = ['Easy', 'Normal', 'Hard'];
 import { navGrid } from './level';
 import { HAT_GROUND, HAT_HELD, type GameState, type Player } from './types';
 import { heldHats, isInvisible, level } from './common';
-import { isStanding } from './trees';
+import { isStanding } from './props';
 import { isLethal } from './actors';
 
 function nearestEnemy(s: GameState, p: Player): Player | null {
@@ -173,8 +173,8 @@ function think(s: GameState, p: Player): PlayerInput {
   } else if (mode === 'lumber') {
     // Chop the nearest standing tree; only fight rivals who come close.
     let tree = null, bd = 1e18;
-    for (const t of s.trees) {
-      if (!isStanding(t)) continue;
+    for (const t of s.props) {
+      if (t.kind !== 'tree' || !isStanding(t)) continue;
       const d = dist2(p.x, p.y, t.x, t.y);
       if (d < bd) { bd = d; tree = t; }
     }

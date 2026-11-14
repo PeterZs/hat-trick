@@ -109,12 +109,17 @@ export interface Flag {
   dropT: number;         // frames until auto-return when dropped
 }
 
-export interface Tree {
+export type PropKind = 'tree' | 'crate' | 'barrel' | 'rock' | 'bush';
+
+/** A breakable prop. */
+export interface Prop {
   id: number;
+  kind: PropKind;
   x: number; y: number;
-  hp: number;            // 0 = felled (stump)
-  regrowT: number;       // frames until a new tree grows (when felled)
-  grow: number;          // frames since sprouting (render pop-in)
+  hp: number;            // 0 = broken
+  regrowT: number;       // frames until it comes back (when broken)
+  grow: number;          // frames since (re)appearing (render pop-in)
+  fixed: boolean;        // placed by the level (regrows in place) vs scattered (Lumberjacks trees)
 }
 
 export interface Bomb { id: number; owner: number; x: number; y: number; t: number }
@@ -138,8 +143,8 @@ export type SimEvent =
   | { e: 'goal'; team: number }
   | { e: 'flag'; what: 'take' | 'drop' | 'return' | 'score'; team: number; who: number }
   | { e: 'boom'; x: number; y: number }
-  | { e: 'chop'; tree: number; who: number; x: number; y: number }
-  | { e: 'fell'; tree: number; who: number; x: number; y: number; dx: number; dy: number }
+  | { e: 'chop'; prop: number; kind: PropKind; who: number; x: number; y: number }
+  | { e: 'fell'; prop: number; kind: PropKind; who: number; x: number; y: number; dx: number; dy: number }
   | { e: 'round'; winner: number }
   | { e: 'match'; winner: number }
   | { e: 'join'; who: number }
@@ -170,7 +175,7 @@ export interface GameState {
   ball: SoccerBall | null;
   flags: Flag[];
   bombs: Bomb[];
-  trees: Tree[];
+  props: Prop[];
   scores: number[];      // indexed by team (FFA: by slot)
   lastWinner: number;    // team, -1 = draw
   pickupT: number;

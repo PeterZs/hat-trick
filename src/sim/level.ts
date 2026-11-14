@@ -1,3 +1,5 @@
+import type { PropKind } from './types';
+
 // Static level data. Levels are immutable and referenced by id from the game
 // state, so they are never snapshotted.
 
@@ -21,6 +23,8 @@ export interface Level {
   goals: Goal[];
   bases: { team: number; x: number; y: number }[];
   floor: [string, string];
+  /** Breakables placed by the level. */
+  props: { kind: PropKind; x: number; y: number }[];
 }
 
 const W = (x: number, y: number, hw: number, hh: number, kind: Wall['kind'] = 'wall'): Wall =>
@@ -74,6 +78,18 @@ const courtyard: Level = {
   spawns: spawnsRing(15, 10),
   goals: [],
   bases: [{ team: 0, x: -12.5, y: 0 }, { team: 1, x: 12.5, y: 0 }],
+  props: [
+    { kind: 'tree', x: -13, y: -2.5 },
+    { kind: 'tree', x: 13, y: 2.5 },
+    { kind: 'crate', x: -6, y: -1.6 },
+    { kind: 'crate', x: 6, y: 1.6 },
+    { kind: 'barrel', x: -2.6, y: -2.6 },
+    { kind: 'barrel', x: 2.6, y: 2.6 },
+    { kind: 'bush', x: -11.5, y: 5.5 },
+    { kind: 'bush', x: 11.5, y: -5.5 },
+    { kind: 'rock', x: -6.5, y: 8.3 },
+    { kind: 'rock', x: 6.5, y: -8.3 },
+  ],
 };
 
 const pitchW = 16, pitchH = 10, goalHalf = 3, netDepth = 2.4;
@@ -104,6 +120,8 @@ const pitch: Level = {
     { team: 1, x0: pitchW + 0.2, y0: -goalHalf, x1: pitchW + netDepth, y1: goalHalf },
   ],
   bases: [{ team: 0, x: -13, y: 0 }, { team: 1, x: 13, y: 0 }],
+  props: [
+  ],
 };
 
 const fortress: Level = {
@@ -131,6 +149,18 @@ const fortress: Level = {
   ],
   goals: [],
   bases: [{ team: 0, x: -15.5, y: 0 }, { team: 1, x: 15.5, y: 0 }],
+  props: [
+    { kind: 'rock', x: -8, y: -2 },
+    { kind: 'rock', x: 8, y: 2 },
+    { kind: 'bush', x: -14, y: -3.8 },
+    { kind: 'bush', x: 14, y: 3.8 },
+    { kind: 'barrel', x: 0, y: -5 },
+    { kind: 'barrel', x: 0, y: 5 },
+    { kind: 'crate', x: -4, y: 0 },
+    { kind: 'crate', x: 4, y: 0 },
+    { kind: 'tree', x: -9, y: 8.5 },
+    { kind: 'tree', x: 9, y: -8.5 },
+  ],
 };
 
 const clearing: Level = {
@@ -148,6 +178,14 @@ const clearing: Level = {
   spawns: spawnsRing(15, 10),
   goals: [],
   bases: [{ team: 0, x: -12.5, y: 0 }, { team: 1, x: 12.5, y: 0 }],
+  props: [
+    { kind: 'rock', x: -11, y: 4 },
+    { kind: 'rock', x: 11, y: -4 },
+    { kind: 'barrel', x: -4, y: -1 },
+    { kind: 'barrel', x: 4, y: 1 },
+    { kind: 'bush', x: -4, y: -7.5 },
+    { kind: 'bush', x: 4, y: 7.5 },
+  ],
 };
 
 // Open loop around a central island: room to drive.
@@ -170,6 +208,18 @@ const raceway: Level = {
   ],
   goals: [],
   bases: [{ team: 0, x: -14, y: 0 }, { team: 1, x: 14, y: 0 }],
+  props: [
+    { kind: 'crate', x: -10, y: -8 },
+    { kind: 'crate', x: 10, y: 8 },
+    { kind: 'crate', x: -3, y: -9.5 },
+    { kind: 'crate', x: 3, y: 9.5 },
+    { kind: 'barrel', x: -16, y: 0 },
+    { kind: 'barrel', x: 16, y: 0 },
+    { kind: 'barrel', x: 0, y: -4.5 },
+    { kind: 'barrel', x: 0, y: 4.5 },
+    { kind: 'bush', x: -6, y: -4.3 },
+    { kind: 'bush', x: 6, y: 4.3 },
+  ],
 };
 
 export const LEVELS: Record<string, Level> = { courtyard, pitch, fortress, clearing, raceway };

@@ -40,12 +40,27 @@ power-up is an identical ❓ box until someone picks it up — good or bad is a 
 |---|---|---|
 | ⚡ | Speed | 1.5× running speed for 10 s. |
 | 🕶️ | Invisible | For 10 s nobody can see you (your own screen shows a faint ghost). You flash visible while slashing, kicking or aiming, and for 0.6 s after attacking or throwing. Bots lose track of you unless you're very close. |
-| 🛡️ | Shield | Survive one hit (brief invulnerability after it pops). |
+| 🫧 | Bubble Shield | Survive one hit (brief invulnerability after it pops). |
 | 🎩 | Double hat | Two hats: throw twice, or slash while one hat is out. Slash cooldown halves. |
 | 👻 | Phase dash | For 12 s, dashes pass through walls (never ending inside one). |
 | 🐌 | Slowpoke *(bad)* | Half running and dash speed for 6 s. Cancels Speed (and Speed cancels it). |
 | 😵‍💫 | Reversed *(bad)* | Your movement stick is reversed for 6 s. |
 | 🚗 | Car | Occasionally a car is parked instead. **Slash** next to it to get in, and slash again to get out. Car controls: up/down = gas/brake, left/right = steer. You can still **throw your hat** while driving: a quick throw exactly along your aim stick/mouse (or the movement stick, or straight ahead), and holding throw recalls it to the car. Running into enemies at speed kills them. A hat hitting the car wrecks it and kills the driver. The car lasts 15 s. Not in Soccer or Lumberjacks. |
+
+### Breakables
+
+Every arena except the Pitch has breakables. They block bodies (bushes let hats
+through); slashes and thrown hats damage them (a hat that hits one bounces back
+to you); a car at speed smashes straight through. They regrow in place after
+20 s (never on top of someone).
+
+| Breakable | Hits | When it breaks |
+|---|---|---|
+| 🌲 Tree | 3 | Topples over (TIMBER!) and leaves a stump. Scores in Lumberjacks. |
+| 📦 Crate | 2 | Splinters; 50% chance to drop a power-up (good or bad). |
+| 🛢️ Barrel | 1 | **Explodes**: pops everyone within 2.4 units, *including whoever broke it*, knocks hats down and sets off nearby barrels. |
+| 🪨 Rock | 5 | Crumbles. |
+| 🌿 Bush | 1 | Bursts into leaves. Hats fly straight through bushes (chopping them). |
 
 ### Piggyback (team modes)
 
@@ -98,9 +113,9 @@ to the lobby after 8 s.
 - First side to the target score wins.
 
 ### Lumberjacks
-- Free-for-all on the Clearing arena with 10 trees.
+- Free-for-all on the Clearing arena with 10 trees (plus a few rocks, bushes and explosive barrels — careful).
 - Trees block bodies and hats. A slash chops every tree in its arc; a thrown hat chops the tree it hits and bounces back toward you. Kicks and recalled hats don't chop.
-- A tree takes 3 chops. Whoever lands the last chop fells it and scores 1. A new tree grows elsewhere 4 s later.
+- A tree takes 3 chops. Whoever lands the last chop fells it and scores 1. A new tree grows elsewhere 4 s later. Only trees score.
 - Combat stays on: popped players respawn after 2.5 s.
 - **Timed:** after 90 s, the most trees wins (a tie is a draw). The target score is not used.
 

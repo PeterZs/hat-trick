@@ -13,7 +13,7 @@ import {
 import {
   canBeHit, detach, die, dropHat, emit, heldHats, hitstop, isInvisible, kill, level, sec,
 } from './common';
-import { chopTree, collideTrees, isStanding } from './trees';
+import { chopProp, collideProps, isStanding, propInfo } from './props';
 
 const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
 
@@ -169,7 +169,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
       const kn = p.kx * tmp.nx + p.ky * tmp.ny;
       if (kn < 0) { p.kx -= 1.6 * kn * tmp.nx; p.ky -= 1.6 * kn * tmp.ny; }
     }
-    if (s.trees.length) collideTrees(s, p, P.playerRadius);
+    if (s.props.length) collideProps(s, p, P.playerRadius);
   }
 }
 
@@ -361,13 +361,13 @@ export function resolveMelee(s: GameState): void {
     kill(s, b, a.id);
   }
 
-  // Slashes chop trees; slashes and kicks hit the ball.
+  // Slashes chop props; slashes and kicks hit the ball.
   for (const a of hitting) {
     if (clashed.has(a.id)) continue;
     const range = (a.slashKind === 0 ? P.slashRange : P.kickRange);
     if (a.slashKind === 0) {
-      for (const t of s.trees) {
-        if (isStanding(t) && inArc(a, t.x, t.y, range + P.treeRadius)) chopTree(s, t, a.id, t.x - a.x, t.y - a.y);
+      for (const t of s.props) {
+        if (isStanding(t) && inArc(a, t.x, t.y, range + propInfo(s, t.kind).r)) chopProp(s, t, a.id, t.x - a.x, t.y - a.y);
       }
     }
     const ball = s.ball;
@@ -455,12 +455,14 @@ export function updateHats(s: GameState): void {
       let nx = 0, ny = 0, hit = false;
       collideCircle(h.x, h.y, P.hatRadius * 0.6, L.walls, true, tmp);
       if (tmp.hit) { h.x = tmp.x; h.y = tmp.y; nx = tmp.nx; ny = tmp.ny; hit = true; }
-      if (s.trees.length) {
-        const t = collideTrees(s, h, P.hatRadius * 0.6);
+      if (s.props.length) {
+        const t = collideProps(s, h, P.hatRadius * 0.6, true);
         if (t) {
-          const dx = h.x - t.x, dy = h.y - t.y, d = Math.max(1e-6, len(dx, dy));
-          nx = dx / d; ny = dy / d; hit = true;
-          if (h.hitCd <= 0) { chopTree(s, t, h.owner, h.vx, h.vy); h.hitCd = 12; }
+          if (h.hitCd <= 0) { chopProp(s, t, h.owner, h.vx, h.vy); h.hitCd = 12; }
+          if (propInfo(s, t.kind).blocksHats) {
+            const dx = h.x - t.x, dy = h.y - t.y, d = Math.max(1e-6, len(dx, dy));
+            nx = dx / d; ny = dy / d; hit = true;
+          }
         }
       }
       if (hit) bounceHat(s, h, nx, ny);
@@ -626,6 +628,20 @@ export function updateCars(s: GameState): void {
     c.x += c.hx * c.speed * DT; c.y += c.hy * c.speed * DT;
     collideCircle(c.x, c.y, 1.0, L.walls, false, tmp);
     if (tmp.hit) { c.x = tmp.x; c.y = tmp.y; c.speed *= -0.3; }
+    // Breakables: smash straight through at speed, bump off when slow.
+    for (const t of s.props) {
+      if (!isStanding(t)) continue;
+      const r = 1.0 + propInfo(s, t.kind).r;
+      if (dist2(c.x, c.y, t.x, t.y) >= r * r) continue;
+      if (Math.abs(c.speed) >= P.carKillSpeed) {
+        while (isStanding(t)) chopProp(s, t, c.driver, c.hx, c.hy);
+        c.speed *= 0.85;
+      } else {
+        const p = { x: c.x, y: c.y };
+        collideProps(s, p, 1.0);
+        c.x = p.x; c.y = p.y; c.speed *= -0.3;
+      }
+    }
     if (c.driver >= 0) {
       const d = s.players[c.driver];
       d.x = c.x; d.y = c.y;
