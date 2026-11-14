@@ -72,7 +72,7 @@ export class Menu {
           <b>Keyboard + mouse:</b> <kbd>WASD</kbd> roll · <kbd>mouse</kbd> aim · <kbd>Z</kbd>/<kbd>Left click</kbd> slash · <kbd>X</kbd>/<kbd>Right click</kbd> throw hat (hold 1&nbsp;s to stand &amp; aim) ·
           <kbd>C</kbd>/<kbd>Space</kbd> dash · <kbd>Q</kbd>/<kbd>R</kbd> change ball · <kbd>T</kbd> team<br>
           <b>Keyboard 2:</b> arrows · <kbd>.</kbd> slash · <kbd>/</kbd> throw · <kbd>,</kbd> dash · <kbd>[</kbd><kbd>]</kbd> ball<br>
-          <b>Gamepad:</b> left stick move · right stick aim · <kbd>X</kbd>/<kbd>RB</kbd> slash · <kbd>RT</kbd>/<kbd>B</kbd> throw · <kbd>A</kbd>/<kbd>LB</kbd> dash · d-pad changes ball/team · <kbd>Start</kbd> = Play on the main menu, starts the match in the lobby, pauses in game · menus: d-pad + <kbd>A</kbd>/<kbd>B</kbd><br>
+          <b>Gamepad:</b> left stick move · right stick aim · <kbd>Y</kbd>/<kbd>RB</kbd> slash · <kbd>X</kbd>/<kbd>RT</kbd> throw · <kbd>B</kbd>/<kbd>LB</kbd> dash · <kbd>A</kbd> join · d-pad changes ball/team · <kbd>Start</kbd> = Play on the main menu, starts the match in the lobby, pauses in game · menus: d-pad + <kbd>A</kbd>/<kbd>B</kbd><br>
           <b>Touch:</b> left side to move · tap THROW, or hold it 1&nbsp;s to stand still and aim (drag it or the move stick) · SLASH and DASH buttons.<br>
           <b>Slash</b> a teammate to ride on their back (carrier: slash to throw them off; rider: dash to hop off). Slash next to a car to drive it.<br>
           Without your hat you can only kick. Slash a flying hat to knock it down. Slash at the same time as someone to clash.

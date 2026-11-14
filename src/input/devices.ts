@@ -129,9 +129,11 @@ export class GamepadDevice implements Device {
     const [mx, my] = stick(p.axes[0] ?? 0, p.axes[1] ?? 0);
     const [ax, ay] = stick(p.axes[2] ?? 0, p.axes[3] ?? 0);
     let b = 0;
-    if (this.btn(0) || this.btn(4)) b |= BTN_DASH;
-    if (this.btn(2) || this.btn(5)) b |= BTN_ATTACK;
-    if (this.btn(1) || this.btn(6) || this.btn(7)) b |= BTN_THROW;
+    // Face buttons: Y slash, X throw, B dash (A is free: it joins and selects in menus).
+    // Shoulders/triggers: RB slash, LB dash, LT/RT throw.
+    if (this.btn(1) || this.btn(4)) b |= BTN_DASH;
+    if (this.btn(3) || this.btn(5)) b |= BTN_ATTACK;
+    if (this.btn(2) || this.btn(6) || this.btn(7)) b |= BTN_THROW;
     return makeInput(mx, my, ax, ay, b);
   }
   joinPressed() { return this.j; }

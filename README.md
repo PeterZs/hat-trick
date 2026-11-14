@@ -26,7 +26,7 @@ phase dash (through walls), and cars. Teammates can ride piggyback.
 **Controls** — Keyboard+mouse: WASD, mouse aim, Z or left click slash, X or right
 click throw (hold 1 s to aim; also recalls your hat from the ground), C or Space dash. Slash a teammate to ride piggyback, slash next to a car to drive.
 Second keyboard player: arrows, `.` slash, `/` throw, `,` dash.
-Gamepad: sticks, X/RB slash, RT/B throw, A/LB dash, Start = Play (main menu) / start match (lobby) / pause (in game); menus are navigable with D-pad/stick, A to select, B to go back. Touch: on-screen
+Gamepad: sticks, Y/RB slash, X/RT throw, B/LB dash, A join, Start = Play (main menu) / start match (lobby) / pause (in game); menus are navigable with D-pad/stick, A to select, B to go back. Touch: on-screen
 stick and buttons. `` ` `` opens settings (all gameplay params, live), Esc the menu.
 
 **Online:** "Host online" gives a room code/link; others "Join online".
