@@ -43,6 +43,7 @@ export class Hud {
   private scoreKey = '';
   private lobbyCollapsed = false;
   paused = false;
+  get pauseEl(): HTMLElement { return this.pause; }
 
   constructor(parent: HTMLElement, private ctx: () => HudContext) {
     this.el = document.createElement('div');
@@ -200,7 +201,7 @@ export class Hud {
         </div>
         <div class="joinhints">
           <span><b>Join:</b></span>
-          <span>⌨️🖱 Enter / click</span><span>⌨️ arrows: press <b>.</b></span><span>🎮 press A / Start</span><span>📱 tap JOIN</span>
+          <span>⌨️🖱 Enter / click</span><span>⌨️ arrows: press <b>.</b></span><span>🎮 press A (Start = start match / menu)</span><span>📱 tap JOIN</span>
           <span>· leave: Backspace / Del / Select</span>
         </div>`;
     }

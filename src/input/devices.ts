@@ -21,6 +21,8 @@ export interface Device {
   poll(ctx: AimContext): PlayerInput;
   joinPressed(): boolean;
   leavePressed(): boolean;
+  /** Start/menu button (gamepads). */
+  menuPressed(): boolean;
   /** Lobby navigation: -1/+1 to cycle character, team. */
   cycleBall(): number;
   cycleTeam(): number;
@@ -60,6 +62,7 @@ export class KeyboardMouseDevice implements Device {
   }
   joinPressed() { return this.j; }
   leavePressed() { return this.l; }
+  menuPressed() { return false; }
   cycleBall() { return this.bl; }
   cycleTeam() { return this.t; }
   connected() { return true; }
@@ -88,6 +91,7 @@ export class Keyboard2Device implements Device {
   }
   joinPressed() { return this.j; }
   leavePressed() { return this.l; }
+  menuPressed() { return false; }
   cycleBall() { return this.bl; }
   cycleTeam() { return this.t; }
   connected() { return true; }
@@ -107,12 +111,14 @@ export class GamepadDevice implements Device {
   private pad: Gamepad | null = null;
   private join = new Edge(); private leave = new Edge(); private ballL = new Edge(); private ballR = new Edge(); private team = new Edge();
   private j = false; private l = false; private bl = 0; private t = 0;
+  private menu = new Edge(); private m = false;
   constructor(public index: number) { this.key = 'pad' + index; this.label = 'Gamepad ' + (index + 1); }
   private btn(i: number): boolean { const b = this.pad?.buttons[i]; return !!b && (b.pressed || b.value > 0.35); }
   update(): void {
     this.pad = navigator.getGamepads?.()[this.index] ?? null;
     if (this.pad) this.label = this.pad.id.replace(/\(.*\)/, '').trim().slice(0, 24) || 'Gamepad ' + (this.index + 1);
     this.j = this.join.rise(this.btn(9) || this.btn(0));
+    this.m = this.menu.rise(this.btn(9));
     this.l = this.leave.rise(this.btn(8));
     this.bl = this.ballL.rise(this.btn(14)) ? -1 : this.ballR.rise(this.btn(15)) ? 1 : 0;
     this.t = this.team.rise(this.btn(12) || this.btn(13)) ? 1 : 0;
@@ -131,6 +137,7 @@ export class GamepadDevice implements Device {
   }
   joinPressed() { return this.j; }
   leavePressed() { return this.l; }
+  menuPressed() { return this.m; }
   cycleBall() { return this.bl; }
   cycleTeam() { return this.t; }
   connected() { return !!this.pad && this.pad.connected; }
@@ -143,6 +150,7 @@ export class TouchDevice implements Device {
   poll(): PlayerInput { return this.tc.read(); }
   joinPressed() { return this.tc.consumeJoin(); }
   leavePressed() { return false; }
+  menuPressed() { return false; }
   cycleBall() { return 0; }
   cycleTeam() { return 0; }
   connected() { return this.tc.enabled; }

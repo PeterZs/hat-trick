@@ -116,6 +116,7 @@ Bots have no device; their input is computed by `botInput` inside `step`.
 - `ui/` — DOM UI: main menu, lobby (it is a sim phase, so it works online),
   HUD, pause menu, and the non-modal settings panel (params persisted in
   `localStorage`, downloadable as `defaultParams.json`).
+- `ui/gamepadNav.ts` — gamepad navigation of DOM menus (spatial focus, A/B, left/right adjusts values); pad buttons held when leaving a menu are suppressed so they don't leak into gameplay.
 - `input/` — device abstraction; keyboard taps are latched so presses shorter
   than one frame still register. Touch controls are a DOM overlay.
 - `main.ts` — the fixed-timestep loop (60 Hz sim, render every rAF).

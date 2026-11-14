@@ -14,6 +14,7 @@ import { createState } from './sim/sim';
 import type { Command, GameState, MatchConfig } from './sim/types';
 import { Menu } from './ui/menu';
 import { Hud } from './ui/hud';
+import { GamepadNav } from './ui/gamepadNav';
 import { SettingsPanel } from './ui/settings';
 import { loadPrefs, savePrefs } from './ui/prefs';
 import { playCue, playEvent, setVolume, unlockAudio } from './audio/sfx';
@@ -58,6 +59,12 @@ const menu = new Menu(uiRoot, prefs, {
   openSettings: () => settings.toggle(true),
 });
 
+// Gamepads drive the menus: main menu, pause menu, and the settings panel.
+const nav = new GamepadNav(
+  () => settings.open ? settings.el : hud.paused ? hud.pauseEl : !session ? menu.el : null,
+  () => { if (settings.open) settings.toggle(false); else if (hud.paused) hud.togglePause(false); },
+);
+
 // Backdrop: a demo match with bots behind the menu.
 function demoSession(): Session {
   const s = new LocalSession({ mode: 'ffa', level: 'courtyard', winScore: 99 }, settings.params);
@@ -74,6 +81,7 @@ function startSession(s: Session): void {
   (window as unknown as { session: Session }).session = s; // for debugging in the console
   pendingJoin.clear();
   pendingNames.clear();
+  for (const d of devices.devices) if (d.kind === 'pad') padSuppressed.add(d.key);
   menu.show(false);
   hud.show(true);
   unlockAudio();
@@ -153,7 +161,7 @@ function handleDevices(): Record<string, PlayerInput> {
     if (p) pendingNames.delete(d.key);
     if (!p) {
       if (now - (pendingJoin.get(d.key) ?? 0) > 1000) pendingNames.delete(d.key);
-      if (hud.paused || settings.open && d.kind !== 'pad') continue;
+      if (hud.paused || settings.open || (nav.active && d.kind === 'pad')) continue;
       if (d.joinPressed() && now - (pendingJoin.get(d.key) ?? 0) > 1000) {
         if (s.players.filter((q) => q.active).length >= MAX_PLAYERS) continue;
         pendingJoin.set(d.key, now);
@@ -164,6 +172,13 @@ function handleDevices(): Record<string, PlayerInput> {
       continue;
     }
     if (d.leavePressed()) { session.command({ t: 'leave', device: d.key }); continue; }
+    if (d.menuPressed()) {
+      // Start: begin the match from the lobby (host), otherwise pause menu.
+      if (s.phase === 'lobby' && session.isHost && !hud.paused && !settings.open) session.command({ t: 'start', cfg: s.cfg });
+      else if (settings.open) settings.toggle(false);
+      else hud.togglePause();
+      continue;
+    }
     if (s.phase === 'lobby') {
       const cb = d.cycleBall();
       if (cb) session.command({ t: 'setBall', device: d.key, ball: (p.ball + cb + BALLS.length) % BALLS.length });
@@ -174,6 +189,10 @@ function handleDevices(): Record<string, PlayerInput> {
   return inputs;
 }
 
+// Buttons still held from menu navigation (e.g. B to close) must not leak
+// into the game: ignore a pad's buttons until they are all released.
+const padSuppressed = new Set<string>();
+
 function pollInputs(): Record<string, PlayerInput> {
   const inputs: Record<string, PlayerInput> = {};
   if (!session || !session.state) return inputs;
@@ -182,7 +201,14 @@ function pollInputs(): Record<string, PlayerInput> {
     if (!d.connected()) continue;
     const p = s.players.find((p) => p.active && p.peer === session!.peer && p.device === d.key);
     if (!p) continue;
-    inputs[d.key] = hud.paused ? NEUTRAL : d.poll(aimCtx);
+    if (d.kind === 'pad' && (nav.active || hud.paused)) padSuppressed.add(d.key);
+    if (hud.paused || (nav.active && d.kind === 'pad')) { inputs[d.key] = NEUTRAL; continue; }
+    let inp = d.poll(aimCtx);
+    if (padSuppressed.has(d.key)) {
+      if (inp.b === 0) padSuppressed.delete(d.key);
+      else inp = { ...inp, b: 0 };
+    }
+    inputs[d.key] = inp;
   }
   return inputs;
 }
@@ -225,6 +251,7 @@ function loop(now: number): void {
   acc += elapsed;
 
   devices.update();
+  nav.update(now);
   if (pressedOnce('Backquote')) settings.toggle();
   if (pressedOnce('Escape') && session) hud.togglePause();
 
