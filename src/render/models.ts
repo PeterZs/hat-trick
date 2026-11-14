@@ -113,7 +113,7 @@ export function makeEyes(r: number): THREE.Group {
   for (const s of [-1, 1]) {
     const e = new THREE.Mesh(white, mat('#ffffff'));
     const a = s * 0.38;
-    e.position.set(Math.cos(a) * r * 0.9, r * 1.25, Math.sin(a) * r * 0.9);
+    e.position.set(Math.cos(a) * r * 0.93, r * 1.12, Math.sin(a) * r * 0.93);
     const p = new THREE.Mesh(pupil, mat('#111111'));
     p.position.set(r * 0.12, 0, 0);
     e.add(p);

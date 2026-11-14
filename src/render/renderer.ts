@@ -376,7 +376,7 @@ export class Renderer {
         v.hatStack.clear();
         for (let i = 0; i < held; i++) {
           const hat = makeHat(p.ball);
-          hat.scale.setScalar(r * 1.6);
+          hat.scale.setScalar(r * 1.45);
           hat.position.y = i * r * 0.45;
           hat.rotation.z = i ? 0.15 : 0;
           v.hatStack.add(hat);
@@ -443,7 +443,7 @@ export class Renderer {
       if (!hv) {
         const g = new THREE.Group();
         const hat = makeHat(owner.ball);
-        hat.scale.setScalar(r * 1.6);
+        hat.scale.setScalar(r * 1.45);
         g.add(hat);
         this.scene.add(g);
         hv = { g, spin: 0 };
@@ -451,7 +451,7 @@ export class Renderer {
       }
       const ground = h.state === HAT_GROUND;
       const recall = h.state === HAT_RECALL;
-      hv.g.position.set(h.x, ground ? 0.08 : recall ? 0.35 : 0.85, h.y);
+      hv.g.position.set(h.x, ground ? 0.08 : recall ? 1.0 + 0.6 * Math.min(1, h.t / 20) : 0.85, h.y);
       if (ground) {
         hv.g.rotation.set(0.35, hv.g.rotation.y, 0.2);
       } else {

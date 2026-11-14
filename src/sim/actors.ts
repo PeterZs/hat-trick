@@ -1,7 +1,7 @@
 // Players, hats, cars and combat.
 
 import { DT, HZ, allies, teamOf, isTeamMode } from './const';
-import { clamp, dcos, dsin, dist2, frames, len, lerp, PI } from './dmath';
+import { clamp, dcos, dsin, dist2, frames, len, lerp, PI, rotate } from './dmath';
 import { collideCircle, circleOverlapsWalls, type Push } from './collision';
 import {
   BTN_ATTACK, BTN_DASH, BTN_INTERACT, BTN_THROW, type PlayerInput,
@@ -345,13 +345,21 @@ export function updateHats(s: GameState): void {
       // Home toward the owner: steer velocity, keep speed.
       const dx = owner.x - h.x, dy = owner.y - h.y, d = Math.max(0.001, len(dx, dy));
       h.speed += (P.hatReturnSpeed - h.speed) * Math.min(1, 4 * DT);
-      // Blend the direction toward the owner; homing tightens over time so the
-      // hat always comes back instead of orbiting.
-      const w = (P.hatHoming * DT / 10) * (1 + h.t / 20);
-      const vl0 = Math.max(0.001, len(h.vx, h.vy));
-      const ux = h.vx / vl0 + (dx / d) * w, uy = h.vy / vl0 + (dy / d) * w;
-      const vl = Math.max(0.001, len(ux, uy));
-      h.vx = (ux / vl) * h.speed; h.vy = (uy / vl) * h.speed;
+      // Turn toward the owner at a limited rate (tightening over time so it
+      // always comes back). Turning by an angle, rather than blending
+      // vectors, also handles the owner being directly behind the hat.
+      const ang = (P.hatHoming / 10) * DT * (1 + h.t / 20);
+      const vl = Math.max(0.001, len(h.vx, h.vy));
+      let ux = h.vx / vl, uy = h.vy / vl;
+      const tx = dx / d, ty = dy / d;
+      if (ux * tx + uy * ty >= dcos(ang)) { ux = tx; uy = ty; }
+      else {
+        let cross = ux * ty - uy * tx;
+        // Owner (nearly) straight behind: curve toward the arena center.
+        if (Math.abs(cross) < 0.05) cross = ux * -h.y - uy * -h.x;
+        [ux, uy] = rotate(ux, uy, cross >= 0 ? ang : -ang);
+      }
+      h.vx = ux * h.speed; h.vy = uy * h.speed;
     }
     if (h.state === HAT_RECALL) {
       if (!owner.alive) { dropHat(s, h); continue; }
@@ -363,7 +371,13 @@ export function updateHats(s: GameState): void {
         h.speed = Math.max(0, h.speed - P.recallAccel * 2 * DT);
         const vl = Math.max(0.001, len(h.vx, h.vy));
         h.vx = (h.vx / vl) * h.speed; h.vy = (h.vy / vl) * h.speed;
-        if (h.speed < 0.3) { h.state = HAT_GROUND; h.speed = 0; h.vx = h.vy = 0; continue; }
+        if (h.speed < 0.3) {
+          h.state = HAT_GROUND; h.speed = 0; h.vx = h.vy = 0;
+          // Don't land inside a wall.
+          collideCircle(h.x, h.y, P.hatRadius, L.walls, false, tmp);
+          h.x = tmp.x; h.y = tmp.y;
+          continue;
+        }
       }
     }
 
@@ -372,17 +386,13 @@ export function updateHats(s: GameState): void {
     for (let k = 0; k < steps; k++) {
       h.x += (h.vx * DT) / steps; h.y += (h.vy * DT) / steps;
       if (h.state === HAT_OUT) h.dist += (h.speed * DT) / steps;
+      // Recalled hats lift up and fly over walls.
+      if (h.state === HAT_RECALL) continue;
       collideCircle(h.x, h.y, P.hatRadius * 0.6, L.walls, true, tmp);
       if (tmp.hit) {
         h.x = tmp.x; h.y = tmp.y;
-        if (h.state === HAT_RECALL) {
-          // Recalled hats slide along walls instead of stopping.
-          const vn = h.vx * tmp.nx + h.vy * tmp.ny;
-          if (vn < 0) { h.vx -= vn * tmp.nx; h.vy -= vn * tmp.ny; }
-        } else {
-          dropHat(s, h);
-          break;
-        }
+        dropHat(s, h);
+        break;
       }
     }
     if (h.state === HAT_GROUND) continue;
