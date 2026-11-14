@@ -433,9 +433,9 @@ describe('bot difficulty', () => {
     for (const seed of [1, 2, 3]) {
       const cfg = { mode: 'ffa' as const, level: 'courtyard', winScore: 99 };
       const s = createState(cfg, { ...DEFAULT_PARAMS, powerupMax: 0 }, seed);
-      step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'addBot', skill: 2 }, { t: 'addBot', skill: 0 }, { t: 'addBot', skill: 2 }, { t: 'addBot', skill: 0 }, { t: 'start', cfg }] }]);
+      step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'addBot', skill: 3 }, { t: 'addBot', skill: 1 }, { t: 'addBot', skill: 3 }, { t: 'addBot', skill: 1 }, { t: 'start', cfg }] }]);
       for (let f = 0; f < 60 * 90; f++) step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
-      for (const p of s.players) { if (p.skill === 2) hard += p.kills; else easy += p.kills; }
+      for (const p of s.players) { if (p.skill === 3) hard += p.kills; else easy += p.kills; }
     }
     console.log('kills: hard', hard, 'easy', easy);
     expect(hard).toBeGreaterThan(easy * 1.5);
@@ -447,9 +447,9 @@ describe('lobby commands', () => {
     const s = createState({ mode: 'ffa', level: 'courtyard', winScore: 5 }, DEFAULT_PARAMS, 1);
     step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'addBot' }, { t: 'addBot' }] }]);
     const [b1, b2] = s.players;
-    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'setSkill', device: b1.device, skill: 2 }] }]);
-    expect(b1.skill).toBe(2);
-    expect(b2.skill).toBe(1);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'setSkill', device: b1.device, skill: 0 }] }]);
+    expect(b1.skill).toBe(0);
+    expect(b2.skill).toBe(2);
     expect(b2.active).toBe(true);
   });
 });
@@ -603,5 +603,21 @@ describe('lobby settings', () => {
     step(s, [{ peer: 1, inputs: {}, cmds: [{ t: 'lobby', cfg }] }]);
     expect(s.phase).not.toBe('lobby'); // a client can't abort the match
     expect(s.cfg.mode).toBe('soccer');
+  });
+});
+
+describe('extra easy bots', () => {
+  it('extra easy bots are less dangerous than easy bots', () => {
+    let extra = 0, easy = 0;
+    for (const seed of [1, 2, 3]) {
+      const cfg = { mode: 'ffa' as const, level: 'courtyard', winScore: 99 };
+      const s = createState(cfg, { ...DEFAULT_PARAMS, powerupMax: 0 }, seed);
+      step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'addBot', skill: 0 }, { t: 'addBot', skill: 1 }, { t: 'addBot', skill: 0 }, { t: 'addBot', skill: 1 }, { t: 'start', cfg }] }]);
+      s.props = [];
+      for (let f = 0; f < 60 * 90; f++) step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+      for (const p of s.players) { if (p.skill === 0) extra += p.kills; else easy += p.kills; }
+    }
+    console.log('kills: extra easy', extra, 'easy', easy);
+    expect(extra).toBeLessThan(easy);
   });
 });

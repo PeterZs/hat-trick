@@ -25,7 +25,7 @@ export interface Player {
   ball: number;         // character index (BALLS)
   team: number;
   isBot: boolean;
-  skill: number;        // bots: 0 easy, 1 normal, 2 hard
+  skill: number;        // bots: 0 extra easy, 1 easy, 2 normal, 3 hard
   role: Role;
   joinFrame: number;
 

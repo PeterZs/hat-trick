@@ -8,13 +8,15 @@ import { rand } from './rng';
 import { BTN_ATTACK, BTN_DASH, BTN_THROW, makeInput, NEUTRAL, type PlayerInput } from './input';
 import { dcos, dsin } from './dmath';
 
-/** Per-skill tuning (0 easy, 1 normal, 2 hard). Probabilities are per frame. */
+/** Per-skill tuning (0 extra easy, 1 easy, 2 normal, 3 hard). Probabilities are per frame. */
 const SKILL = [
+  // Extra easy: wanders slowly, rarely attacks, never dodges, can barely aim.
+  { attack: 0.015, throw: 0.002, dodge: 0, kick: 0.01, aimErr: 0.9, speed: 0.5, bomb: 0.02 },
   { attack: 0.07, throw: 0.006, dodge: 0.03, kick: 0.04, aimErr: 0.45, speed: 0.7, bomb: 0.06 },
   { attack: 0.35, throw: 0.02, dodge: 0.25, kick: 0.15, aimErr: 0.12, speed: 1, bomb: 0.2 },
   { attack: 0.8, throw: 0.05, dodge: 0.65, kick: 0.4, aimErr: 0.02, speed: 1, bomb: 0.5 },
 ];
-export const SKILL_NAMES = ['Easy', 'Normal', 'Hard'];
+export const SKILL_NAMES = ['Extra easy', 'Easy', 'Normal', 'Hard'];
 import { navGrid } from './level';
 import { HAT_GROUND, HAT_HELD, type GameState, type Player } from './types';
 import { heldHats, isInvisible, level } from './common';
@@ -94,7 +96,7 @@ export function botInput(s: GameState, p: Player): PlayerInput {
 
 function think(s: GameState, p: Player): PlayerInput {
   if (!p.active) return NEUTRAL;
-  const K = SKILL[Math.max(0, Math.min(2, p.skill ?? 1))];
+  const K = SKILL[Math.max(0, Math.min(3, p.skill ?? 2))];
   const P = s.params;
   const L = level(s);
 

@@ -22,7 +22,7 @@ a shield).
 | **Parry** | A slash knocks an enemy's flying hat out of the air if the hat enters the arc at any point during the swing (windup + active). |
 | **Clash** | If two players slash each other nearly simultaneously, nobody dies: both are knocked back. Two flying hats from different players that collide both drop. |
 | **Hit-stop** | Kills, clashes, parries, hat collisions and felled trees freeze the game for 2 frames. |
-| **Bot difficulty** | Each bot has Easy / Normal / Hard in the lobby: harder bots attack, throw and dodge more often and aim more precisely; easy bots also move slower. |
+| **Bot difficulty** | Each bot has Extra easy / Easy / Normal / Hard in the lobby: harder bots attack, throw and dodge more often and aim more precisely; easier bots also move slower. Extra easy bots amble about, rarely attack and never dodge. |
 | **Spawn protection** | 1.2 s of invulnerability (blinking) after spawning. |
 
 Friendly fire is off in team modes. Your own hat never hurts you.
