@@ -1,7 +1,7 @@
 // Power-ups, game-mode objects (ball, flags, bombs) and round flow.
 
 import { DT, HZ, allies, isRoundMode, scoreIndex, teamOf } from './const';
-import { clamp, dist2, frames, len } from './dmath';
+import { clamp, dcos, dist2, dsin, frames, len } from './dmath';
 import { collideCircle, circleOverlapsWalls, type Push } from './collision';
 import { rand, randInt, randRange } from './rng';
 import { BTN_ATTACK, type PlayerInput } from './input';
@@ -96,7 +96,7 @@ function applyPickup(s: GameState, p: Player, kind: string): void {
     case 'double':
       if (p.maxHats < 2) {
         p.maxHats = 2;
-        s.hats.push({ id: newId(s), owner: p.id, state: 0, x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, dist: 0, range: 0, t: 0, stuck: 0, lastD: 0, hitCd: 0 });
+        s.hats.push({ id: newId(s), owner: p.id, state: 0, x: p.x, y: p.y, vx: 0, vy: 0, speed: 0, dist: 0, range: 0, t: 0, stuck: 0, lastD: 0, hitCd: 0, bomb: false });
       }
       break;
   }
@@ -238,6 +238,7 @@ export function updateOverlord(s: GameState, p: Player, inp: PlayerInput): void 
   if (p.bombCd > 0) p.bombCd--;
   if ((pressed & BTN_ATTACK) && p.bombCd <= 0 && s.phase === 'playing') {
     s.bombs.push({ id: newId(s), owner: p.id, x: p.cursorX, y: p.cursorY, t: 0 });
+    p.lastBombX = p.cursorX; p.lastBombY = p.cursorY; // bomb hats in flight now return here
     p.bombCd = sec(s, 'bombCooldown');
   }
 }
@@ -253,7 +254,20 @@ export function updateBombs(s: GameState): void {
       if (dist2(p.x, p.y, b.x, b.y) < (P.bombRadius + P.hitRadius) ** 2) kill(s, p, b.owner);
     }
     for (const h of s.hats) {
+      if (h.bomb) continue;
       if (h.state !== HAT_GROUND && h.state !== 0 && dist2(h.x, h.y, b.x, b.y) < P.bombRadius ** 2) dropHat(s, h);
+    }
+    // A ring of hats bursts outward, then boomerangs back to the bomb target.
+    const n = Math.round(P.bombHats);
+    const spin = rand(s) * 6.283;
+    for (let i = 0; i < n; i++) {
+      const a = spin + (i * 6.283185307179586) / n;
+      const dx = dcos(a), dy = dsin(a);
+      s.hats.push({
+        id: newId(s), owner: b.owner, state: HAT_OUT, x: b.x + dx * 0.4, y: b.y + dy * 0.4,
+        vx: dx * P.bombHatSpeed, vy: dy * P.bombHatSpeed, speed: P.bombHatSpeed, dist: 0, range: P.bombHatRange,
+        t: 0, stuck: 0, lastD: 1e9, hitCd: 0, bomb: true,
+      });
     }
     return false;
   });

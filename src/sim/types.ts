@@ -58,6 +58,7 @@ export interface Player {
   car: number;          // car id driven, -1
 
   cursorX: number; cursorY: number; bombCd: number; // overlord
+  lastBombX: number; lastBombY: number;              // overlord: where bomb hats return to
 
   kills: number; deaths: number; trees: number;
 
@@ -78,6 +79,7 @@ export interface Hat {
   stuck: number;         // frames pinned against an obstacle without getting closer to the owner
   lastD: number;         // distance to owner last frame (stuck detection)
   hitCd: number;         // frames until it can chop/smack again (trees, ball)
+  bomb: boolean;         // launched by an Overlord bomb: returns to the bomb target, then vanishes
 }
 
 export type PickupKind = 'speed' | 'shield' | 'double' | 'phase' | 'invis' | 'slow' | 'reverse';

@@ -536,3 +536,46 @@ describe('level layouts', () => {
     }
   });
 });
+
+describe('overlord bomb hats', () => {
+  const setupHazard = () => {
+    const cfg = { mode: 'hazard' as const, level: 'clearing', winScore: 99 };
+    const s = createState(cfg, { ...DEFAULT_PARAMS, powerupMax: 0, bombRadius: 0.5 }, 4);
+    step(s, [{ peer: 0, inputs: {}, cmds: [
+      { t: 'join', device: 'o', name: 'O', ball: 0 }, { t: 'join', device: 'r', name: 'R', ball: 1 },
+      { t: 'setRole', device: 'o', role: 'overlord' }, { t: 'start', cfg },
+    ] }]);
+    while (s.phase !== 'playing') step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+    s.props = [];
+    return s;
+  };
+
+  it('a bomb bursts into hats that fly out, come back to the target and vanish', () => {
+    const s = setupHazard();
+    const [o, r] = s.players;
+    r.x = 12; r.y = 8; r.invulnT = 0;
+    o.cursorX = 0; o.cursorY = 0;
+    const ev = run(s, Math.round(DEFAULT_PARAMS.bombFallTime * 60) + 2, (f) => ({ o: makeInput(0, 0, 0, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(ev).toContain('boom');
+    const hats = s.hats.filter((h) => h.bomb);
+    expect(hats.length).toBe(DEFAULT_PARAMS.bombHats);
+    const maxOut = Math.max(...Array.from({ length: 60 }, () => { run(s, 1, () => ({})); return Math.max(0, ...s.hats.filter((h) => h.bomb).map((h) => Math.hypot(h.x, h.y))); }));
+    expect(maxOut).toBeGreaterThan(DEFAULT_PARAMS.bombHatRange * 0.9);
+    run(s, 180, () => ({}));
+    expect(s.hats.filter((h) => h.bomb).length).toBe(0);
+  });
+
+  it('bomb hats return to the newest bomb target and kill runners in the way', () => {
+    const s = setupHazard();
+    const [o, r] = s.players;
+    o.cursorX = -6; o.cursorY = 0;
+    run(s, Math.round(DEFAULT_PARAMS.bombFallTime * 60) + 2, (f) => ({ o: makeInput(0, 0, 0, 0, f === 0 ? BTN_ATTACK : 0) }));
+    // Launch a second bomb far away; the first bomb's hats should head there.
+    o.bombCd = 0; o.cursorX = 6; o.cursorY = 0;
+    run(s, 1, () => ({ o: makeInput(0, 0, 0, 0, BTN_ATTACK) }));
+    r.x = 0; r.y = 0; r.invulnT = 0; // standing between the two targets
+    const ev = run(s, 120, () => ({}));
+    expect(ev).toContain('kill');
+    expect(r.alive).toBe(false);
+  });
+});

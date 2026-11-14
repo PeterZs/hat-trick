@@ -107,7 +107,9 @@ to the lobby after 8 s.
 - Players can still pop each other and respawn after 2.5 s. First to the target score wins.
 
 ### Overlord (asymmetric)
-- Some players are **Overlords** (chosen in the lobby; if nobody chooses, one is picked at random). Overlords have no body: they move a crosshair and press attack to drop a bomb (1 s fall, 1 s cooldown). The landing spot flashes red before impact.
+- Some players are **Overlords** (chosen in the lobby; if nobody chooses, one is picked at random). Overlords have no body: they move a crosshair and press attack to drop a bomb (1 s fall, 0.6 s between bombs). The landing spot flashes red before impact.
+- Each bomb blasts where it lands and bursts into a **ring of 5 hats** that fly outward, bounce off walls, and boomerang back to the bomb spot — or to the overlord's *newest* bomb target if another bomb has been launched since — then vanish. They pop any runner they touch. Runners can slash them out of the air or knock them down with their own hats.
+- Hats per bomb, delay between bombs, hat speed and distance, fall time and blast radius are in the settings panel (Overlord section).
 - Everyone else is a **Runner** on one team. Runners can't hurt each other.
 - Runners win the round if anyone survives the 45 s clock; Overlords win if all runners are popped.
 - First side to the target score wins.

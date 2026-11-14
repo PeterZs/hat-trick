@@ -407,13 +407,14 @@ export function updateHats(s: GameState): void {
       if (h.dist >= h.range) { h.state = HAT_RETURN; h.t = 0; }
     }
     if (h.state === HAT_RETURN) {
-      if (!owner.alive) { dropHat(s, h); continue; }
+      if (!owner.alive && !h.bomb) { dropHat(s, h); continue; }
       // Seek steering: accelerate toward "full return speed, aimed at the
       // owner". If the owner hasn't moved, the desired velocity is exactly
       // opposite the outbound one, so the hat decelerates, stops and flies
       // straight back along the same line; it only bends to follow an owner
       // who has moved. Acceleration ramps up over time so it always arrives.
-      const dx = owner.x - h.x, dy = owner.y - h.y, d = Math.max(0.001, len(dx, dy));
+      const [gx, gy] = hatHome(h, owner);
+      const dx = gx - h.x, dy = gy - h.y, d = Math.max(0.001, len(dx, dy));
       const wantX = (dx / d) * P.hatReturnSpeed, wantY = (dy / d) * P.hatReturnSpeed;
       let ex = wantX - h.vx, ey = wantY - h.vy;
       const el = len(ex, ey), maxDv = P.hatHoming * DT * (1 + h.t / 40);
@@ -470,11 +471,21 @@ export function updateHats(s: GameState): void {
     }
     if (h.state === HAT_RETURN) {
       // Pinned against an obstacle and not getting any closer: give up and drop.
-      const d = len(owner.x - h.x, owner.y - h.y);
+      const [gx, gy] = hatHome(h, owner);
+      const d = len(gx - h.x, gy - h.y);
       if (touching && d > h.lastD - 0.02) h.stuck++;
       else if (!touching) h.stuck = 0;
       h.lastD = d;
       if (h.stuck >= Math.max(1, sec(s, 'hatStuckTime'))) { dropHat(s, h); continue; }
+    }
+
+    // Bomb hats vanish when they get back to the bomb target.
+    if (h.bomb) {
+      if (h.state === HAT_RETURN && dist2(h.x, h.y, owner.lastBombX, owner.lastBombY) < 0.8 * 0.8) {
+        h.state = HAT_GROUND; h.t = -1; // removed below
+        emit(s, { e: 'catch', who: owner.id, hat: h.id });
+      }
+      continue;
     }
 
     // Catch.
@@ -499,6 +510,8 @@ export function updateHats(s: GameState): void {
       }
     }
   }
+  // Bomb hats that were knocked down (or arrived) just disappear.
+  if (s.hats.some((h) => h.bomb && h.state === HAT_GROUND)) s.hats = s.hats.filter((h) => !(h.bomb && h.state === HAT_GROUND));
 }
 
 /** Obstacle contact with surface normal (nx, ny). Outbound hats bounce and
@@ -513,6 +526,11 @@ export function bounceHat(s: GameState, h: Hat, nx: number, ny: number): void {
   } else {
     h.vx -= vn * nx; h.vy -= vn * ny;
   }
+}
+
+/** Where a returning hat is headed: its owner, or the Overlord's latest bomb target. */
+function hatHome(h: Hat, owner: Player): [number, number] {
+  return h.bomb ? [owner.lastBombX, owner.lastBombY] : [owner.x, owner.y];
 }
 
 export function isLethal(s: GameState, h: Hat): boolean {

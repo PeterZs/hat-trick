@@ -94,11 +94,14 @@ export const PARAM_DEFS: ParamDef[] = [
   D('propRegrowTime', 'Level breakables regrow (s)', 'Breakables', 1, 120, 1),
   D('crateDropChance', 'Crate power-up drop chance', 'Breakables', 0, 1, 0.05),
   D('barrelBlastRadius', 'Barrel blast radius', 'Breakables', 0.5, 6, 0.1),
-  D('bombCooldown', 'Overlord bomb cooldown (s)', 'Hazard', 0.1, 5, 0.05),
-  D('bombFallTime', 'Bomb fall time (s)', 'Hazard', 0.2, 4, 0.05),
-  D('bombRadius', 'Bomb blast radius', 'Hazard', 0.5, 6, 0.1),
-  D('cursorSpeed', 'Overlord cursor speed', 'Hazard', 2, 40, 0.5),
-  D('hazardRoundTime', 'Survive time (s)', 'Hazard', 5, 180, 1),
+  D('bombCooldown', 'Delay between bombs (s)', 'Overlord', 0.05, 5, 0.05),
+  D('bombFallTime', 'Bomb fall time (s)', 'Overlord', 0.2, 4, 0.05),
+  D('bombRadius', 'Bomb blast radius', 'Overlord', 0, 6, 0.1),
+  D('bombHats', 'Hats per bomb', 'Overlord', 0, 16, 1),
+  D('bombHatSpeed', 'Bomb hat speed', 'Overlord', 2, 40, 0.5),
+  D('bombHatRange', 'Bomb hat distance', 'Overlord', 1, 20, 0.5),
+  D('cursorSpeed', 'Overlord cursor speed', 'Overlord', 2, 40, 0.5),
+  D('hazardRoundTime', 'Survive time (s)', 'Overlord', 5, 180, 1),
 ];
 
 export type Params = Record<string, number>;
