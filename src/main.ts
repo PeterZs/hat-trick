@@ -235,16 +235,11 @@ let acc = 0;
 let last = performance.now();
 const seenEvents = new Map<string, number>();
 
-// Start on a gamepad at the main menu: play locally right away with that pad
-// joined, skipping the lobby (more players can still join mid-match).
+// Start on a gamepad at the main menu presses the on-screen Play button (to
+// the lobby). The same press also joins that pad, like A on Play does.
 function startFromMenuWithStart(): void {
-  const pad = devices.devices.find((d) => d.kind === 'pad' && d.connected() && d.menuPressed());
-  if (!pad) return;
-  const cfg = menu.cfg();
-  startSession(new LocalSession(cfg, settings.params));
-  pendingJoin.set(pad.key, performance.now());
-  session!.command({ t: 'join', device: pad.key, name: prefs.name, ball: 0 });
-  session!.command({ t: 'start', cfg });
+  if (!devices.devices.some((d) => d.kind === 'pad' && d.connected() && d.menuPressed())) return;
+  menu.el.querySelector<HTMLButtonElement>('[data-act=local]')?.click();
 }
 
 // Countdown beeps (3, 2, 1) and GO! derived from the phase timer.
