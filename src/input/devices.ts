@@ -2,7 +2,7 @@
 // it controls. Devices are identified by a stable key ('kbm', 'kb2', 'pad0',
 // 'touch') that, together with the peer id, identifies the player in the sim.
 
-import { BTN_ATTACK, BTN_DASH, BTN_INTERACT, BTN_THROW, makeInput, NEUTRAL, type PlayerInput } from '../sim/input';
+import { BTN_ATTACK, BTN_DASH, BTN_THROW, makeInput, NEUTRAL, type PlayerInput } from '../sim/input';
 import { anyKey, keys, mouse, mouseButtons } from './keyboard';
 import type { TouchControls } from './touch';
 
@@ -57,7 +57,6 @@ export class KeyboardMouseDevice implements Device {
     if ((mouseButtons() & 1) || anyKey('KeyZ', 'KeyJ')) b |= BTN_ATTACK;
     if ((mouseButtons() & 2) || anyKey('KeyX', 'KeyK')) b |= BTN_THROW;
     if (anyKey('KeyC', 'Space', 'ShiftLeft', 'KeyL')) b |= BTN_DASH;
-    if (anyKey('KeyE')) b |= BTN_INTERACT;
     return makeInput(mx, my, ax, ay, b);
   }
   joinPressed() { return this.j; }
@@ -68,7 +67,7 @@ export class KeyboardMouseDevice implements Device {
   connected() { return true; }
 }
 
-/** A second player on the same keyboard: arrows + . / , m */
+/** A second player on the same keyboard: arrows + . / , */
 export class Keyboard2Device implements Device {
   key = 'kb2'; label = 'Keyboard (arrows)'; kind = 'kb2' as const;
   private join = new Edge(); private leave = new Edge(); private ballL = new Edge(); private ballR = new Edge(); private team = new Edge();
@@ -86,7 +85,6 @@ export class Keyboard2Device implements Device {
     if (anyKey('Period')) b |= BTN_ATTACK;
     if (anyKey('Slash')) b |= BTN_THROW;
     if (anyKey('Comma', 'ShiftRight')) b |= BTN_DASH;
-    if (anyKey('KeyM')) b |= BTN_INTERACT;
     return makeInput(mx, my, 0, 0, b);
   }
   joinPressed() { return this.j; }
@@ -132,7 +130,6 @@ export class GamepadDevice implements Device {
     if (this.btn(0) || this.btn(4)) b |= BTN_DASH;
     if (this.btn(2) || this.btn(5)) b |= BTN_ATTACK;
     if (this.btn(1) || this.btn(6) || this.btn(7)) b |= BTN_THROW;
-    if (this.btn(3)) b |= BTN_INTERACT;
     return makeInput(mx, my, ax, ay, b);
   }
   joinPressed() { return this.j; }

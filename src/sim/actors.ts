@@ -4,7 +4,7 @@ import { DT, HZ, allies, teamOf, isTeamMode } from './const';
 import { clamp, dcos, dsin, dist2, frames, len, lerp, PI } from './dmath';
 import { collideCircle, circleOverlapsWalls, type Push } from './collision';
 import {
-  BTN_ATTACK, BTN_DASH, BTN_INTERACT, BTN_THROW, type PlayerInput,
+  BTN_ATTACK, BTN_DASH, BTN_THROW, type PlayerInput,
 } from './input';
 import {
   HAT_GROUND, HAT_HELD, HAT_OUT, HAT_RECALL, HAT_RETURN,
@@ -26,8 +26,13 @@ export function canAct(s: GameState): boolean {
 
 export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   const P = s.params;
-  // A player carrying a rider can't attack or throw (the rider does that).
+  // A player carrying a rider can't attack or throw (the rider does that);
+  // their slash button throws the rider off instead.
   const b = p.rider >= 0 ? inp.b & ~(BTN_ATTACK | BTN_THROW) : inp.b;
+  if (p.rider >= 0 && (inp.b & ~p.prevB & BTN_ATTACK)) {
+    const r = s.players[p.rider];
+    if (r) { dismount(s, r, -p.fx, -p.fy); r.kx = -p.fx * 8; r.ky = -p.fy * 8; }
+  }
   const pressed = b & ~p.prevB;
   const released = p.prevB & ~inp.b;
   p.prevB = inp.b;
@@ -66,11 +71,10 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
 
   const held = heldHats(s, p);
 
-  // --- Interact: piggyback / car
-  if (pressed & BTN_INTERACT) interact(s, p);
 
-  // Slash next to a free car gets you in (instead of swinging).
-  if ((pressed & BTN_ATTACK) && p.stunT <= 0 && tryEnterCar(s, p)) return;
+  // Slash next to a free car gets you in; slash at a teammate rides them
+  // piggyback (both instead of swinging).
+  if ((pressed & BTN_ATTACK) && p.stunT <= 0 && p.slashT < 0 && (tryEnterCar(s, p) || tryMountTeammate(s, p))) return;
 
   // --- Attack (slash with hat, kick without)
   if ((pressed & BTN_ATTACK) && p.slashCd <= 0 && p.slashT < 0 && p.stunT <= 0) {
@@ -110,6 +114,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   if (p.riding >= 0) {
     const m = s.players[p.riding];
     if (!m || !m.alive) { detach(s, p); }
+    else if (pressed & BTN_DASH) { dismount(s, p, p.fx, p.fy); } // dash to hop off
     else { p.x = m.x; p.y = m.y; p.vx = m.vx; p.vy = m.vy; return; }
   }
 
@@ -191,29 +196,39 @@ function tryEnterCar(s: GameState, p: Player): boolean {
   return false;
 }
 
-function interact(s: GameState, p: Player): void {
-  if (p.riding >= 0) {
-    const m = s.players[p.riding];
-    emit(s, { e: 'piggy', what: 'off', who: p.id, mount: p.riding });
-    detach(s, p);
-    if (m) { p.x = m.x - m.fx * 1.2; p.y = m.y - m.fy * 1.2; }
-    return;
-  }
-  if (tryEnterCar(s, p)) return;
-  // Hop on a teammate's back.
-  if (!isTeamMode(s.cfg.mode) || p.rider >= 0) return;
-  let best: Player | null = null, bestD = 1.8 * 1.8;
+/** Slashing a teammate in front of you hops onto their back (team modes). */
+function tryMountTeammate(s: GameState, p: Player): boolean {
+  if (!isTeamMode(s.cfg.mode) || p.rider >= 0 || p.riding >= 0 || p.isBot) return false;
+  const P = s.params;
+  const reach = P.slashRange + P.hitRadius;
+  const cosArc = dcos((P.slashArcDeg * PI) / 360);
+  let best: Player | null = null, bestD = reach * reach;
   for (const o of s.players) {
     if (o === p || !o.active || !o.alive || o.role !== 'fighter') continue;
     if (!allies(s, p, o) || o.riding >= 0 || o.rider >= 0 || o.car >= 0) continue;
-    const d = dist2(p.x, p.y, o.x, o.y);
-    if (d < bestD) { bestD = d; best = o; }
+    const dx = o.x - p.x, dy = o.y - p.y, d2 = dx * dx + dy * dy;
+    if (d2 >= bestD) continue;
+    const d = Math.sqrt(d2);
+    if (d > 0.3 && (dx * p.fx + dy * p.fy) / d < cosArc) continue;
+    bestD = d2; best = o;
   }
-  if (best) {
-    p.riding = best.id; best.rider = p.id;
-    resetCharge(best); best.recalling = false;
-    p.dashT = 0;
-    emit(s, { e: 'piggy', what: 'on', who: p.id, mount: best.id });
+  if (!best) return false;
+  p.riding = best.id; best.rider = p.id;
+  resetCharge(best); best.recalling = false;
+  p.dashT = 0; p.slashT = -1;
+  emit(s, { e: 'piggy', what: 'on', who: p.id, mount: best.id });
+  return true;
+}
+
+/** Rider leaves the mount, landing a little way along (dx, dy). */
+function dismount(s: GameState, rider: Player, dx: number, dy: number): void {
+  const m = s.players[rider.riding];
+  emit(s, { e: 'piggy', what: 'off', who: rider.id, mount: rider.riding });
+  detach(s, rider);
+  if (m) {
+    rider.x = m.x + dx * 1.3; rider.y = m.y + dy * 1.3;
+    collideCircle(rider.x, rider.y, s.params.playerRadius, level(s).walls, false, tmp);
+    rider.x = tmp.x; rider.y = tmp.y;
   }
 }
 
@@ -546,7 +561,7 @@ export function spawnCar(s: GameState, x: number, y: number, heading: number): C
 
 function driveCar(s: GameState, p: Player, c: Car, inp: PlayerInput, pressed: number): void {
   const P = s.params;
-  if (pressed & (BTN_INTERACT | BTN_ATTACK)) {
+  if (pressed & BTN_ATTACK) {
     exitCar(s, p, c);
     return;
   }

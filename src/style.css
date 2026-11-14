@@ -106,7 +106,6 @@ input, select { font: inherit; border-radius: 10px; border: 2px solid #dde; padd
 .tbtn-throw { width: 104px; height: 104px; right: 0; bottom: 0; background: rgba(255,90,90,.85); color: #fff; }
 .tbtn-attack { width: 84px; height: 84px; right: 112px; bottom: 6px; }
 .tbtn-dash { width: 72px; height: 72px; right: 20px; bottom: 116px; }
-.tbtn-interact { width: 56px; height: 56px; right: 112px; bottom: 104px; font-size: 11px; }
 .tbtn-join { position: absolute; right: 20px; bottom: 30px; width: auto; height: auto; padding: 18px 22px; border-radius: 16px; background: var(--gold); font-size: 18px; }
 
 @media (max-width: 600px) {

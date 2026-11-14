@@ -1,7 +1,7 @@
 // Virtual touchpad controls for phones/tablets: a floating move stick on the
 // left half, and on the right an aim/throw stick plus action buttons.
 
-import { BTN_ATTACK, BTN_DASH, BTN_INTERACT, BTN_THROW, makeInput, type PlayerInput } from '../sim/input';
+import { BTN_ATTACK, BTN_DASH, BTN_THROW, makeInput, type PlayerInput } from '../sim/input';
 
 interface Stick { id: number; ox: number; oy: number; x: number; y: number; el: HTMLElement; knob: HTMLElement }
 
@@ -25,7 +25,6 @@ export class TouchControls {
         <div class="tbtn tbtn-throw" data-b="throw"><span>THROW</span><small>hold to aim</small></div>
         <div class="tbtn tbtn-attack" data-b="attack">SLASH</div>
         <div class="tbtn tbtn-dash" data-b="dash">DASH</div>
-        <div class="tbtn tbtn-interact" data-b="interact">RIDE</div>
       </div>
       <div class="tbtn tbtn-join">TAP TO JOIN</div>`;
     parent.appendChild(this.root);
@@ -46,7 +45,7 @@ export class TouchControls {
 
     for (const el of this.root.querySelectorAll<HTMLElement>('.touch-btns .tbtn')) {
       const kind = el.dataset.b!;
-      const bit = kind === 'attack' ? BTN_ATTACK : kind === 'dash' ? BTN_DASH : kind === 'interact' ? BTN_INTERACT : BTN_THROW;
+      const bit = kind === 'attack' ? BTN_ATTACK : kind === 'dash' ? BTN_DASH : BTN_THROW;
       el.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         el.setPointerCapture(e.pointerId);

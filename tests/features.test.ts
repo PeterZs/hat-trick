@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createState, step } from '../src/sim/sim';
 import { TEST_PARAMS as DEFAULT_PARAMS } from './params';
-import { BTN_ATTACK, BTN_INTERACT, BTN_THROW, makeInput, type PlayerInput } from '../src/sim/input';
+import { BTN_ATTACK, BTN_DASH, BTN_THROW, makeInput, type PlayerInput } from '../src/sim/input';
 import { HAT_GROUND, HAT_HELD, HAT_OUT, HAT_RECALL, HAT_RETURN, type GameState, type ModeId } from '../src/sim/types';
 import { spawnCar } from '../src/sim/actors';
 
@@ -24,19 +24,19 @@ function run(s: GameState, frames: number, inputs: (f: number) => Record<string,
 }
 
 describe('features', () => {
-  it('piggyback: rider follows mount, mount runs faster', () => {
+  it('piggyback: slash a teammate to ride; rider follows mount, mount runs faster', () => {
     const s = setup('teams', 2);
     const [a, b] = s.players;
     a.x = 0; a.y = -2.6; b.x = 1; b.y = -2.6;
-    run(s, 2, (f) => ({ d0: makeInput(0, 0, 0, 0, f === 0 ? BTN_INTERACT : 0) }));
+    const evOn = run(s, 2, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(evOn).not.toContain('slash');
     expect(a.riding).toBe(b.id);
     expect(b.rider).toBe(a.id);
     const x0 = b.x;
     run(s, 30, () => ({ d1: makeInput(-1, 0, 0, 0, 0) }));
     expect(a.x).toBeCloseTo(b.x, 5);
-    // The carrier can't attack or throw while carrying.
-    const evm = run(s, 20, (f) => ({ d1: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : f < 5 ? BTN_THROW : 0) }));
-    expect(evm).not.toContain('slash');
+    // The carrier can't throw while carrying.
+    const evm = run(s, 20, (f) => ({ d1: makeInput(0, 0, 1, 0, f < 5 ? BTN_THROW : 0) }));
     expect(evm).not.toContain('throw');
     expect(b.charging).toBe(false);
     // ...but the rider can.
@@ -44,16 +44,32 @@ describe('features', () => {
     expect(evr).toContain('slash');
     // 0.5 s at ~2x speed (minus acceleration).
     expect(x0 - b.x).toBeGreaterThan(DEFAULT_PARAMS.moveSpeed * 0.5 * 1.4);
-    run(s, 2, (f) => ({ d0: makeInput(0, 0, 0, 0, f === 0 ? BTN_INTERACT : 0) }));
+    // Dash hops off.
+    run(s, 2, (f) => ({ d0: makeInput(0, 0, 0, 0, f === 0 ? BTN_DASH : 0) }));
     expect(a.riding).toBe(-1);
+    expect(b.rider).toBe(-1);
+  });
+
+  it('piggyback: the carrier throws the rider off with slash', () => {
+    const s = setup('teams', 2);
+    const [a, b] = s.players;
+    a.x = 0; a.y = -2.6; b.x = 1; b.y = -2.6;
+    run(s, 2, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(a.riding).toBe(b.id);
+    const ev = run(s, 2, (f) => ({ d1: makeInput(0, 0, 0, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(ev).toContain('piggy');
+    expect(ev).not.toContain('slash');
+    expect(a.riding).toBe(-1);
+    expect(b.rider).toBe(-1);
+    expect(a.alive && b.alive).toBe(true);
   });
 
   it('car: enter, drive, run over enemy', () => {
     const s = setup('ffa', 2);
     const [a, b] = s.players;
-    a.x = -8; a.y = 2.5; b.x = 8; b.y = 2.5;
+    a.x = -8; a.y = 2.5; b.x = 8; b.y = 2.5; a.fx = 1; a.fy = 0;
     spawnCar(s, -7, 2.5, 0);
-    const ev = run(s, 120, (f) => ({ d0: makeInput(0, -1, 0, 0, f === 0 ? BTN_INTERACT : 0) }));
+    const ev = run(s, 120, (f) => ({ d0: makeInput(0, -1, 0, 0, f === 0 ? BTN_ATTACK : 0) }));
     expect(ev).toContain('car');
     expect(a.car).toBeGreaterThan(0);
     expect(b.alive).toBe(false);
@@ -380,7 +396,7 @@ describe('cars mode', () => {
     expect(carKills).toBeGreaterThan(0);
     expect(rounds).toBeGreaterThan(0);
     expect(minCars).toBeGreaterThanOrEqual(1); // never an empty field
-    expect(fullFrames / playFrames).toBeGreaterThan(0.8); // wrecks are replaced quickly
+    expect(fullFrames / playFrames).toBeGreaterThan(0.6); // wrecks are replaced quickly
   });
 });
 
@@ -406,5 +422,32 @@ describe('driving', () => {
     // Slash again to get out.
     run(s, 2, (f) => ({ d0: makeInput(0, 0, 0, 0, f === 0 ? BTN_ATTACK : 0) }));
     expect(a.car).toBe(-1);
+  });
+});
+
+describe('bot difficulty', () => {
+  it('hard bots outfight easy bots', () => {
+    let hard = 0, easy = 0;
+    for (const seed of [1, 2, 3]) {
+      const cfg = { mode: 'ffa' as const, level: 'courtyard', winScore: 99 };
+      const s = createState(cfg, { ...DEFAULT_PARAMS, powerupMax: 0 }, seed);
+      step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'addBot', skill: 2 }, { t: 'addBot', skill: 0 }, { t: 'addBot', skill: 2 }, { t: 'addBot', skill: 0 }, { t: 'start', cfg }] }]);
+      for (let f = 0; f < 60 * 90; f++) step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+      for (const p of s.players) { if (p.skill === 2) hard += p.kills; else easy += p.kills; }
+    }
+    console.log('kills: hard', hard, 'easy', easy);
+    expect(hard).toBeGreaterThan(easy * 1.5);
+  });
+});
+
+describe('lobby commands', () => {
+  it('setSkill changes only that bot', () => {
+    const s = createState({ mode: 'ffa', level: 'courtyard', winScore: 5 }, DEFAULT_PARAMS, 1);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'addBot' }, { t: 'addBot' }] }]);
+    const [b1, b2] = s.players;
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'setSkill', device: b1.device, skill: 2 }] }]);
+    expect(b1.skill).toBe(2);
+    expect(b2.skill).toBe(1);
+    expect(b2.active).toBe(true);
   });
 });

@@ -25,6 +25,7 @@ export interface Player {
   ball: number;         // character index (BALLS)
   team: number;
   isBot: boolean;
+  skill: number;        // bots: 0 easy, 1 normal, 2 hard
   role: Role;
   joinFrame: number;
 
@@ -187,7 +188,8 @@ export type Command =
   | { t: 'setBall'; device: string; ball: number }
   | { t: 'setTeam'; device: string; team: number }
   | { t: 'setRole'; device: string; role: Role }
-  | { t: 'addBot'; team?: number }
+  | { t: 'addBot'; team?: number; skill?: number }
+  | { t: 'setSkill'; device: string; skill: number }
   | { t: 'removeBot' }
   | { t: 'start'; cfg: MatchConfig }
   | { t: 'lobby'; cfg?: MatchConfig }

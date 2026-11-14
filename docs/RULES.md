@@ -22,6 +22,7 @@ a shield).
 | **Parry** | A slash knocks an enemy's flying hat out of the air if the hat enters the arc at any point during the swing (windup + active). |
 | **Clash** | If two players slash each other nearly simultaneously, nobody dies: both are knocked back. Two flying hats from different players that collide both drop. |
 | **Hit-stop** | Kills, clashes, parries, hat collisions and felled trees freeze the game for 2 frames. |
+| **Bot difficulty** | Each bot has Easy / Normal / Hard in the lobby: harder bots attack, throw and dodge more often and aim more precisely; easy bots also move slower. |
 | **Spawn protection** | 1.2 s of invulnerability (blinking) after spawning. |
 
 Friendly fire is off in team modes. Your own hat never hurts you.
@@ -44,14 +45,16 @@ power-up is an identical ❓ box until someone picks it up — good or bad is a 
 | 👻 | Phase dash | For 12 s, dashes pass through walls (never ending inside one). |
 | 🐌 | Slowpoke *(bad)* | Half running and dash speed for 6 s. Cancels Speed (and Speed cancels it). |
 | 😵‍💫 | Reversed *(bad)* | Your movement stick is reversed for 6 s. |
-| 🚗 | Car | Occasionally a car is parked instead. **Slash** (or interact) next to it to get in, and again to get out. Car controls: up/down = gas/brake, left/right = steer. You can still **throw your hat** while driving: a quick throw exactly along your aim stick/mouse (or the movement stick, or straight ahead), and holding throw recalls it to the car. Running into enemies at speed kills them. A hat hitting the car wrecks it and kills the driver. The car lasts 15 s. Not in Soccer or Lumberjacks. |
+| 🚗 | Car | Occasionally a car is parked instead. **Slash** next to it to get in, and slash again to get out. Car controls: up/down = gas/brake, left/right = steer. You can still **throw your hat** while driving: a quick throw exactly along your aim stick/mouse (or the movement stick, or straight ahead), and holding throw recalls it to the car. Running into enemies at speed kills them. A hat hitting the car wrecks it and kills the driver. The car lasts 15 s. Not in Soccer or Lumberjacks. |
 
 ### Piggyback (team modes)
 
-Press **interact** next to a teammate to hop on their back. The rider can't
-move but aims, slashes and throws freely in any direction; the carrier runs at
-2× speed and can dash, but can't attack or throw while carrying.
-Press interact again to hop off. A kick or the carrier's death splits you up.
+**Slash a teammate** (in front of you, within reach) to hop on their back instead
+of swinging. The rider can't move but aims, slashes and throws freely in any
+direction; the carrier runs at 2× speed and can dash, but can't attack or throw.
+The **carrier presses slash** to throw the rider off; the **rider dashes** to hop
+off. A kick or the carrier's death also splits you up. There is no separate
+interact button: slash does it all (riding, cars).
 
 ### Joining and leaving
 

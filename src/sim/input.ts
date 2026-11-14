@@ -4,7 +4,7 @@
 export const BTN_DASH = 1;
 export const BTN_ATTACK = 2;   // slash (with hat) / kick (without)
 export const BTN_THROW = 4;    // hold to aim/charge, release to throw; hold to recall
-export const BTN_INTERACT = 8; // piggyback / enter-exit car
+// Bit 8 was a separate interact button (piggyback/cars); slash does that now.
 
 export interface PlayerInput {
   mx: number; // movement, -127..127, +x right

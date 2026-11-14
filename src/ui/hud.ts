@@ -5,6 +5,7 @@ import { LEVELS } from '../sim/level';
 import type { Command, GameState, MatchConfig, ModeId, Player } from '../sim/types';
 import { PLAYER_COLORS, TEAM_COLORS, TEAM_NAMES } from '../render/models';
 import { escapeHtml } from './settings';
+import { SKILL_NAMES } from '../sim/bot';
 
 export interface HudContext {
   peer: number;
@@ -155,7 +156,7 @@ export class Hud {
     this.lobby.style.display = show ? '' : 'none';
     if (!show) { this.lobbyKey = ''; return; }
     const roster = s.players.filter((p) => p.active);
-    const key = JSON.stringify([s.cfg, roster.map((p) => [p.id, p.name, p.ball, p.team, p.role, p.peer, p.device]), c.isHost, c.roomCode, c.peer, this.lobbyCollapsed]);
+    const key = JSON.stringify([s.cfg, roster.map((p) => [p.id, p.name, p.ball, p.team, p.role, p.peer, p.device, p.skill]), c.isHost, c.roomCode, c.peer, this.lobbyCollapsed]);
     if (key === this.lobbyKey) return;
     this.lobbyKey = key;
     const mode = s.cfg.mode;
@@ -196,6 +197,7 @@ export class Hud {
               ${canEdit(p) ? `<select data-ball="${p.id}">${BALLS.map((b, i) => `<option value="${i}" ${i === p.ball ? 'selected' : ''}>${b} · ${HATS[i]}</option>`).join('')}</select>`
                 : `<span class="hint">${BALLS[p.ball]}</span>`}
               ${teamMode ? (canEdit(p) ? `<select data-team="${p.id}">${TEAM_NAMES.slice(0, nTeams).map((t, i) => `<option value="${i}" ${i === p.team % nTeams ? 'selected' : ''}>${t}</option>`).join('')}</select>` : `<span class="hint">${TEAM_NAMES[p.team % nTeams]}</span>`) : ''}
+              ${p.isBot ? `<select data-skill="${p.id}" title="Bot difficulty">${SKILL_NAMES.map((n, i) => `<option value="${i}" ${i === p.skill ? 'selected' : ''}>${n}</option>`).join('')}</select>` : ''}
               ${mode === 'hazard' ? (canEdit(p) ? `<select data-role="${p.id}"><option value="fighter" ${p.role === 'fighter' ? 'selected' : ''}>Runner</option><option value="overlord" ${p.role === 'overlord' ? 'selected' : ''}>Overlord</option></select>` : `<span class="hint">${p.role === 'overlord' ? 'Overlord' : 'Runner'}</span>`) : ''}
               ${canEdit(p) ? `<button class="small" data-leave="${p.id}" title="Leave">✕</button>` : ''}
             </div>`).join('') || '<span class="hint">No players yet.</span>'}
@@ -236,6 +238,9 @@ export class Hud {
     });
     for (const el of this.lobby.querySelectorAll<HTMLSelectElement>('[data-team]')) el.addEventListener('change', () => {
       const p = byId(el.dataset.team!); c.command({ t: 'setTeam', device: p.device, team: parseInt(el.value) });
+    });
+    for (const el of this.lobby.querySelectorAll<HTMLSelectElement>('[data-skill]')) el.addEventListener('change', () => {
+      const p = byId(el.dataset.skill!); c.command({ t: 'setSkill', device: p.device, skill: parseInt(el.value) });
     });
     for (const el of this.lobby.querySelectorAll<HTMLSelectElement>('[data-role]')) el.addEventListener('change', () => {
       const p = byId(el.dataset.role!); c.command({ t: 'setRole', device: p.device, role: el.value as 'fighter' | 'overlord' });

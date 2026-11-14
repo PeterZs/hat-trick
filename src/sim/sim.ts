@@ -49,7 +49,7 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
 
 function newPlayer(id: number, peer: number, device: string, name: string, ball: number, team: number, isBot: boolean, frame: number): Player {
   return {
-    id, active: true, peer, device, name, ball, team, isBot, role: 'fighter', joinFrame: frame,
+    id, active: true, peer, device, name, ball, team, isBot, skill: 1, role: 'fighter', joinFrame: frame,
     alive: false, respawnT: 0, x: 0, y: 0, vx: 0, vy: 0, kx: 0, ky: 0, fx: 1, fy: 0,
     dashT: 0, dashCd: 0, dashDx: 0, dashDy: 0, slashT: -1, slashKind: 0, slashCd: 0,
     charging: false, aiming: false, holdT: 0, charge: 0, recalling: false, prevB: 0, stunT: 0, invulnT: 0,
@@ -132,7 +132,13 @@ function applyCommand(s: GameState, peer: number, c: Command): void {
     }
     case 'addBot': {
       const n = s.players.filter((p) => p.active && p.isBot).length + 1;
-      addPlayer(s, peer, 'bot' + s.nextId++, 'Bot ' + n, randInt(s, 8), true, c.team);
+      const bot = addPlayer(s, peer, 'bot' + s.nextId++, 'Bot ' + n, randInt(s, 8), true, c.team);
+      if (bot && c.skill !== undefined) bot.skill = Math.max(0, Math.min(2, c.skill | 0));
+      return;
+    }
+    case 'setSkill': {
+      const p = findEditable(s, peer, c.device);
+      if (p && p.isBot) p.skill = Math.max(0, Math.min(2, c.skill | 0));
       return;
     }
     case 'removeBot': {

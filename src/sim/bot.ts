@@ -5,7 +5,16 @@ import { allies } from './const';
 import { clamp, dist2, len } from './dmath';
 import { segmentBlocked } from './collision';
 import { rand } from './rng';
-import { BTN_ATTACK, BTN_DASH, BTN_INTERACT, BTN_THROW, makeInput, NEUTRAL, type PlayerInput } from './input';
+import { BTN_ATTACK, BTN_DASH, BTN_THROW, makeInput, NEUTRAL, type PlayerInput } from './input';
+import { dcos, dsin } from './dmath';
+
+/** Per-skill tuning (0 easy, 1 normal, 2 hard). Probabilities are per frame. */
+const SKILL = [
+  { attack: 0.07, throw: 0.006, dodge: 0.03, kick: 0.04, aimErr: 0.45, speed: 0.7, bomb: 0.06 },
+  { attack: 0.35, throw: 0.02, dodge: 0.25, kick: 0.15, aimErr: 0.12, speed: 1, bomb: 0.2 },
+  { attack: 0.8, throw: 0.05, dodge: 0.65, kick: 0.4, aimErr: 0.02, speed: 1, bomb: 0.5 },
+];
+export const SKILL_NAMES = ['Easy', 'Normal', 'Hard'];
 import { navGrid } from './level';
 import { HAT_GROUND, HAT_HELD, type GameState, type Player } from './types';
 import { heldHats, isInvisible, level } from './common';
@@ -77,7 +86,15 @@ export function pathDir(s: GameState, x: number, y: number, tx: number, ty: numb
 }
 
 export function botInput(s: GameState, p: Player): PlayerInput {
+  const inp = think(s, p);
+  // Never throw our own rider off by accident.
+  if (p.rider >= 0 && (inp.b & BTN_ATTACK)) return { ...inp, b: inp.b & ~BTN_ATTACK };
+  return inp;
+}
+
+function think(s: GameState, p: Player): PlayerInput {
   if (!p.active) return NEUTRAL;
+  const K = SKILL[Math.max(0, Math.min(2, p.skill ?? 1))];
   const P = s.params;
   const L = level(s);
 
@@ -92,7 +109,7 @@ export function botInput(s: GameState, p: Player): PlayerInput {
     const lead = P.bombFallTime * 0.6;
     const tx = target.x + target.vx * lead, ty = target.y + target.vy * lead;
     const dx = tx - p.cursorX, dy = ty - p.cursorY, d = len(dx, dy);
-    const b = d < 1.2 && p.bombCd <= 0 && rand(s) < 0.2 ? BTN_ATTACK : 0;
+    const b = d < 1.2 && p.bombCd <= 0 && rand(s) < K.bomb ? BTN_ATTACK : 0;
     return makeInput(d > 0.2 ? dx / Math.max(d, 1) : 0, d > 0.2 ? dy / Math.max(d, 1) : 0, 0, 0, b);
   }
   if (!p.alive) return NEUTRAL;
@@ -119,7 +136,7 @@ export function botInput(s: GameState, p: Player): PlayerInput {
       if (d < bd) { bd = d; best = c; }
     }
     if (best) {
-      if (bd < 1.9 * 1.9) return makeInput(0, 0, 0, 0, (p.prevB & BTN_INTERACT) ? 0 : BTN_INTERACT);
+      if (bd < 1.9 * 1.9) return makeInput(0, 0, 0, 0, (p.prevB & BTN_ATTACK) ? 0 : BTN_ATTACK); // slash to get in
       const [mx, my] = pathDir(s, p.x, p.y, best.x, best.y);
       // Still dodge hats on the way (handled below for non-car bots) — keep it simple here.
       return makeInput(mx, my, 0, 0, 0);
@@ -167,8 +184,8 @@ export function botInput(s: GameState, p: Player): PlayerInput {
       const reach = P.slashRange + P.treeRadius - 0.3;
       if (d > reach) { goalX = tree.x - (dx / d) * (reach - 0.2); goalY = tree.y - (dy / d) * (reach - 0.2); }
       aimX = dx; aimY = dy;
-      if (held > 0 && d <= reach + 0.2 && p.slashCd <= 0 && rand(s) < 0.5) b |= BTN_ATTACK;
-      else if (held > 0 && d > 4 && d < P.hatRange && p.botAimT <= 0 && rand(s) < 0.02 &&
+      if (held > 0 && d <= reach + 0.2 && p.slashCd <= 0 && rand(s) < K.attack * 1.4) b |= BTN_ATTACK;
+      else if (held > 0 && d > 4 && d < P.hatRange && p.botAimT <= 0 && rand(s) < K.throw &&
                !segmentBlocked(p.x, p.y, tree.x, tree.y, L.walls, true)) {
         b |= BTN_THROW; p.botAimT = 0; // tap-throw at the tree
       }
@@ -207,10 +224,10 @@ export function botInput(s: GameState, p: Player): PlayerInput {
       aimX = enemy.x + enemy.vx * t - p.x; aimY = enemy.y + enemy.vy * t - p.y;
       if (p.botAimT > 0) b |= BTN_THROW;
     } else if (held > 0 && d < P.slashRange + P.hitRadius + 0.4 && p.slashCd <= 0) {
-      if (rand(s) < 0.35) { b |= BTN_ATTACK; aimX = dx; aimY = dy; }
-    } else if (held === 0 && d < P.kickRange + 0.3 && p.slashCd <= 0 && rand(s) < 0.15) {
+      if (rand(s) < K.attack) { b |= BTN_ATTACK; aimX = dx; aimY = dy; }
+    } else if (held === 0 && d < P.kickRange + 0.3 && p.slashCd <= 0 && rand(s) < K.kick) {
       b |= BTN_ATTACK; aimX = dx; aimY = dy;
-    } else if (held > 0 && los && d > 3 && d < P.chargedHatRange && rand(s) < 0.02 && mode !== 'soccer') {
+    } else if (held > 0 && los && d > 3 && d < P.chargedHatRange && rand(s) < K.throw && mode !== 'soccer') {
       // Close targets get a quick throw; far ones a stationary, powered throw.
       const aimHold = Math.round(P.aimHoldTime * 60);
       p.botAimT = d < P.hatRange * 0.9 ? 2 : aimHold + 4 + Math.floor(rand(s) * P.chargeTime * 60);
@@ -229,7 +246,7 @@ export function botInput(s: GameState, p: Player): PlayerInput {
       const rx = p.x - h.x, ry = p.y - h.y, rd = len(rx, ry);
       if (rd > 5) continue;
       const vl = Math.max(0.01, len(h.vx, h.vy));
-      if ((rx * h.vx + ry * h.vy) / (rd * vl) > 0.85 && rand(s) < 0.25) {
+      if ((rx * h.vx + ry * h.vy) / (rd * vl) > 0.85 && rand(s) < K.dodge) {
         b |= BTN_DASH;
         const side = p.botStrafe || 1;
         return makeInput((-h.vy / vl) * side, (h.vx / vl) * side, aimX, aimY, b);
@@ -244,7 +261,12 @@ export function botInput(s: GameState, p: Player): PlayerInput {
     mx += -my * p.botStrafe * 0.6; my += mx * p.botStrafe * 0.6;
   }
   if (gd < 0.3) { mx = 0; my = 0; }
-  return makeInput(mx, my, aimX, aimY, b);
+  // Skill: sloppier aim and slower movement for easier bots.
+  if ((aimX || aimY) && K.aimErr > 0) {
+    const e = (rand(s) * 2 - 1) * K.aimErr, c = dcos(e), sn = dsin(e);
+    [aimX, aimY] = [aimX * c - aimY * sn, aimX * sn + aimY * c];
+  }
+  return makeInput(mx * K.speed, my * K.speed, aimX, aimY, b);
 }
 
 export { HAT_HELD };
