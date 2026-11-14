@@ -31,6 +31,7 @@ interface PlayerView {
   label: HTMLDivElement;
   lastX: number; lastY: number;
   speedFx: THREE.Mesh;
+  windup: THREE.Mesh;
 }
 
 export interface ViewOptions { showHitboxes: boolean }
@@ -277,6 +278,11 @@ export class Renderer {
     speedFx.rotation.x = -Math.PI / 2; speedFx.position.y = 0.05;
     root.add(speedFx);
 
+    // Wind-up ring: fills while holding throw, until stationary aim starts.
+    const windup = new THREE.Mesh(new THREE.RingGeometry(r * 1.5, r * 1.75, 32, 1, 0, 0.01), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9, side: THREE.DoubleSide }));
+    windup.rotation.x = -Math.PI / 2; windup.position.y = 0.05;
+    root.add(windup);
+
     // Aim indicator: dashed path + arrow head along +x.
     const aim = new THREE.Group();
     const dashMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.75 });
@@ -311,7 +317,7 @@ export class Renderer {
     label.className = 'plabel';
     this.labels.appendChild(label);
     this.scene.add(root);
-    return { root, ballKind: p.ball, ball, ballMat, head, hatStack, hatCount: -1, ring, shield, aim, arc: arcG as unknown as THREE.Mesh, kickArc: kickG as unknown as THREE.Mesh, cursor, label, lastX: p.x, lastY: p.y, speedFx };
+    return { root, ballKind: p.ball, ball, ballMat, head, hatStack, hatCount: -1, ring, shield, aim, arc: arcG as unknown as THREE.Mesh, kickArc: kickG as unknown as THREE.Mesh, cursor, label, lastX: p.x, lastY: p.y, speedFx, windup };
   }
 
   private disposePlayerView(v: PlayerView): void {
@@ -425,9 +431,21 @@ export class Renderer {
       v.ball.scale.set(1, dashing ? 0.85 : 1, 1);
 
       // Aim indicator.
-      v.aim.visible = p.charging;
-      if (p.charging) {
-        const t = Math.min(1, Math.max(0, (p.charge * P.chargeTime - 0.08) / Math.max(0.01, P.chargeTime - 0.08)));
+      const holdF = Math.max(1, Math.round(P.aimHoldTime * HZ));
+      const showWindup = p.charging && !p.aiming && p.holdT > 8;
+      v.windup.visible = showWindup;
+      if (showWindup) {
+        const k = Math.min(1, p.holdT / holdF);
+        const key = Math.round(k * 40);
+        if (v.windup.userData.key !== key) {
+          v.windup.geometry.dispose();
+          v.windup.geometry = new THREE.RingGeometry(r * 1.5, r * 1.75, 32, 1, Math.PI / 2, Math.max(0.01, k * Math.PI * 2));
+          v.windup.userData.key = key;
+        }
+      }
+      v.aim.visible = p.aiming;
+      if (p.aiming) {
+        const t = Math.min(1, Math.max(0, p.charge));
         const range = P.hatRange + (P.chargedHatRange - P.hatRange) * t;
         for (const c of v.aim.children) {
           if (c.name === 'dash') c.visible = c.position.x < range;

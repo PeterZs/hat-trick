@@ -191,7 +191,9 @@ export function botInput(s: GameState, p: Player): PlayerInput {
     } else if (held === 0 && d < P.kickRange + 0.3 && p.slashCd <= 0 && rand(s) < 0.15) {
       b |= BTN_ATTACK; aimX = dx; aimY = dy;
     } else if (held > 0 && los && d > 3 && d < P.chargedHatRange && rand(s) < 0.02 && mode !== 'soccer') {
-      p.botAimT = 4 + Math.floor(rand(s) * 30);
+      // Close targets get a quick throw; far ones a stationary, powered throw.
+      const aimHold = Math.round(P.aimHoldTime * 60);
+      p.botAimT = d < P.hatRange * 0.9 ? 2 : aimHold + 4 + Math.floor(rand(s) * P.chargeTime * 60);
       b |= BTN_THROW; aimX = dx; aimY = dy;
     }
     // Keep a little distance and strafe when armed and far.

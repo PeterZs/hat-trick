@@ -39,7 +39,10 @@ export interface Player {
   slashT: number;       // frames since attack start, -1 if none
   slashKind: number;    // 0 slash, 1 kick
   slashCd: number;
-  charging: boolean; charge: number;
+  charging: boolean;    // throw held with a hat (quick throw on release)
+  aiming: boolean;      // stationary aim mode (after holding aimHoldTime)
+  holdT: number;        // frames the throw button has been held
+  charge: number;       // 0..1 throw power, builds only while aiming
   recalling: boolean;
   prevB: number;
   stunT: number; invulnT: number;

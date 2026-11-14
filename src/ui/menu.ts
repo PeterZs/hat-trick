@@ -62,13 +62,14 @@ export class Menu {
         <div class="section-title">How to play</div>
         <div class="help">
           Join with any device in the lobby; add bots to practice. One hit pops a ball!<br>
-          <b>Keyboard + mouse:</b> <kbd>WASD</kbd> roll · <kbd>mouse</kbd> aim · <kbd>Left click</kbd> slash · <kbd>Right click</kbd> (hold) aim &amp; throw hat / recall it ·
+          <b>Keyboard + mouse:</b> <kbd>WASD</kbd> roll · <kbd>mouse</kbd> aim · <kbd>Left click</kbd> slash · <kbd>Right click</kbd> throw hat (hold 1&nbsp;s to stand &amp; aim) ·
           <kbd>Space</kbd> dash · <kbd>E</kbd> ride teammate / enter car · <kbd>Q</kbd>/<kbd>R</kbd> change ball · <kbd>T</kbd> team<br>
           <b>Keyboard 2:</b> arrows · <kbd>.</kbd> slash · <kbd>/</kbd> throw · <kbd>,</kbd> dash · <kbd>M</kbd> ride · <kbd>[</kbd><kbd>]</kbd> ball<br>
           <b>Gamepad:</b> left stick move · right stick aim · <kbd>X</kbd>/<kbd>RB</kbd> slash · <kbd>RT</kbd>/<kbd>B</kbd> throw · <kbd>A</kbd>/<kbd>LB</kbd> dash · <kbd>Y</kbd> ride · d-pad changes ball/team<br>
-          <b>Touch:</b> left side to move · drag the THROW button to aim · SLASH, DASH, RIDE buttons.<br>
+          <b>Touch:</b> left side to move · tap THROW, or hold it 1&nbsp;s to stand still and aim (drag it or the move stick) · SLASH, DASH, RIDE buttons.<br>
           Without your hat you can only kick. Slash a flying hat to knock it down. Slash at the same time as someone to clash.
-          Hold throw while your hat is on the ground to call it back — it hurts on the way!
+          Tap throw for a quick throw on the run; hold it for a second to plant your feet and aim a long, fast throw.
+          Hold throw while your hat is on the ground to call it back — it hurts on the way! Full rules: docs/RULES.md.
         </div>
       </div>`;
     for (const b of this.el.querySelectorAll<HTMLElement>('[data-mode]')) {

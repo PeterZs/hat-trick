@@ -153,3 +153,42 @@ describe('lumberjacks', () => {
     expect(ended).toBe(true);
   });
 });
+
+describe('throw modes', () => {
+  const holdF = Math.round(DEFAULT_PARAMS.aimHoldTime * 60);
+
+  it('a short hold keeps moving and gives a quick throw', () => {
+    const s = setup('ffa', 1);
+    const [a] = s.players;
+    a.x = -10; a.y = -2.6;
+    const x0 = a.x;
+    run(s, holdF - 10, () => ({ d0: makeInput(1, 0, 0, 0, BTN_THROW) }));
+    expect(a.charging).toBe(true);
+    expect(a.aiming).toBe(false);
+    expect(a.x - x0).toBeGreaterThan(DEFAULT_PARAMS.moveSpeed * 0.5); // still running
+    run(s, 1, () => ({ d0: makeInput(1, 0, 0, 0, 0) }));
+    const h = s.hats[0];
+    expect(h.state).toBe(HAT_OUT);
+    expect(h.range).toBe(DEFAULT_PARAMS.hatRange);
+  });
+
+  it('holding for aimHoldTime enters stationary aim; the stick aims; release throws powered', () => {
+    const s = setup('ffa', 1);
+    const [a] = s.players;
+    a.x = -10; a.y = -2.6;
+    run(s, holdF + 2, () => ({ d0: makeInput(0, 0, 0, 0, BTN_THROW) }));
+    expect(a.aiming).toBe(true);
+    const x0 = a.x, y0 = a.y;
+    // Movement stick now aims (down-right) without moving the player.
+    run(s, Math.round(DEFAULT_PARAMS.chargeTime * 60) + 5, () => ({ d0: makeInput(0.7, 0.7, 0, 0, BTN_THROW) }));
+    expect(Math.hypot(a.x - x0, a.y - y0)).toBeLessThan(0.05);
+    expect(a.fx).toBeCloseTo(Math.SQRT1_2, 2);
+    expect(a.fy).toBeCloseTo(Math.SQRT1_2, 2);
+    expect(a.charge).toBe(1);
+    run(s, 1, () => ({ d0: makeInput(0.7, 0.7, 0, 0, 0) }));
+    const h = s.hats[0];
+    expect(h.state).toBe(HAT_OUT);
+    expect(h.range).toBe(DEFAULT_PARAMS.chargedHatRange);
+    expect(a.aiming).toBe(false);
+  });
+});

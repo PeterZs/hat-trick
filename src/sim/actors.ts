@@ -52,9 +52,10 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   const ax = inp.ax / 127, ay = inp.ay / 127;
   const al = len(ax, ay);
 
-  // Facing: explicit aim wins, otherwise movement direction.
+  // Facing: explicit aim wins, otherwise movement direction. In stationary
+  // aim mode the movement stick aims instead of moving.
   if (al > 0.3) { p.fx = ax / al; p.fy = ay / al; }
-  else if (ml > 0.2 && !p.charging) { p.fx = mx / ml; p.fy = my / ml; }
+  else if (ml > 0.2) { p.fx = mx / ml; p.fy = my / ml; }
 
   const held = heldHats(s, p);
 
@@ -74,10 +75,15 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   }
 
   // --- Throw / charge / recall
+  // Tap / short hold: quick throw on release while moving normally.
+  // Hold for aimHoldTime: enter stationary aim mode (stand still, the
+  // movement stick aims); power then charges over chargeTime.
   if (inp.b & BTN_THROW) {
     if (held > 0 && (p.charging || (pressed & BTN_THROW))) {
       p.charging = true;
-      p.charge = Math.min(1, p.charge + DT / Math.max(0.01, P.chargeTime));
+      p.holdT++;
+      if (!p.aiming && p.holdT >= Math.max(1, sec(s, 'aimHoldTime'))) p.aiming = true;
+      if (p.aiming) p.charge = Math.min(1, p.charge + DT / Math.max(0.01, P.chargeTime));
     } else if (held === 0 && !p.charging) {
       p.recalling = true;
     }
@@ -87,7 +93,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   if ((released & BTN_THROW) && p.charging) {
     throwHat(s, p);
   }
-  if (held === 0 && p.charging) { p.charging = false; p.charge = 0; }
+  if (held === 0 && p.charging) resetCharge(p);
 
   // --- Riding: position follows the mount; rider can aim and attack freely.
   if (p.riding >= 0) {
@@ -111,7 +117,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   let speed = P.moveSpeed;
   if (p.speedT > 0) speed *= P.speedBoostMult;
   if (p.rider >= 0) speed *= P.piggyMountSpeedMult;
-  if (p.charging) speed *= P.aimMoveFactor;
+  if (p.aiming) speed *= P.aimMoveFactor;
   const control = p.stunT > 0 ? 0 : 1;
   const tx = mx * speed * control, ty = my * speed * control;
   const a = Math.min(1, P.moveAccel * DT);
@@ -170,7 +176,7 @@ function interact(s: GameState, p: Player): void {
       detach(s, p);
       c.driver = p.id; p.car = c.id;
       if (c.t <= 0) c.t = sec(s, 'carTime');
-      p.charging = false; p.charge = 0;
+      resetCharge(p);
       emit(s, { e: 'car', what: 'enter', who: p.id, x: c.x, y: c.y });
       return;
     }
@@ -191,20 +197,23 @@ function interact(s: GameState, p: Player): void {
   }
 }
 
+export function resetCharge(p: Player): void {
+  p.charging = false; p.aiming = false; p.charge = 0; p.holdT = 0;
+}
+
 function throwHat(s: GameState, p: Player): void {
   const P = s.params;
   const h = s.hats.find((h) => h.owner === p.id && h.state === HAT_HELD);
   if (!h) return;
-  const c = p.charge;
-  // A tiny tap (charge ~ 0) gives the base throw; holding interpolates up.
-  const t = clamp((c * P.chargeTime - 0.08) / Math.max(0.01, P.chargeTime - 0.08), 0, 1);
+  // Quick throws use the base speed/range; aimed throws interpolate by power.
+  const t = p.aiming ? clamp(p.charge, 0, 1) : 0;
   h.state = HAT_OUT;
   h.speed = lerp(P.hatSpeed, P.chargedHatSpeed, t);
   h.range = lerp(P.hatRange, P.chargedHatRange, t);
   h.vx = p.fx * h.speed; h.vy = p.fy * h.speed;
   h.x = p.x + p.fx * 0.5; h.y = p.y + p.fy * 0.5;
   h.dist = 0; h.t = 0;
-  p.charging = false; p.charge = 0;
+  resetCharge(p);
   emit(s, { e: 'throw', who: p.id, hat: h.id, charge: t });
 }
 

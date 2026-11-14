@@ -51,7 +51,7 @@ function newPlayer(id: number, peer: number, device: string, name: string, ball:
     id, active: true, peer, device, name, ball, team, isBot, role: 'fighter', joinFrame: frame,
     alive: false, respawnT: 0, x: 0, y: 0, vx: 0, vy: 0, kx: 0, ky: 0, fx: 1, fy: 0,
     dashT: 0, dashCd: 0, dashDx: 0, dashDy: 0, slashT: -1, slashKind: 0, slashCd: 0,
-    charging: false, charge: 0, recalling: false, prevB: 0, stunT: 0, invulnT: 0,
+    charging: false, aiming: false, holdT: 0, charge: 0, recalling: false, prevB: 0, stunT: 0, invulnT: 0,
     speedT: 0, phaseT: 0, shield: 0, maxHats: 1, riding: -1, rider: -1, car: -1,
     cursorX: 0, cursorY: 0, bombCd: 0, kills: 0, deaths: 0, trees: 0,
     botT: 0, botMx: 0, botMy: 0, botStrafe: 1, botAimT: 0,

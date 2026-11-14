@@ -24,7 +24,7 @@ stick and buttons. `` ` `` opens settings (all gameplay params, live), Esc the m
 
 **Online:** "Host online" gives a room code/link; others "Join online".
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Full rules for every mode: [docs/RULES.md](docs/RULES.md). Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 **Issues** are tracked in-repo with [git-bug](https://github.com/git-bug/git-bug):
 `git bug bug` lists them, `git bug termui` browses, `git bug push`/`pull` syncs

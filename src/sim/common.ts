@@ -96,7 +96,7 @@ export function die(s: GameState, victim: Player, killer: number): void {
   victim.alive = false;
   victim.deaths++;
   victim.respawnT = sec(s, 'respawnTime');
-  victim.charging = false; victim.charge = 0; victim.slashT = -1;
+  victim.charging = false; victim.aiming = false; victim.holdT = 0; victim.charge = 0; victim.slashT = -1;
   if (killer >= 0 && killer !== victim.id) {
     const k = s.players[killer];
     if (k) k.kills++;
@@ -156,7 +156,7 @@ export function spawnPlayer(s: GameState, p: Player, at?: { x: number; y: number
   p.vx = p.vy = p.kx = p.ky = 0;
   p.fx = p.x > 0 ? -1 : 1; p.fy = 0;
   p.dashT = 0; p.dashCd = 0; p.slashT = -1; p.slashCd = 0;
-  p.charging = false; p.charge = 0; p.recalling = false;
+  p.charging = false; p.aiming = false; p.holdT = 0; p.charge = 0; p.recalling = false;
   p.stunT = 0; p.invulnT = sec(s, 'spawnInvulnTime');
   p.riding = -1; p.rider = -1; p.car = -1;
   p.speedT = 0; p.phaseT = 0; p.shield = 0; p.maxHats = 1;

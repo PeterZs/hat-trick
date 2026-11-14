@@ -22,7 +22,7 @@ export class TouchControls {
     this.root.innerHTML = `
       <div class="touch-zone touch-left"></div>
       <div class="touch-btns">
-        <div class="tbtn tbtn-throw" data-b="throw"><span>THROW</span><small>drag to aim</small></div>
+        <div class="tbtn tbtn-throw" data-b="throw"><span>THROW</span><small>hold to aim</small></div>
         <div class="tbtn tbtn-attack" data-b="attack">SLASH</div>
         <div class="tbtn tbtn-dash" data-b="dash">DASH</div>
         <div class="tbtn tbtn-interact" data-b="interact">RIDE</div>
