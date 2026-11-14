@@ -167,7 +167,7 @@ export function applyFields(s: GameState): void {
       }
     } else if (h.state === HAT_OUT || h.state === HAT_RETURN) {
       const [fx, fy] = windAt(L, h.x, h.y);
-      h.vx += fx * DT; h.vy += fy * DT;
+      h.vx += fx * P.windOnHats * DT; h.vy += fy * P.windOnHats * DT;
     }
   }
   const balls = [...(s.ball ? [s.ball] : []), ...(s.golf?.balls.filter((b) => !b.sunk) ?? [])];

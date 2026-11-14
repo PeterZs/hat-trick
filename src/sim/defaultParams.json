@@ -58,10 +58,10 @@
   "hitstopClash": 2,
   "dashBumpKnockback": 14,
   "fallCreditTime": 3,
-  "iceGrip": 0.12,
+  "iceGrip": 0.04,
   "bumperForce": 24,
   "portalCooldown": 0.5,
-  "windOnPlayers": 0.35,
+  "windOnPlayers": 0.15,
   "tileWarnTime": 1.2,
   "collapseTime": 50,
   "nightDayTime": 3,
@@ -105,5 +105,9 @@
   "bombHatSpeed": 14,
   "bombHatRange": 6,
   "cursorSpeed": 14,
-  "hazardRoundTime": 45
+  "hazardRoundTime": 45,
+  "iceSlide": 0.08,
+  "iceBallFriction": 0.25,
+  "windOnHats": 2.5,
+  "ghostRevealTime": 0.3
 }

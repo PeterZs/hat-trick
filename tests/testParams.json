@@ -85,10 +85,10 @@
   "barrelBlastRadius": 2.4,
   "dashBumpKnockback": 14,
   "fallCreditTime": 3,
-  "iceGrip": 0.12,
+  "iceGrip": 0.04,
   "bumperForce": 24,
   "portalCooldown": 0.5,
-  "windOnPlayers": 0.35,
+  "windOnPlayers": 0.15,
   "tileWarnTime": 1.2,
   "collapseTime": 50,
   "golfSwing": 13,
@@ -105,5 +105,9 @@
   "nightNightTime": 12,
   "nightFadeTime": 2,
   "nightDarkness": 0.97,
-  "nightLightRadius": 7
+  "nightLightRadius": 7,
+  "iceSlide": 0.08,
+  "iceBallFriction": 0.25,
+  "windOnHats": 2.5,
+  "ghostRevealTime": 0.3
 }

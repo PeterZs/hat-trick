@@ -154,7 +154,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
     p.dashT--;
     p.vx = p.dashDx * speed; p.vy = p.dashDy * speed;
   }
-  const decay = Math.max(0, 1 - P.knockbackDecay * (slippery ? P.iceGrip * 2 : 1) * DT);
+  const decay = Math.max(0, 1 - P.knockbackDecay * (slippery ? P.iceSlide : 1) * DT);
   p.kx *= decay; p.ky *= decay;
 
   p.x += vx * DT; p.y += vy * DT;

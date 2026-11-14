@@ -12,7 +12,7 @@ import {
 import { canBeHit, die, dropHat, emit, giveHats, kill, level, newId, sec, spawnPlayer } from './common';
 import { bounceHat, isLethal, spawnCar } from './actors';
 import { collideProps, resetProps } from './props';
-import { resetTiles, safeSpot } from './hazards';
+import { onIce, resetTiles, safeSpot } from './hazards';
 import { resetGolf } from './golf';
 import { getLevel, LEVEL_IDS, levelSupports } from './level';
 
@@ -148,7 +148,7 @@ export function updateBall(s: GameState): void {
       }
     }
   }
-  const f = Math.max(0, 1 - P.ballFriction * DT);
+  const f = Math.max(0, 1 - P.ballFriction * (onIce(s, b.x, b.y) ? P.iceBallFriction : 1) * DT);
   b.vx *= f; b.vy *= f;
   const steps = 2;
   for (let k = 0; k < steps; k++) {

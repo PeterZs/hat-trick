@@ -68,11 +68,11 @@ to you); a car at speed smashes straight through. They regrow in place after
 |---|---|---|
 | Pits / open edges | Pit Arena, Windy Cliffs, Sniper Canyon, Crumbling Platform, Links (water) | Roll in and you're out. A dash skims over a small gap. Whoever shoved you in (kick, clash, dash bump) in the last 3 s gets the credit. Hats that land in one pop back to their owner. |
 | Lava / collapsing floor | Lava Rising, Crumbling Platform, Floor is Lava | Tiles flash red, then fall away (or turn to lava). |
-| Ice | Ice Rink | Slippery: you speed up and stop slowly; kicks send you sliding. |
+| Ice | Ice Rink | Very slippery: you speed up and stop slowly, kicks send you sliding far, and the ball glides (settings → Ice). |
 | Conveyors | Conveyor Factory | Carry players, grounded hats and balls. |
 | Bumpers | Pinball | Fling players, hats, balls and cars away. |
 | Portals | Teleporter Temple | Step (or throw a hat) in one ring, come out of its partner with your momentum. |
-| Wind | Windy Cliffs | Bends flying hats and gently pushes players. |
+| Wind | Windy Cliffs | Strongly bends flying hats; barely nudges players (both adjustable in settings → Wind). |
 | Night | Night Market | Periodically the lights go out (16 s day, 12 s night, 2 s dusk/dawn by default); only a small circle around each player is lit. Day/night lengths, darkness and light radius are in settings (Night). |
 | Low walls | everywhere, especially Downtown windows and the Bowling Alley gutters | Block bodies but not hats. Sniper Canyon's pens can't be left at all: it's all hat throwing. |
 
@@ -167,5 +167,5 @@ to the lobby after 8 s.
 
 ### Ghost Brawl
 - Free-for-all elimination where **everyone is invisible** while standing or walking — even on your own screen; watch for the faint dust you kick up.
-- You flash visible for 0.6 s whenever you attack, throw, dash, bump into a wall, crate, bumper or another player, or get hit or kicked (and briefly when you spawn). Aiming keeps you visible.
+- You flash visible for 0.3 s whenever you attack, throw, dash, bump into a wall, crate, bumper or another player, or get hit or kicked (and briefly when you spawn). Aiming keeps you visible.
 - Last ball standing wins the round.
