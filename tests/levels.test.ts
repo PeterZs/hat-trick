@@ -78,3 +78,20 @@ describe('collapsing floors', () => {
     expect(s.tiles.some((t) => t === 0)).toBe(true); // the middle survives
   });
 });
+
+describe('determinism with hazards', () => {
+  it('snapshot + resimulate matches in the new modes and gadget arenas', async () => {
+    const { cloneState, hashState } = await import('../src/sim/sim');
+    const cases = [['bumper', 'platform'], ['golf', 'links'], ['lava', 'courtyard'], ['ffa', 'temple'], ['ffa', 'factory'], ['ffa', 'pinball'], ['ffa', 'cliffs'], ['soccer', 'icerink']] as const;
+    for (const [mode, level] of cases) {
+      const cfg = { mode: mode as 'ffa', level, winScore: 99 };
+      const s = createState(cfg, TEST_PARAMS, 9);
+      step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'addBot' }, { t: 'addBot' }, { t: 'addBot' }, { t: 'addBot' }, { t: 'start', cfg }] }]);
+      for (let f = 0; f < 300; f++) step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+      const snap = cloneState(s);
+      for (let f = 0; f < 900; f++) step(s, [{ peer: 0, inputs: {}, cmds: [] }]);
+      for (let f = 0; f < 900; f++) step(snap, [{ peer: 0, inputs: {}, cmds: [] }]);
+      expect(hashState(snap), `${mode} on ${level}`).toBe(hashState(s));
+    }
+  });
+});

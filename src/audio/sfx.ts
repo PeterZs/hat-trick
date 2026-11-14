@@ -280,6 +280,21 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
       break;
     }
     case 'kill': {
+      if (e.cause === 'fall') {
+        // Cartoon fall: a long descending whistle, then a distant plop.
+        const out = v(0.3);
+        blip(t, out, { type: 'sine', f0: 1400, f1: 220, dur: 0.75, peak: 0.16, attack: 0.02 });
+        swish(t + 0.75, out, { dur: 0.25, f0: 700, f1: 250, type: 'lowpass', q: 1, peak: 0.25, attack: 0.01 });
+        break;
+      }
+      if (e.cause === 'lava') {
+        // Sizzle: hissing noise, a bubbling blurp and a low thump.
+        const out = v(0.2, 1.1);
+        swish(t, out, { dur: 0.7, f0: 6000, f1: 3000, type: 'highpass', q: 0.4, peak: 0.35, attack: 0.01 });
+        for (let i = 0; i < 4; i++) blip(t + 0.05 + i * 0.07, out, { type: 'sine', f0: rnd(160, 260), f1: rnd(320, 500), dur: 0.06, peak: 0.12 });
+        thump(t, out, 0.5, 110, 40, 0.3);
+        break;
+      }
       // Balloon-like pop: sharp crack, a squeaky descending "pew", sub thump, debris.
       const out = v(0.18, 1.1);
       swish(t, out, { dur: 0.05, f0: 5000, f1: 2500, type: 'highpass', q: 0.7, peak: 0.9, attack: 0.001 });
@@ -353,6 +368,46 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
       const out = v(0.15, 1.4);
       blip(t, out, { type: 'sine', f0: 300, f1: 900, dur: 0.18, peak: 0.12, attack: 0.02 });
       swish(t, out, { dur: 0.2, f0: 800, f1: 3000, q: 1, peak: 0.06, attack: 0.03 });
+      break;
+    }
+    case 'bump': {
+      // Pinball bumper: bright bell ding + springy thunk.
+      const out = v(0.2, 1.2);
+      metal(t, out, vary(1320, 0.04), 0.35, 0.14, [1, 2, 3.01]);
+      thump(t, out, 0.4, 260, 120, 0.08);
+      break;
+    }
+    case 'portal': {
+      // Whooshy rising shimmer.
+      const out = v(0.3, 2);
+      swish(t, out, { dur: 0.35, f0: 400, f1: 3500, q: 3, peak: 0.25, attack: 0.03 });
+      blip(t, out, { type: 'sine', f0: 600, f1: 1800, dur: 0.3, peak: 0.08, attack: 0.02 });
+      break;
+    }
+    case 'splash': {
+      const out = v(0.15, 2.2);
+      swish(t, out, { dur: 0.3, f0: 1500, f1: 400, q: 1, peak: 0.3, attack: 0.005 });
+      crackle(t + 0.02, out, 0.25, 8, 2500, 0.08);
+      break;
+    }
+    case 'tile': {
+      const out = v(0.1, 0.6);
+      if (e.what === 'warn') blip(t, out, { type: 'square', f0: 220, f1: 200, dur: 0.06, peak: 0.04 });
+      else { thump(t, out, 0.2, 90, 40, 0.15); crackle(t, out, 0.15, 3, 900, 0.06); }
+      break;
+    }
+    case 'stroke': {
+      // Club-on-ball: crisp tock.
+      const out = v(0.1, 1.2);
+      blip(t, out, { type: 'triangle', f0: 1400, f1: 900, dur: 0.05, peak: 0.25, attack: 0.001 });
+      swish(t, out, { dur: 0.03, f0: 5000, f1: 3000, q: 1, peak: 0.25, attack: 0.001 });
+      break;
+    }
+    case 'sunk': {
+      // Ball rattles in the cup, then a little fanfare.
+      const out = v(0.3);
+      for (let i = 0; i < 3; i++) blip(t + i * 0.06, out, { type: 'triangle', f0: 900 - i * 120, dur: 0.05, peak: 0.12 });
+      [523, 659, 784, 1046].forEach((fr, i) => brass(t + 0.25 + i * 0.09, out, fr / 2, i === 3 ? 0.4 : 0.12, 0.08));
       break;
     }
     case 'boom': {
@@ -554,6 +609,14 @@ export const SOUND_TEST: { name: string; ev: SimEvent | 'tick' | 'go' }[] = [
   { name: 'hit bush', ev: { e: 'chop', prop: 0, kind: 'bush', who: -1, x: 0, y: 0 } },
   { name: 'break bush', ev: { e: 'fell', prop: 0, kind: 'bush', who: -1, x: 0, y: 0, dx: 1, dy: 0 } },
   { name: 'bomb', ev: { e: 'boom', x: 0, y: 0 } },
+  { name: 'fall off', ev: { e: 'kill', victim: -1, killer: -1, x: 0, y: 0, cause: 'fall' } },
+  { name: 'lava', ev: { e: 'kill', victim: -1, killer: -1, x: 0, y: 0, cause: 'lava' } },
+  { name: 'bumper', ev: { e: 'bump', x: 0, y: 0, i: 0 } },
+  { name: 'portal', ev: { e: 'portal', x: 0, y: 0, x2: 0, y2: 0 } },
+  { name: 'splash', ev: { e: 'splash', x: 0, y: 0 } },
+  { name: 'tile falls', ev: { e: 'tile', i: 0, what: 'fall' } },
+  { name: 'golf stroke', ev: { e: 'stroke', team: 0, x: 0, y: 0 } },
+  { name: 'golf sunk', ev: { e: 'sunk', team: 0, strokes: 3, x: 0, y: 0 } },
   { name: 'flag take', ev: { e: 'flag', what: 'take', team: 0, who: -1 } },
   { name: 'flag score', ev: { e: 'flag', what: 'score', team: 0, who: -1 } },
   { name: 'goal', ev: { e: 'goal', team: 0 } },

@@ -62,6 +62,24 @@ to you); a car at speed smashes straight through. They regrow in place after
 | 🪨 Rock | 5 | Crumbles. |
 | 🌿 Bush | 1 | Bursts into leaves. Hats fly straight through bushes (chopping them). |
 
+### Arena features
+
+| Feature | Arenas | What it does |
+|---|---|---|
+| Pits / open edges | Pit Arena, Windy Cliffs, Sniper Canyon, Crumbling Platform, Links (water) | Roll in and you're out. A dash skims over a small gap. Whoever shoved you in (kick, clash, dash bump) in the last 3 s gets the credit. Hats that land in one pop back to their owner. |
+| Lava / collapsing floor | Lava Rising, Crumbling Platform, Floor is Lava | Tiles flash red, then fall away (or turn to lava). |
+| Ice | Ice Rink | Slippery: you speed up and stop slowly; kicks send you sliding. |
+| Conveyors | Conveyor Factory | Carry players, grounded hats and balls. |
+| Bumpers | Pinball | Fling players, hats, balls and cars away. |
+| Portals | Teleporter Temple | Step (or throw a hat) in one ring, come out of its partner with your momentum. |
+| Wind | Windy Cliffs | Bends flying hats and gently pushes players. |
+| Night | Night Market | Every 30 s the lights go out; only the area around each player is lit. |
+| Low walls | everywhere, especially Downtown windows and the Bowling Alley gutters | Block bodies but not hats. Sniper Canyon's pens can't be left at all: it's all hat throwing. |
+
+**Dash bump:** dashing into an enemy shoves them away (no damage).
+
+**Arena choice:** the lobby lists arenas that suit the selected mode, plus 🎲 **Random**, which picks a new arena every round.
+
 ### Piggyback (team modes)
 
 **Slash a teammate** (in front of you, within reach) to hop on their back instead
@@ -133,3 +151,16 @@ to the lobby after 8 s.
 - There are always cars on the field: the host picks how many in the lobby (default 2, up to 8). A wrecked or expired car is replaced after 1.5 s, and if the last one goes, a new one honks its way in immediately.
 - Get in, run people over (anything at speed is lethal), and watch out for hats: a hat hitting your car wrecks it and pops you.
 - Car power-ups from pickups are off in this mode (cars are always available).
+
+### Bumper Balls
+- No hats: only kicks and dash bumps. Shove rivals off the edge of a round platform over the water, whose edge crumbles inward during the round.
+- Last ball on the platform wins the round. No power-ups.
+
+### Golf
+- Two teams; each has its own ball at a tee. Hit **your** ball with a thrown hat, a slash or a kick: each hit is a stroke. Hitting the other team's ball is free sabotage. Bodies can't push the balls.
+- Swinging toward the cup putts (a gentler hit that rolls just past it). A ball moving too fast lips out of the cup.
+- Water costs a stroke and puts the ball back where it last rested.
+- When every ball is in (or after 90 s, with +2 for unsunk balls) the fewest strokes wins the hole. Holes are rounds; first to the target number of holes wins.
+
+### Floor is Lava
+- Free-for-all elimination. Random floor tiles flash and turn to lava, faster and faster. Don't be standing on one.
