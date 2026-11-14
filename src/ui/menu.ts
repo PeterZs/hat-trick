@@ -4,11 +4,13 @@ import { MODES } from '../sim/const';
 import { LEVELS } from '../sim/level';
 import type { MatchConfig, ModeId } from '../sim/types';
 import { savePrefs, type Prefs } from './prefs';
+import { cleanRoomCode } from '../net/peerLink';
 import { escapeHtml } from './settings';
 
 export interface MenuActions {
   playLocal(cfg: MatchConfig): void;
-  host(cfg: MatchConfig): void;
+  /** Host a room; `code` is the player's chosen room code (empty = random). */
+  host(cfg: MatchConfig, code: string): void;
   join(code: string): void;
   openSettings(): void;
 }
@@ -58,8 +60,9 @@ export class Menu {
           <button class="blue" data-act="host">🌐 Host online</button>
         </div>
         <div class="row center">
-          <input data-code placeholder="ROOM CODE" maxlength="5" value="${escapeHtml(joinCode)}" style="width:130px;text-transform:uppercase;letter-spacing:2px;text-align:center">
+          <input data-code placeholder="ROOM CODE" maxlength="12" value="${escapeHtml(joinCode)}" title="Type a code to join that room, or to host it under that name" style="width:150px;text-transform:uppercase;letter-spacing:2px;text-align:center">
           <button data-act="join">Join online</button>
+          <span class="hint" style="flex-basis:100%;text-align:center">Type a room code to join it — or to host your own room under that name.</span>
           <button data-act="settings">⚙️ Settings</button>
         </div>
         <div class="err">${escapeHtml(error)}</div>
@@ -96,12 +99,17 @@ export class Menu {
     });
     nameInput.addEventListener('keydown', (e) => e.stopPropagation());
     this.el.querySelector('[data-act=local]')!.addEventListener('click', () => this.actions.playLocal(this.cfg()));
-    this.el.querySelector('[data-act=host]')!.addEventListener('click', () => this.actions.host(this.cfg()));
-    this.el.querySelector('[data-act=settings]')!.addEventListener('click', () => this.actions.openSettings());
     const code = this.el.querySelector<HTMLInputElement>('[data-code]')!;
-    this.el.querySelector('[data-act=join]')!.addEventListener('click', () => {
-      const c = code.value.trim().toUpperCase();
-      if (c.length >= 4) this.actions.join(c);
-    });
+    const joinBtn = this.el.querySelector<HTMLButtonElement>('[data-act=join]')!;
+    const typed = () => cleanRoomCode(code.value);
+    // With a code typed, Join becomes the obvious button (a common mistake was
+    // typing a code and then pressing Play, which starts a separate game).
+    const refresh = () => { joinBtn.classList.toggle('primary', typed().length >= 3); joinBtn.disabled = typed().length < 3; };
+    refresh();
+    code.addEventListener('input', refresh);
+    code.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && typed().length >= 3) this.actions.join(typed()); });
+    this.el.querySelector('[data-act=host]')!.addEventListener('click', () => this.actions.host(this.cfg(), typed()));
+    this.el.querySelector('[data-act=settings]')!.addEventListener('click', () => this.actions.openSettings());
+    joinBtn.addEventListener('click', () => { if (typed().length >= 3) this.actions.join(typed()); });
   }
 }

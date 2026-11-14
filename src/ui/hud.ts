@@ -172,7 +172,7 @@ export class Hud {
 
     if (this.lobbyCollapsed) {
       this.lobby.innerHTML = `<h3>Lobby · ${roster.length} player${roster.length === 1 ? "" : "s"} <span class="grow"></span>
-        ${c.isHost ? '<button class="primary small" data-l="start">Start ▶</button>' : ''}
+        <button class="primary small" data-l="start">Start ▶</button>
         <button class="small" data-l="expand">▲</button></h3>`;
     } else {
       this.lobby.innerHTML = `
@@ -189,7 +189,7 @@ export class Hud {
           <span class="grow"></span>
           <button class="small" data-l="bot">+ Bot</button>
           <button class="small" data-l="rmbot">− Bot</button>
-          ${c.isHost ? `<button class="primary" data-l="start" ${roster.length === 0 ? 'disabled' : ''}>Start ▶</button>` : '<span class="hint">host starts</span>'}
+          <button class="primary" data-l="start" ${roster.length === 0 ? 'disabled' : ''}>Start ▶</button>
         </div>
         <div class="pcards">
           ${roster.map((p) => `

@@ -4,7 +4,7 @@ import './style.css';
 import { Renderer } from './render/renderer';
 import { LocalSession, type Session } from './net/session';
 import { RollbackSession } from './net/rollback';
-import { hostRoom, joinRoom, randomRoomCode } from './net/peerLink';
+import { cleanRoomCode, hostRoom, joinRoom, randomRoomCode } from './net/peerLink';
 import { DeviceManager, type AimContext } from './input/devices';
 import { anyKey, endInputFrame, installKeyboard } from './input/keyboard';
 import { TouchControls } from './input/touch';
@@ -68,7 +68,7 @@ hud.show(false);
 
 const menu = new Menu(uiRoot, prefs, {
   playLocal: (cfg) => startSession(new LocalSession(cfg, settings.params)),
-  host: (cfg) => void hostOnline(cfg),
+  host: (cfg, code) => void hostOnline(cfg, code),
   join: (code) => void joinOnline(code),
   openSettings: () => settings.toggle(true),
 });
@@ -114,11 +114,18 @@ function quitToMenu(error = ''): void {
   if (location.search) history.replaceState(null, '', location.pathname);
 }
 
-async function hostOnline(cfg: MatchConfig): Promise<void> {
-  menu.show(true, 'Creating room…');
+async function hostOnline(cfg: MatchConfig, chosen = ''): Promise<void> {
+  const code = cleanRoomCode(chosen) || randomRoomCode();
+  menu.show(true, `Creating room ${code}…`);
   try {
-    const code = randomRoomCode();
-    const link = await hostRoom(code);
+    let link;
+    try {
+      link = await hostRoom(code);
+    } catch (e) {
+      // Someone is already hosting that code: join their room instead.
+      if ((e as { type?: string }).type === 'unavailable-id') { void joinOnline(code); return; }
+      throw e;
+    }
     roomCode = code;
     const state = createState(cfg, settings.params, (Math.random() * 2 ** 32) >>> 0);
     const s = new RollbackSession(link, state, { inputDelay: prefs.inputDelay });
@@ -132,10 +139,14 @@ async function joinOnline(code: string): Promise<void> {
   menu.show(true, `Joining ${code}…`);
   try {
     const link = await joinRoom(code);
-    roomCode = code;
     const s = new RollbackSession(link, null, { inputDelay: prefs.inputDelay });
-    s.onHostLost = (reason) => quitToMenu(reason);
-    startSession(s);
+    s.onHostLost = (reason) => { if (session === s) quitToMenu(reason); else { s.dispose(); menu.show(true, reason); } };
+    // Stay on the menu until the host's snapshot arrives, then enter the game.
+    menu.show(true, `Connected to room ${code} — waiting for the host…`);
+    s.onStarted = () => { roomCode = code; startSession(s); };
+    setTimeout(() => {
+      if (!s.started) { s.dispose(); menu.show(true, `Room ${code} didn't respond. Is the host's game open and in front?`); }
+    }, 10000);
   } catch (e) {
     menu.show(true, 'Could not join: ' + (e as Error).message);
   }
@@ -190,7 +201,7 @@ function handleDevices(): Record<string, PlayerInput> {
     if (d.leavePressed()) { session.command({ t: 'leave', device: d.key }); continue; }
     if (d.menuPressed()) {
       // Start: begin the match from the lobby (host), otherwise pause menu.
-      if (s.phase === 'lobby' && session.isHost && !hud.paused) session.command({ t: 'start', cfg: s.cfg });
+      if (s.phase === 'lobby' && !hud.paused) session.command({ t: 'start', cfg: s.cfg });
       else hud.togglePause();
       continue;
     }
@@ -315,7 +326,7 @@ requestAnimationFrame(loop);
 
 // Deep link: ?join=CODE
 const joinCode = new URLSearchParams(location.search).get('join');
-if (joinCode) void joinOnline(joinCode.toUpperCase());
+if (joinCode && cleanRoomCode(joinCode)) void joinOnline(cleanRoomCode(joinCode));
 
 // Dev hook for automated audio checks.
 (window as unknown as Record<string, unknown>).sfxDebug = async () => sfxModule;

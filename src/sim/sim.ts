@@ -155,7 +155,7 @@ function applyCommand(s: GameState, peer: number, c: Command): void {
       return;
     }
     case 'start': {
-      if (peer !== 0) return; // only the host starts matches
+      if (peer !== 0 && s.phase !== 'lobby') return; // anyone can start from the lobby
       s.cfg = { ...c.cfg };
       s.scores = s.scores.map(() => 0);
       s.round = 0;

@@ -76,6 +76,10 @@ interact button: slash does it all (riding, cars).
 Players can join (any device's join button) or leave at any time, including
 mid-match and online. A new player spawns immediately.
 
+**Online:** Host online gives you a room code (type your own code first to pick
+it). Others type the code and press Join or Enter. Hosting a code that's already
+taken just joins that room. You can join a match in progress.
+
 Set your name on the main menu (or in settings). In the lobby, your players'
 names are editable right on their cards; press Enter to apply.
 
@@ -84,7 +88,7 @@ names are editable right on their cards; press Enter to apply.
 ## Game modes
 
 Every game starts in the **lobby**: free play with respawns, no score. Any
-player can pick the mode, arena and target score; the host presses Start. After a match ends, everyone returns
+player can pick the mode, arena and target score, and anyone can press Start. After a match ends, everyone returns
 to the lobby after 8 s.
 
 ### Free-for-all

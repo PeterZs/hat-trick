@@ -6,6 +6,11 @@ import type { Msg, NetLink } from './link';
 
 const PREFIX = 'hat-trick-v1-';
 
+/** Normalize a typed room code: letters/digits only, upper case, max 12. */
+export function cleanRoomCode(s: string): string {
+  return s.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+}
+
 export function randomRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let s = '';
