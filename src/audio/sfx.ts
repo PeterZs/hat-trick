@@ -221,10 +221,12 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
       if (e.kind === 0) {
         // Low, airy whoosh: a wide band of noise sweeping up then down
         // through the low-mids, with a soft rumble underneath.
-        const f = vary(380, 0.12);
-        swish(t, out, { dur: 0.11, f0: f, f1: f * 2.6, q: 0.7, peak: 0.55, attack: 0.04 });
-        swish(t + 0.1, out, { dur: 0.2, f0: f * 2.6, f1: f * 0.9, q: 0.7, peak: 0.4, attack: 0.01 });
-        swish(t, out, { dur: 0.22, f0: 260, f1: 140, type: 'lowpass', q: 0.9, peak: 0.25, attack: 0.05 });
+        const f = vary(270, 0.12);
+        swish(t, out, { dur: 0.11, f0: f, f1: f * 2.4, q: 0.7, peak: 0.55, attack: 0.04 });
+        swish(t + 0.1, out, { dur: 0.22, f0: f * 2.4, f1: f * 0.85, q: 0.7, peak: 0.4, attack: 0.01 });
+        // Rumble: low-passed noise plus a soft sub swell that dips in pitch.
+        swish(t, out, { dur: 0.26, f0: 220, f1: 110, type: 'lowpass', q: 1.1, peak: 0.45, attack: 0.05 });
+        blip(t + 0.02, out, { type: 'sine', f0: vary(95, 0.08), f1: 60, dur: 0.22, peak: 0.22, attack: 0.05 });
       } else {
         swish(t, out, { dur: 0.08, f0: 700, f1: 1500, q: 1, peak: 0.3, attack: 0.01 });
       }
