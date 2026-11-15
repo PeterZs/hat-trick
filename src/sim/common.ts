@@ -2,11 +2,13 @@
 
 import { DT, HZ, allies, teamOf } from './const';
 import { getLevel, type Level } from './level';
-import { circleOverlapsWalls } from './collision';
+import { circleOverlapsWalls, sweepCircle, type Push } from './collision';
 import { anySafeSpot, safeSpot } from './hazards';
 import { rand } from './rng';
 import { frames } from './dmath';
 import { HAT_GROUND, HAT_HELD, type GameState, type Hat, type Player, type SimEvent } from './types';
+
+const tmp: Push = { x: 0, y: 0, hit: false, nx: 0, ny: 0 };
 
 export function level(s: GameState): Level {
   return getLevel(s.arena);
@@ -55,6 +57,7 @@ export function dropHat(s: GameState, h: Hat): void {
 
 /** Briefly visible (invisibility power-up, Ghost Brawl): attacks, dashes, bumps, hits. */
 export function reveal(s: GameState, p: Player): void {
+  if (p.id === 0 && (globalThis as any).__probe) (globalThis as any).__probe.push(s.frame + ' ' + (new Error().stack!.split('\n')[2].trim()));
   p.revealT = Math.max(p.revealT, sec(s, s.cfg.mode === 'ghost' ? 'ghostRevealTime' : 'invisRevealTime'));
 }
 
@@ -83,7 +86,7 @@ export function detach(s: GameState, p: Player): void {
   }
   if (p.rider >= 0) {
     const r = s.players[p.rider];
-    if (r) { r.riding = -1; r.x = p.x + 0.8; r.y = p.y; }
+    if (r) { r.riding = -1; sweepCircle(p.x, p.y, p.x + 0.8, p.y, s.params.playerRadius, level(s).walls, false, tmp); r.x = tmp.x; r.y = tmp.y; }
     p.rider = -1;
   }
   if (p.car >= 0) {

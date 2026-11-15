@@ -2,6 +2,24 @@ import type { Wall } from './level';
 
 export interface Push { x: number; y: number; hit: boolean; nx: number; ny: number }
 
+/**
+ * Move a circle from (x0, y0) to (x1, y1), colliding along the way in steps
+ * short enough that it can't skip past a wall's middle and get pushed out the
+ * far side (fast dashes, landing spots that are a jump away).
+ */
+export function sweepCircle(x0: number, y0: number, x1: number, y1: number, r: number, walls: Wall[], highOnly: boolean, out: Push): Push {
+  const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (r * 0.5)));
+  const dx = (x1 - x0) / n, dy = (y1 - y0) / n;
+  let x = x0, y = y0, hit = false, nx = 0, ny = 0;
+  for (let i = 0; i < n; i++) {
+    collideCircle(x + dx, y + dy, r, walls, highOnly, out);
+    x = out.x; y = out.y;
+    if (out.hit) { hit = true; nx = out.nx; ny = out.ny; }
+  }
+  out.x = x; out.y = y; out.hit = hit; out.nx = nx; out.ny = ny;
+  return out;
+}
+
 /** Push a circle out of all walls (optionally only high walls). */
 export function collideCircle(x: number, y: number, r: number, walls: Wall[], highOnly: boolean, out: Push): Push {
   out.hit = false; out.nx = 0; out.ny = 0;

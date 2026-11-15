@@ -2,7 +2,7 @@
 
 import { DT, HZ, allies, teamOf, isTeamMode } from './const';
 import { clamp, dcos, dsin, dist2, frames, len, lerp, PI } from './dmath';
-import { collideCircle, circleOverlapsWalls, type Push } from './collision';
+import { collideCircle, circleOverlapsWalls, sweepCircle, type Push } from './collision';
 import {
   BTN_ATTACK, BTN_DASH, BTN_THROW, type PlayerInput,
 } from './input';
@@ -158,6 +158,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   const decay = Math.max(0, 1 - P.knockbackDecay * (slippery ? P.iceSlide : 1) * DT);
   p.kx *= decay; p.ky *= decay;
 
+  const x0 = p.x, y0 = p.y;
   p.x += vx * DT; p.y += vy * DT;
   const L = level(s);
   if (phasing) {
@@ -167,7 +168,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
     if (p.dashT <= 0 && circleOverlapsWalls(p.x, p.y, P.playerRadius, L.walls, false)) p.dashT = 1;
   } else {
     // A vault that ends inside a low wall pops out the nearer side next frame.
-    collideCircle(p.x, p.y, P.playerRadius, L.walls, vaulting, tmp);
+    sweepCircle(x0, y0, p.x, p.y, P.playerRadius, L.walls, vaulting, tmp);
     p.x = tmp.x; p.y = tmp.y;
     if (tmp.hit) {
       reveal(s, p); // bumped into a wall
@@ -234,8 +235,7 @@ function dismount(s: GameState, rider: Player, dx: number, dy: number): void {
   emit(s, { e: 'piggy', what: 'off', who: rider.id, mount: rider.riding });
   detach(s, rider);
   if (m) {
-    rider.x = m.x + dx * 1.3; rider.y = m.y + dy * 1.3;
-    collideCircle(rider.x, rider.y, s.params.playerRadius, level(s).walls, false, tmp);
+    sweepCircle(m.x, m.y, m.x + dx * 1.3, m.y + dy * 1.3, s.params.playerRadius, level(s).walls, false, tmp);
     rider.x = tmp.x; rider.y = tmp.y;
   }
 }
@@ -644,8 +644,7 @@ function driveCar(s: GameState, p: Player, c: Car, inp: PlayerInput, pressed: nu
 
 function exitCar(s: GameState, p: Player, c: Car): void {
   c.driver = -1; p.car = -1;
-  p.x = c.x - c.hy * 1.6; p.y = c.y + c.hx * 1.6;
-  collideCircle(p.x, p.y, s.params.playerRadius, level(s).walls, false, tmp);
+  sweepCircle(c.x, c.y, c.x - c.hy * 1.6, c.y + c.hx * 1.6, s.params.playerRadius, level(s).walls, false, tmp);
   p.x = tmp.x; p.y = tmp.y;
   p.vx = p.vy = 0;
   emit(s, { e: 'car', what: 'exit', who: p.id, x: c.x, y: c.y });
@@ -688,9 +687,9 @@ export function updateCars(s: GameState): void {
     } else {
       c.speed -= c.speed * 3 * DT;
     }
-    c.x += c.hx * c.speed * DT; c.y += c.hy * c.speed * DT;
-    collideCircle(c.x, c.y, 1.0, L.walls, false, tmp);
-    if (tmp.hit) { c.x = tmp.x; c.y = tmp.y; c.speed *= -0.3; }
+    sweepCircle(c.x, c.y, c.x + c.hx * c.speed * DT, c.y + c.hy * c.speed * DT, 1.0, L.walls, false, tmp);
+    c.x = tmp.x; c.y = tmp.y;
+    if (tmp.hit) c.speed *= -0.3;
     // Breakables: smash straight through at speed, bump off when slow.
     for (const t of s.props) {
       if (!isStanding(t)) continue;

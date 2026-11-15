@@ -751,6 +751,32 @@ describe('Ghost Brawl', () => {
   });
 });
 
+describe('arena walls hold', () => {
+  // Courtyard's right border wall: inner face at x = 15, 1 unit thick.
+  const inside = (x: number) => x < 15 - DEFAULT_PARAMS.playerRadius + 1e-6;
+
+  it('a very fast dash into the border stops at the wall', () => {
+    const s = setup('ffa', 1);
+    s.params.dashSpeed = 90; // 1.5 units a frame
+    const a = s.players[0];
+    a.x = 14.2; a.y = -2.6;
+    run(s, 20, (f) => ({ d0: makeInput(1, 0, 1, 0, f === 0 ? BTN_DASH : 0) }));
+    expect(inside(a.x)).toBe(true);
+  });
+
+  it('hopping off a piggyback next to the border lands inside', () => {
+    const s = setup('teams', 2);
+    const [a, b] = s.players;
+    a.x = 13.4; a.y = -2.6; b.x = 14.45; b.y = -2.6; a.fx = 1; a.fy = 0;
+    run(s, 2, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_ATTACK : 0) }));
+    expect(a.riding).toBe(b.id);
+    run(s, 2, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_DASH : 0) }));
+    expect(a.riding).toBe(-1);
+    run(s, 10, () => ({}));
+    expect(inside(a.x)).toBe(true);
+  });
+});
+
 describe('dash through low walls', () => {
   it('a dash vaults a low wall only with the debug setting on', () => {
     for (const on of [0, 1]) {
