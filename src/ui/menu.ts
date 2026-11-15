@@ -12,6 +12,7 @@ export interface MenuActions {
   /** Play online: join room `code` if it exists, otherwise host it with
    *  `cfg` (empty code = a new random room). */
   online(cfg: MatchConfig, code: string): void;
+  customize(): void;
   openSettings(): void;
 }
 
@@ -62,6 +63,7 @@ export class Menu {
           <input data-code placeholder="ROOM CODE" maxlength="12" value="${escapeHtml(joinCode)}" title="A friend's room code, or blank for a new room" style="width:150px;text-transform:uppercase;letter-spacing:2px;text-align:center">
           <button class="blue" data-act="online">🌐 Play online</button>
           <span class="hint" style="flex-basis:100%;text-align:center">Type a friend's room code to join them (or start that room if nobody's there). Leave it blank for a new room.</span>
+          <button data-act="customize">🎨 Customize</button>
           <button data-act="settings">⚙️ Settings</button>
         </div>
         <div class="err">${escapeHtml(error)}</div>
@@ -109,5 +111,6 @@ export class Menu {
     code.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') this.actions.online(this.cfg(), typed()); });
     onlineBtn.addEventListener('click', () => this.actions.online(this.cfg(), typed()));
     this.el.querySelector('[data-act=settings]')!.addEventListener('click', () => this.actions.openSettings());
+    this.el.querySelector('[data-act=customize]')!.addEventListener('click', () => this.actions.customize());
   }
 }

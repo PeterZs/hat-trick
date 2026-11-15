@@ -107,6 +107,14 @@ picked on the main menu apply only if you start the room; anyone can change them
 in the lobby. If the host leaves, the game freezes for a moment while another
 player takes over as host, then carries on.
 
+**Customize** your character from the main menu (🎨 Customize) or a lobby card
+(🎨): ball pattern and colors, eyes, hat shape, colors, size and something on
+top. Looks are saved in this browser for each device (keyboard, gamepad,
+touch…) and used whenever that device joins; everyone online sees them. Pick
+"★ Custom" in a card's ball list to switch back to yours after trying a preset.
+⭐ on another player's card copies their look into your editor, and each look
+has a share code you can paste anywhere.
+
 Set your name on the main menu (or in settings). In the lobby, your players'
 names are editable right on their cards; press Enter to apply.
 

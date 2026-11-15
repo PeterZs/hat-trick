@@ -179,6 +179,8 @@ export class RollbackSession implements Session {
     this.lastTickAt = now;
     if (this.migration) { this.tickMigration(now); return; }
     this.expirePendingHi(now);
+    // We were asleep, not them: don't drop peers for our own silence.
+    if (asleep && this.isHost) for (const p of this.members.keys()) this.lastHeard.set(p, now);
 
     if (!this.isHost) {
       // A host that goes quiet (it replies to pings even while stalled) is gone.
@@ -437,6 +439,8 @@ export class RollbackSession implements Session {
         return;
       }
       case 'ping':
+        // A client stalled waiting on someone sends no frames, but still pings.
+        this.lastHeard.set(from, this.now());
         this.link.send(from, { t: 'pong', ts: msg.ts as number });
         return;
       case 'pong':

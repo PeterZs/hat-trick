@@ -130,3 +130,20 @@ body.touch .lobby { top: calc(max(8px, env(safe-area-inset-top)) + 52px); bottom
 
 /* Gamepad focus highlight */
 .gp-focus { outline: 4px solid var(--gold) !important; outline-offset: 3px; box-shadow: 0 0 0 7px rgba(255, 210, 63, .35) !important; position: relative; z-index: 1; }
+
+/* ---------- character editor ---------- */
+.look-editor { z-index: 38; position: fixed; inset: 0; background: rgba(30,40,70,.45); display: flex; align-items: flex-start; justify-content: center; padding: 16px; overflow-y: auto; }
+.look-card { width: min(760px, 100%); display: flex; flex-direction: column; gap: 10px; }
+.look-card h2 { margin: 0; }
+.look-grid { display: flex; gap: 14px; flex-wrap: wrap; }
+.look-preview-wrap { flex: 1 1 240px; display: flex; flex-direction: column; gap: 6px; }
+.look-preview { width: 100%; aspect-ratio: 1; max-width: 320px; margin: 0 auto; display: block; border-radius: 16px;
+  background: radial-gradient(circle at 50% 40%, #ffffff, #cfe6ff); cursor: grab; touch-action: none; }
+.look-controls { flex: 1 1 300px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.look-controls fieldset { border: 2px solid #eef; border-radius: 12px; padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 6px; }
+.look-controls legend { font-weight: 700; padding: 0 4px; }
+.look-controls label { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.look-controls label select, .look-controls label input[type=range] { flex: 1; min-width: 0; }
+.look-colors { display: flex; gap: 6px; }
+.look-controls input[type=color] { width: 40px; height: 30px; padding: 2px; border-radius: 8px; }
+.look-controls .row { display: flex; gap: 6px; }

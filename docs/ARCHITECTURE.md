@@ -128,6 +128,16 @@ first host; peer numbers never change, but the host can (see host migration).
   tab reclaims them. All of it is in the sim, so every peer agrees, and it
   covers a reloading host too. (A duplicated tab copies `sessionStorage`, so it
   shares the id; it can only claim players that are away.)
+- **Custom characters.** `Player.look` (`src/sim/look.ts`) is plain data: a ball
+  pattern + 4 colors + detail, a hat shape + 4 colors + height/width + a
+  decoration, and an eye style; null means the preset for `Player.ball`. It is
+  cosmetic (the sim never reads it) but lives in the state, so `join`/`setLook`
+  share it with every peer and snapshots carry it to late joiners. The sim runs
+  every look through `sanitizeLook` (clamps numbers, validates `#rrggbb`), since
+  it arrives from the network. `render/models.ts` builds balls and hats from
+  looks (the 16 sports balls/hats are recolorable patterns/shapes). The editor
+  (`ui/lookEditor.ts`) saves looks per local device in `prefs.looks`
+  (localStorage); share codes are `HT1.` + base64url JSON.
 - **One "Play online" button.** Joining a code nobody hosts (`peer-unavailable`)
   hosts it instead; hosting a code that's taken (`unavailable-id`) joins it.
 

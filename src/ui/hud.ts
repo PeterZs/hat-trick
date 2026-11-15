@@ -6,6 +6,7 @@ import type { Command, GameState, MatchConfig, ModeId, Player } from '../sim/typ
 import { PLAYER_COLORS, TEAM_COLORS, TEAM_NAMES } from '../render/models';
 import { escapeHtml } from './settings';
 import { SKILL_NAMES } from '../sim/bot';
+import type { Look } from '../sim/look';
 
 export interface HudContext {
   peer: number;
@@ -20,6 +21,10 @@ export interface HudContext {
   rememberName(name: string): void;
   openSettings(): void;
   quit(): void;
+  /** Open the character editor (for a local device, or starting from `look`). */
+  editLook(device?: string, look?: Look, note?: string): void;
+  /** This browser's saved custom look for a local device. */
+  savedLook(device: string): Look | undefined;
 }
 
 function color(s: GameState, p: Player): string {
@@ -170,7 +175,7 @@ export class Hud {
     this.lobby.style.display = show ? '' : 'none';
     if (!show) { this.lobbyKey = ''; return; }
     const roster = s.players.filter((p) => p.active);
-    const key = JSON.stringify([s.cfg, s.arena, roster.map((p) => [p.id, p.name, p.ball, p.team, p.role, p.peer, p.device, p.skill]), c.isHost, c.roomCode, c.peer, this.lobbyCollapsed]);
+    const key = JSON.stringify([s.cfg, s.arena, roster.map((p) => [p.id, p.name, p.ball, p.look, p.team, p.role, p.peer, p.device, p.skill]), c.isHost, c.roomCode, c.peer, this.lobbyCollapsed]);
     if (key === this.lobbyKey) return;
     // Don't rebuild under someone who is typing a name; refresh after they finish.
     if (this.lobby.contains(document.activeElement) && (document.activeElement as HTMLElement).tagName === 'INPUT' && (document.activeElement as HTMLInputElement).type === 'text') return;
@@ -209,8 +214,10 @@ export class Hud {
               <span class="dot" style="width:12px;height:12px;border-radius:50%;background:${color(s, p)}"></span>
               ${mine(p) ? `<input class="nm-input" data-name="${p.id}" type="text" maxlength="16" value="${escapeHtml(p.name)}" title="Your name" size="8">`
                 : `<span class="nm">${escapeHtml(p.name)}${p.isBot ? ' 🤖' : ''}${p.awayT >= 0 ? ' 📶' : p.peer !== c.peer && !p.isBot ? ' 🌐' : ''}</span>`}
-              ${canEdit(p) ? `<select data-ball="${p.id}">${BALLS.map((b, i) => `<option value="${i}" ${i === p.ball ? 'selected' : ''}>${b} · ${HATS[i]}</option>`).join('')}</select>`
-                : `<span class="hint">${BALLS[p.ball]}</span>`}
+              ${canEdit(p) ? `<select data-ball="${p.id}">${p.look || (mine(p) && c.savedLook(p.device)) ? `<option value="custom" ${p.look ? 'selected' : ''}>★ Custom</option>` : ''}${BALLS.map((b, i) => `<option value="${i}" ${!p.look && i === p.ball ? 'selected' : ''}>${b} · ${HATS[i]}</option>`).join('')}</select>`
+                : `<span class="hint">${p.look ? '★ Custom' : BALLS[p.ball]}</span>`}
+              ${mine(p) ? `<button class="small" data-look="${p.id}" title="Customize">🎨</button>` : ''}
+              ${!mine(p) && p.look ? `<button class="small" data-copylook="${p.id}" title="Copy this look">⭐</button>` : ''}
               ${teamMode ? (canEdit(p) ? `<select data-team="${p.id}">${TEAM_NAMES.slice(0, nTeams).map((t, i) => `<option value="${i}" ${i === p.team % nTeams ? 'selected' : ''}>${t}</option>`).join('')}</select>` : `<span class="hint">${TEAM_NAMES[p.team % nTeams]}</span>`) : ''}
               ${p.isBot ? `<select data-skill="${p.id}" title="Bot difficulty">${SKILL_NAMES.map((n, i) => `<option value="${i}" ${i === p.skill ? 'selected' : ''}>${n}</option>`).join('')}</select>` : ''}
               ${mode === 'hazard' ? (canEdit(p) ? `<select data-role="${p.id}"><option value="fighter" ${p.role === 'fighter' ? 'selected' : ''}>Runner</option><option value="overlord" ${p.role === 'overlord' ? 'selected' : ''}>Overlord</option></select>` : `<span class="hint">${p.role === 'overlord' ? 'Overlord' : 'Runner'}</span>`) : ''}
@@ -249,7 +256,14 @@ export class Hud {
     const byId = (id: string) => s.players[parseInt(id)];
     // Bots are controlled through commands from the host; they are addressed by device key on peer 0.
     for (const el of this.lobby.querySelectorAll<HTMLSelectElement>('[data-ball]')) el.addEventListener('change', () => {
-      const p = byId(el.dataset.ball!); c.command({ t: 'setBall', device: p.device, ball: parseInt(el.value) });
+      const p = byId(el.dataset.ball!);
+      if (el.value === 'custom') { const look = c.savedLook(p.device); if (look) c.command({ t: 'setLook', device: p.device, look }); }
+      else c.command({ t: 'setBall', device: p.device, ball: parseInt(el.value) });
+    });
+    for (const el of this.lobby.querySelectorAll<HTMLElement>('[data-look]')) el.addEventListener('click', () => c.editLook(byId(el.dataset.look!).device));
+    for (const el of this.lobby.querySelectorAll<HTMLElement>('[data-copylook]')) el.addEventListener('click', () => {
+      const p = byId(el.dataset.copylook!);
+      if (p.look) c.editLook(undefined, p.look, `Copied from ${p.name}. Save it to use it.`);
     });
     for (const el of this.lobby.querySelectorAll<HTMLSelectElement>('[data-team]')) el.addEventListener('change', () => {
       const p = byId(el.dataset.team!); c.command({ t: 'setTeam', device: p.device, team: parseInt(el.value) });

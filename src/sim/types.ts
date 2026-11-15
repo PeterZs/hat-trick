@@ -5,6 +5,7 @@
 
 import type { Params } from './params';
 import type { PlayerInput } from './input';
+import type { Look } from './look';
 
 export type ModeId = 'ffa' | 'teams' | 'ctf' | 'soccer' | 'hazard' | 'lumber' | 'cars' | 'bumper' | 'golf' | 'lava' | 'ghost';
 export type Phase = 'lobby' | 'countdown' | 'playing' | 'roundOver' | 'matchOver';
@@ -25,6 +26,7 @@ export interface Player {
   awayT: number;        // frames since its peer disconnected; -1 = connected
   name: string;
   ball: number;         // character index (BALLS)
+  look: Look | null;    // custom ball/hat (cosmetic); null = the preset for `ball`
   team: number;
   isBot: boolean;
   skill: number;        // bots: 0 extra easy, 1 easy, 2 normal, 3 hard
@@ -229,7 +231,9 @@ export interface GameState {
 /** Commands change the roster/match. They travel in the input stream so they
  *  are applied at the same frame on every peer. */
 export type Command =
-  | { t: 'join'; device: string; name: string; ball: number; team?: number }
+  | { t: 'join'; device: string; name: string; ball: number; team?: number; look?: Look }
+  /** Custom ball/hat; null goes back to the preset for the player's ball. */
+  | { t: 'setLook'; device: string; look: Look | null }
   | { t: 'leave'; device: string }
   | { t: 'setBall'; device: string; ball: number }
   | { t: 'setTeam'; device: string; team: number }

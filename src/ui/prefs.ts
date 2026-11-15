@@ -1,6 +1,7 @@
 // Persistent local preferences (localStorage). Never part of the sim state.
 
 import { cloneParams, DEFAULT_PARAMS, type Params } from '../sim/params';
+import { sanitizeLook, type Look } from '../sim/look';
 
 const K_PARAMS = 'hat-trick.params';
 const K_PREFS = 'hat-trick.prefs';
@@ -21,9 +22,11 @@ export interface Prefs {
   inputDelay: number;
   lastMode: string;
   winScore: number;
+  /** Custom characters, by local device key (kbm, kb2, pad0, touch…). */
+  looks: Record<string, Look>;
 }
 
-const DEFAULT_PREFS: Prefs = { name: 'Player', volume: 0.5, showHitboxes: false, inputDelay: 2, lastMode: 'ffa', winScore: 5 };
+const DEFAULT_PREFS: Prefs = { name: 'Player', volume: 0.5, showHitboxes: false, inputDelay: 2, lastMode: 'ffa', winScore: 5, looks: {} };
 
 function read<T>(key: string): Partial<T> {
   try { return JSON.parse(localStorage.getItem(key) ?? '{}') as Partial<T>; } catch { return {}; }
@@ -41,7 +44,11 @@ export function saveParams(p: Params): void {
 }
 
 export function loadPrefs(): Prefs {
-  return { ...DEFAULT_PREFS, ...read<Prefs>(K_PREFS) };
+  const p = { ...DEFAULT_PREFS, ...read<Prefs>(K_PREFS) };
+  const looks: Record<string, Look> = {};
+  for (const [k, v] of Object.entries(p.looks ?? {})) { const l = sanitizeLook(v); if (l) looks[k] = l; }
+  p.looks = looks;
+  return p;
 }
 
 export function savePrefs(p: Prefs): void {

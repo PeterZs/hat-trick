@@ -2,6 +2,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import type { BallLook, HatLook } from '../sim/look';
 
 export const PLAYER_COLORS = ['#ff5a5a', '#4a8dff', '#ffd23f', '#4fd17a', '#c77dff', '#ff9f43', '#2ed3d3', '#ff6fb5'];
 export const TEAM_COLORS = ['#ff5a5a', '#4a8dff', '#ffd23f', '#4fd17a'];
@@ -31,7 +32,8 @@ function mesh(geo: THREE.BufferGeometry, color: string, shadow = true): THREE.Me
 // ---------------------------------------------------------------------------
 // Balls
 
-type Pattern = (n: THREE.Vector3) => string;
+/** Face color from the face normal `n`, the look's colors `c` and detail `k`. */
+type Pattern = (n: THREE.Vector3, c: string[], k: number) => string;
 
 const ICO_VERTS = (() => {
   const g = new THREE.IcosahedronGeometry(1, 0);
@@ -45,58 +47,88 @@ const ICO_VERTS = (() => {
 })();
 
 const seam = (n: THREE.Vector3) => Math.abs(n.y - 0.55 * Math.sin(2 * Math.atan2(n.z, n.x)));
+const azimuth = (n: THREE.Vector3) => (Math.atan2(n.z, n.x) + Math.PI) / (2 * Math.PI); // 0..1
+const BOWLING_HOLES = [new THREE.Vector3(0.25, 0.85, 0.45), new THREE.Vector3(-0.2, 0.88, 0.42), new THREE.Vector3(0.0, 0.7, 0.71)].map((v) => v.normalize());
+/** Evenly spread points on the sphere (for polka dots). */
+const fibCache = new Map<number, THREE.Vector3[]>();
+const fib = (count: number) => {
+  let pts = fibCache.get(count);
+  if (!pts) {
+    pts = Array.from({ length: count }, (_, i) => {
+      const y = 1 - (2 * (i + 0.5)) / count, rr = Math.sqrt(1 - y * y), a = i * 2.399963;
+      return new THREE.Vector3(Math.cos(a) * rr, y, Math.sin(a) * rr);
+    });
+    fibCache.set(count, pts);
+  }
+  return pts;
+};
 
+// Same order as BALL_PATTERNS (src/sim/look.ts): the sports balls, then generic patterns.
 const PATTERNS: Pattern[] = [
   // Soccer
-  (n) => (ICO_VERTS.some((v) => v.dot(n) > 0.94) ? '#222222' : '#fafafa'),
+  (n, c) => (ICO_VERTS.some((v) => v.dot(n) > 0.94) ? c[1] : c[0]),
   // Basketball
-  (n) => (Math.abs(n.x) < 0.07 || Math.abs(n.y) < 0.07 || Math.abs(Math.abs(n.z) - 0.72) < 0.07 ? '#3a1d0e' : '#f07a2a'),
+  (n, c) => (Math.abs(n.x) < 0.07 || Math.abs(n.y) < 0.07 || Math.abs(Math.abs(n.z) - 0.72) < 0.07 ? c[1] : c[0]),
   // Tennis
-  (n) => (seam(n) < 0.1 ? '#f8f8f0' : '#cfe83c'),
+  (n, c) => (seam(n) < 0.1 ? c[1] : c[0]),
   // Baseball
-  (n) => (Math.abs(seam(n) - 0.14) < 0.05 ? '#d8322e' : '#f7f4ea'),
+  (n, c) => (Math.abs(seam(n) - 0.14) < 0.05 ? c[1] : c[0]),
   // Beach ball
-  (n) => {
-    if (Math.abs(n.y) > 0.88) return '#ffffff';
-    const a = Math.atan2(n.z, n.x) + Math.PI;
-    return ['#ff4b4b', '#ffffff', '#ffcf33', '#ffffff', '#3d8bff', '#ffffff'][Math.floor((a / (2 * Math.PI)) * 6) % 6];
-  },
+  (n, c) => (Math.abs(n.y) > 0.88 ? c[1] : [c[0], c[1], c[2], c[1], c[3], c[1]][Math.floor(azimuth(n) * 6) % 6]),
   // Eight ball
-  (n) => (n.z > 0.72 ? (n.z > 0.93 && Math.abs(n.x) < 0.12 ? '#111111' : '#ffffff') : '#1a1a1a'),
+  (n, c) => (n.z > 0.72 ? (n.z > 0.93 && Math.abs(n.x) < 0.12 ? c[2] : c[1]) : c[0]),
   // Bowling ball
-  (n) => {
-    const holes = [new THREE.Vector3(0.25, 0.85, 0.45), new THREE.Vector3(-0.2, 0.88, 0.42), new THREE.Vector3(0.0, 0.7, 0.71)];
-    if (holes.some((h) => h.clone().normalize().dot(n) > 0.985)) return '#0a0a14';
-    return Math.sin(n.x * 7 + n.y * 4 + n.z * 3) > 0.55 ? '#5b74d6' : '#27357e';
-  },
+  (n, c) => (BOWLING_HOLES.some((h) => h.dot(n) > 0.985) ? c[2] : Math.sin(n.x * 7 + n.y * 4 + n.z * 3) > 0.55 ? c[1] : c[0]),
   // Volleyball
-  (n) => {
+  (n, c) => {
     const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
-    if (ax >= ay && ax >= az) return Math.abs(n.y) < 0.2 ? '#ffd23f' : '#ffffff';
-    if (ay >= az) return Math.abs(n.z) < 0.2 ? '#2f6fe0' : '#ffffff';
-    return Math.abs(n.x) < 0.2 ? '#ffd23f' : '#2f6fe0';
+    if (ax >= ay && ax >= az) return Math.abs(n.y) < 0.2 ? c[1] : c[0];
+    if (ay >= az) return Math.abs(n.z) < 0.2 ? c[2] : c[0];
+    return Math.abs(n.x) < 0.2 ? c[1] : c[2];
   },
-  // Golf: white with dimples
-  (n) => (dimple(n, 9) ? '#d6d6d6' : '#fbfbfb'),
-  // Table tennis: orange with a thin white seam
-  (n) => (Math.abs(n.y) < 0.05 ? '#ffffff' : '#ff8c2a'),
-  // Shot put: dull iron, mottled
-  (n) => (hash3(n, 13) > 0.6 ? '#7c858f' : hash3(n, 29) > 0.5 ? '#5d6670' : '#4d555e'),
-  // Handball: red/blue/white panels
-  (n) => {
+  // Golf: dimples
+  (n, c) => (dimple(n, 9) ? c[1] : c[0]),
+  // Table tennis: thin seam
+  (n, c) => (Math.abs(n.y) < 0.05 ? c[1] : c[0]),
+  // Shot put: mottled
+  (n, c) => (hash3(n, 13) > 0.6 ? c[1] : hash3(n, 29) > 0.5 ? c[2] : c[0]),
+  // Handball: panels
+  (n, c) => {
     const ax = Math.abs(n.x), ay = Math.abs(n.y), az = Math.abs(n.z);
-    if (ax >= ay && ax >= az) return n.x > 0 ? '#e63946' : '#ffffff';
-    if (ay >= az) return n.y > 0 ? '#1d4ed8' : '#e63946';
-    return n.z > 0 ? '#ffffff' : '#1d4ed8';
+    if (ax >= ay && ax >= az) return n.x > 0 ? c[0] : c[1];
+    if (ay >= az) return n.y > 0 ? c[2] : c[0];
+    return n.z > 0 ? c[1] : c[2];
   },
-  // Water polo: yellow with blue grip grooves
-  (n) => (Math.abs(n.x) < 0.07 || Math.abs(n.z) < 0.07 || Math.abs(n.y - 0.5) < 0.05 || Math.abs(n.y + 0.5) < 0.05 ? '#1e5bd8' : '#ffd23f'),
-  // Field hockey: pink with dimples
-  (n) => (dimple(n, 7) ? '#e0559a' : '#ff7ab8'),
-  // Softball: optic yellow with red seams
-  (n) => (Math.abs(seam(n) - 0.14) < 0.05 ? '#d8322e' : '#e8f040'),
-  // Lacrosse: lime rubber, slight sheen
-  (n) => (n.y > 0.8 ? '#a6f06a' : hash3(n, 5) > 0.85 ? '#6cc42f' : '#80d940'),
+  // Water polo: grip grooves
+  (n, c) => (Math.abs(n.x) < 0.07 || Math.abs(n.z) < 0.07 || Math.abs(n.y - 0.5) < 0.05 || Math.abs(n.y + 0.5) < 0.05 ? c[1] : c[0]),
+  // Field hockey: dimples
+  (n, c) => (dimple(n, 7) ? c[1] : c[0]),
+  // Softball: seams
+  (n, c) => (Math.abs(seam(n) - 0.14) < 0.05 ? c[1] : c[0]),
+  // Lacrosse: slight sheen
+  (n, c) => (n.y > 0.8 ? c[1] : hash3(n, 5) > 0.85 ? c[2] : c[0]),
+  // Solid
+  (_n, c) => c[0],
+  // Stripes (horizontal bands)
+  (n, c, k) => [c[0], c[1]][Math.floor(((n.y + 1) / 2) * (2 * k + 1)) % 2],
+  // Segments (around, like a beach ball), capped poles
+  (n, c, k) => (Math.abs(n.y) > 0.9 ? c[2] : [c[0], c[1]][Math.floor(azimuth(n) * 2 * (k + 1)) % 2]),
+  // Checker
+  (n, c, k) => [c[0], c[1]][(Math.floor(azimuth(n) * 2 * (k + 1)) + Math.floor(((n.y + 1) / 2) * (k + 2))) % 2],
+  // Polka dots: more, smaller dots with more detail (about 40% covered; each
+  // dot stays several faces wide on the low-poly sphere)
+  (n, c, k) => {
+    const dots = fib(3 + k * 2);
+    let best = -2, bi = 0;
+    dots.forEach((d, i) => { const v = d.dot(n); if (v > best) { best = v; bi = i; } });
+    return best > 1 - 0.85 / dots.length ? (bi % 2 ? c[2] : c[1]) : c[0];
+  },
+  // Two-tone with a belt
+  (n, c, k) => (Math.abs(n.y) < 0.03 * k ? c[2] : n.y > 0 ? c[0] : c[1]),
+  // Spiral
+  (n, c, k) => [c[0], c[1]][Math.floor((azimuth(n) + ((n.y + 1) / 2) * k) * 2 + 8) % 2],
+  // Speckles
+  (n, c, k) => (hash3(n, 17) > 1 - k * 0.06 ? (hash3(n, 31) > 0.5 ? c[1] : c[2]) : c[0]),
 ];
 
 function hash3(n: THREE.Vector3, k: number): number {
@@ -109,46 +141,71 @@ function dimple(n: THREE.Vector3, k: number): boolean {
   return Math.sin(n.x * k * 3.1) * Math.sin(n.y * k * 2.7) * Math.sin(n.z * k * 3.3) > 0.25;
 }
 
-const ballGeoCache = new Map<number, THREE.BufferGeometry>();
-export function ballGeometry(kind: number, r: number): THREE.BufferGeometry {
-  const key = kind * 1000 + Math.round(r * 100);
-  const cached = ballGeoCache.get(key);
+const ballGeoCache = new Map<string, THREE.BufferGeometry>();
+/** A flat-shaded, per-face colored ball. Pass `cache = false` for throwaway
+ *  previews (the caller disposes the geometry). */
+export function ballGeometry(look: BallLook, r: number, cache = true): THREE.BufferGeometry {
+  const key = JSON.stringify(look) + r.toFixed(2);
+  const cached = cache && ballGeoCache.get(key);
   if (cached) return cached;
   const g = new THREE.IcosahedronGeometry(r, 3);
   const pos = g.getAttribute('position');
   const colors = new Float32Array(pos.count * 3);
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
   const col = new THREE.Color();
-  const pat = PATTERNS[kind % PATTERNS.length];
+  const pat = PATTERNS[look.pat % PATTERNS.length];
   for (let i = 0; i < pos.count; i += 3) {
     a.fromBufferAttribute(pos, i); b.fromBufferAttribute(pos, i + 1); c.fromBufferAttribute(pos, i + 2);
     const n = a.add(b).add(c).normalize();
-    col.set(pat(n));
+    col.set(pat(n, look.c, look.n));
     for (let k = 0; k < 3; k++) { colors[(i + k) * 3] = col.r; colors[(i + k) * 3 + 1] = col.g; colors[(i + k) * 3 + 2] = col.b; }
   }
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   g.computeVertexNormals();
-  ballGeoCache.set(key, g);
+  if (cache) {
+    if (ballGeoCache.size > 200) ballGeoCache.delete(ballGeoCache.keys().next().value!);
+    ballGeoCache.set(key, g);
+  }
   return g;
 }
 
-export function makeBall(kind: number, r: number): THREE.Mesh {
-  const m = new THREE.Mesh(ballGeometry(kind, r), vertexColorMat);
+export function makeBall(look: BallLook, r: number, cache = true): THREE.Mesh {
+  const m = new THREE.Mesh(ballGeometry(look, r, cache), vertexColorMat);
   m.castShadow = true;
   return m;
 }
 
-export function makeEyes(r: number): THREE.Group {
+/** Eyes on the front (+x) of a ball of radius r. `lid` colors sleepy eyelids. */
+export function makeEyes(r: number, style = 0, lid = '#ffffff'): THREE.Group {
   const g = new THREE.Group();
-  const white = new THREE.SphereGeometry(r * 0.2, 10, 8);
-  const pupil = new THREE.SphereGeometry(r * 0.11, 8, 6);
+  const big = style === 1 ? 1.35 : 1;
+  const white = new THREE.SphereGeometry(r * 0.2 * big, 10, 8);
+  const pupil = new THREE.SphereGeometry(r * 0.11 * big, 8, 6);
   for (const s of [-1, 1]) {
-    const e = new THREE.Mesh(white, mat('#ffffff'));
     const a = s * 0.38;
-    e.position.set(Math.cos(a) * r * 0.93, r * 1.12, Math.sin(a) * r * 0.93);
+    const at = new THREE.Vector3(Math.cos(a) * r * 0.93, r * 1.12, Math.sin(a) * r * 0.93);
+    if (style === 4) { // happy: closed ∩ arcs
+      const arc = new THREE.Mesh(new THREE.TorusGeometry(r * 0.13, r * 0.04, 4, 8, Math.PI), mat('#222222'));
+      arc.position.copy(at); arc.position.x += r * 0.08; arc.rotation.y = Math.PI / 2;
+      g.add(arc);
+      continue;
+    }
+    const e = new THREE.Mesh(white, mat('#ffffff'));
+    e.position.copy(at);
     const p = new THREE.Mesh(pupil, mat('#111111'));
-    p.position.set(r * 0.12, 0, 0);
+    p.position.set(r * 0.12 * big, style === 2 ? -r * 0.04 : 0, 0);
     e.add(p);
+    if (style === 2) { // sleepy: half-closed lids
+      const lidM = new THREE.Mesh(new THREE.SphereGeometry(r * 0.215, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat(lid));
+      lidM.rotation.z = -0.35;
+      e.add(lidM);
+    }
+    if (style === 3) { // angry: brows slanting down to the middle
+      const brow = new THREE.Mesh(new THREE.BoxGeometry(r * 0.06, r * 0.06, r * 0.32), mat('#222222'));
+      brow.position.set(r * 0.08, r * 0.24, 0);
+      brow.rotation.x = -s * 0.5;
+      e.add(brow);
+    }
     g.add(e);
   }
   return g;
@@ -163,126 +220,207 @@ function cyl(rt: number, rb: number, h: number, color: string, seg = 10): THREE.
   return m;
 }
 
-export function makeHat(kind: number): THREE.Group {
+/** A hat from its look: one of the shapes (in the look's colors), stretched,
+ *  with an optional decoration on top. */
+export function makeHat(look: HatLook): THREE.Group {
+  const body = hatShape(look.shape, look.c);
+  body.scale.set(look.w, look.h, look.w);
+  const g = new THREE.Group();
+  g.add(body);
+  if (look.deco) {
+    body.updateMatrixWorld(true);
+    const top = new THREE.Box3().setFromObject(body).max.y;
+    const d = hatDeco(look.deco, look.dc);
+    d.position.y = top - 0.03;
+    g.add(d);
+  }
+  return g;
+}
+
+function hatShape(kind: number, c: string[]): THREE.Group {
   const g = new THREE.Group();
   const add = (m: THREE.Object3D, y = 0) => { m.position.y += y; g.add(m); return m; };
   switch (kind % 16) {
     case 0: // Top hat
-      add(cyl(0.6, 0.6, 0.05, '#222'));
-      add(cyl(0.36, 0.34, 0.55, '#262626'), 0.04);
-      add(cyl(0.355, 0.355, 0.1, '#d23b3b'), 0.06);
+      add(cyl(0.6, 0.6, 0.05, c[2]));
+      add(cyl(0.36, 0.34, 0.55, c[0]), 0.04);
+      add(cyl(0.355, 0.355, 0.1, c[1]), 0.06);
       break;
     case 1: // Bucket hat
-      add(cyl(0.38, 0.58, 0.16, '#5f8f4e'));
-      add(cyl(0.32, 0.38, 0.3, '#6fa35b'), 0.12);
+      add(cyl(0.38, 0.58, 0.16, c[1]));
+      add(cyl(0.32, 0.38, 0.3, c[0]), 0.12);
       break;
     case 2: { // Visor
-      add(cyl(0.38, 0.38, 0.14, '#ffffff'));
-      const bill = mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.04, 12, 1, false, -Math.PI / 2, Math.PI), '#2bb673');
+      add(cyl(0.38, 0.38, 0.14, c[0]));
+      const bill = mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.04, 12, 1, false, -Math.PI / 2, Math.PI), c[1]);
       bill.position.set(0.15, 0.03, 0); add(bill);
       break;
     }
     case 3: { // Baseball cap
-      const dome = mesh(new THREE.SphereGeometry(0.38, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), '#1f3c88');
+      const dome = mesh(new THREE.SphereGeometry(0.38, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), c[0]);
       add(dome);
-      const bill = mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.04, 12, 1, false, -Math.PI / 2, Math.PI), '#1f3c88');
+      const bill = mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.04, 12, 1, false, -Math.PI / 2, Math.PI), c[0]);
       bill.position.set(0.18, 0.02, 0); add(bill);
-      add(cyl(0.05, 0.05, 0.05, '#d23b3b', 6), 0.36);
+      add(cyl(0.05, 0.05, 0.05, c[1], 6), 0.36);
       break;
     }
     case 4: // Sun hat
-      add(cyl(0.75, 0.75, 0.04, '#f1d27a', 14));
-      add(cyl(0.3, 0.36, 0.26, '#f1d27a'), 0.03);
-      add(cyl(0.365, 0.365, 0.08, '#ff6f91'), 0.04);
+      add(cyl(0.75, 0.75, 0.04, c[0], 14));
+      add(cyl(0.3, 0.36, 0.26, c[0]), 0.03);
+      add(cyl(0.365, 0.365, 0.08, c[1]), 0.04);
       break;
     case 5: // Fedora
-      add(cyl(0.58, 0.58, 0.04, '#7a5a3a', 12));
-      add(cyl(0.3, 0.37, 0.32, '#8b6a46'), 0.03);
-      add(cyl(0.375, 0.375, 0.07, '#2b2b2b'), 0.04);
+      add(cyl(0.58, 0.58, 0.04, c[2], 12));
+      add(cyl(0.3, 0.37, 0.32, c[0]), 0.03);
+      add(cyl(0.375, 0.375, 0.07, c[1]), 0.04);
       break;
     case 6: { // Bowler
-      add(cyl(0.5, 0.5, 0.04, '#3a2a20', 12));
-      const dome = mesh(new THREE.SphereGeometry(0.36, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), '#3a2a20');
+      add(cyl(0.5, 0.5, 0.04, c[1], 12));
+      const dome = mesh(new THREE.SphereGeometry(0.36, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), c[0]);
       dome.scale.y = 1.1; add(dome, 0.03);
       break;
     }
     case 7: { // Beanie with pompom
-      const dome = mesh(new THREE.SphereGeometry(0.38, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), '#e94e77');
+      const dome = mesh(new THREE.SphereGeometry(0.38, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), c[0]);
       dome.scale.y = 1.15; add(dome);
-      add(cyl(0.39, 0.39, 0.1, '#ffffff'));
-      const pom = mesh(new THREE.IcosahedronGeometry(0.12, 0), '#ffffff');
+      add(cyl(0.39, 0.39, 0.1, c[1]));
+      const pom = mesh(new THREE.IcosahedronGeometry(0.12, 0), c[1]);
       pom.position.y = 0.46; add(pom);
       break;
     }
     case 8: { // Flat cap
-      const dome = mesh(new THREE.SphereGeometry(0.4, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), '#8a8f6a');
+      const dome = mesh(new THREE.SphereGeometry(0.4, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), c[0]);
       dome.scale.y = 0.45; add(dome);
-      const bill = mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.04, 12, 1, false, -Math.PI / 2.4, Math.PI / 1.2), '#7a7f5c');
+      const bill = mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.04, 12, 1, false, -Math.PI / 2.4, Math.PI / 1.2), c[1]);
       bill.position.set(0.12, 0.04, 0); add(bill);
       break;
     }
     case 9: { // Propeller beanie
-      const cols = ['#e63946', '#ffd23f', '#1d4ed8', '#2bb673'];
       for (let i = 0; i < 4; i++) {
-        const seg = mesh(new THREE.SphereGeometry(0.38, 4, 5, (i * Math.PI) / 2, Math.PI / 2, 0, Math.PI / 2), cols[i]);
+        const seg = mesh(new THREE.SphereGeometry(0.38, 4, 5, (i * Math.PI) / 2, Math.PI / 2, 0, Math.PI / 2), c[i]);
         add(seg);
       }
       add(cyl(0.03, 0.03, 0.18, '#444', 6), 0.36);
-      const blade = mesh(new THREE.BoxGeometry(0.7, 0.02, 0.1), '#e63946');
+      const blade = mesh(new THREE.BoxGeometry(0.7, 0.02, 0.1), c[0]);
       blade.position.y = 0.55; blade.rotation.y = 0.6; add(blade);
       break;
     }
     case 10: { // Viking helmet
-      const dome = mesh(new THREE.SphereGeometry(0.39, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), '#9aa3ab');
+      const dome = mesh(new THREE.SphereGeometry(0.39, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), c[0]);
       add(dome);
-      add(cyl(0.4, 0.4, 0.08, '#c8a24a'));
+      add(cyl(0.4, 0.4, 0.08, c[1]));
       for (const s of [-1, 1]) {
-        const horn = mesh(new THREE.ConeGeometry(0.08, 0.38, 6), '#f3ead2');
+        const horn = mesh(new THREE.ConeGeometry(0.08, 0.38, 6), c[2]);
         horn.position.set(0, 0.28, s * 0.38); horn.rotation.x = s * -0.9; add(horn);
       }
       break;
     }
     case 11: { // Headband
-      const band = mesh(new THREE.TorusGeometry(0.36, 0.06, 6, 16), '#e63946');
+      const band = mesh(new THREE.TorusGeometry(0.36, 0.06, 6, 16), c[0]);
       band.rotation.x = Math.PI / 2; band.position.y = 0.08; add(band);
-      const knot = mesh(new THREE.BoxGeometry(0.06, 0.14, 0.18), '#e63946');
+      const knot = mesh(new THREE.BoxGeometry(0.06, 0.14, 0.18), c[1]);
       knot.position.set(-0.4, 0.08, 0); knot.rotation.z = 0.4; add(knot);
       break;
     }
     case 12: { // Swim cap (water polo, with ear guards)
-      const dome = mesh(new THREE.SphereGeometry(0.39, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), '#1e5bd8');
+      const dome = mesh(new THREE.SphereGeometry(0.39, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), c[0]);
       dome.scale.y = 1.05; add(dome);
       for (const s of [-1, 1]) {
-        const ear = mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.05, 10), '#ffffff');
+        const ear = mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.05, 10), c[1]);
         ear.rotation.x = Math.PI / 2; ear.position.set(0, 0.08, s * 0.38); add(ear);
       }
       break;
     }
     case 13: // Fez
-      add(cyl(0.24, 0.32, 0.4, '#c0392b'));
-      add(cyl(0.02, 0.02, 0.06, '#222', 4), 0.4);
-      { const tassel = mesh(new THREE.ConeGeometry(0.05, 0.22, 5), '#222'); tassel.position.set(-0.18, 0.32, 0); tassel.rotation.z = 0.3; add(tassel); }
+      add(cyl(0.24, 0.32, 0.4, c[0]));
+      add(cyl(0.02, 0.02, 0.06, c[1], 4), 0.4);
+      { const tassel = mesh(new THREE.ConeGeometry(0.05, 0.22, 5), c[1]); tassel.position.set(-0.18, 0.32, 0); tassel.rotation.z = 0.3; add(tassel); }
       break;
     case 14: { // Cowboy hat
-      const brim = mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.04, 14), '#a0672f');
+      const brim = mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.04, 14), c[2]);
       add(brim);
       for (const s of [-1, 1]) {
-        const curl = mesh(new THREE.BoxGeometry(0.9, 0.04, 0.2), '#a0672f');
+        const curl = mesh(new THREE.BoxGeometry(0.9, 0.04, 0.2), c[2]);
         curl.position.set(0, 0.08, s * 0.62); curl.rotation.x = s * 0.6; add(curl);
       }
-      add(cyl(0.3, 0.36, 0.36, '#b57837'), 0.03);
-      add(cyl(0.365, 0.365, 0.07, '#5a3a1a'), 0.05);
+      add(cyl(0.3, 0.36, 0.36, c[0]), 0.03);
+      add(cyl(0.365, 0.365, 0.07, c[1]), 0.05);
       break;
     }
     case 15: { // Crown
-      add(cyl(0.36, 0.36, 0.18, '#f4c430', 12));
+      add(cyl(0.36, 0.36, 0.18, c[0], 12));
       for (let i = 0; i < 6; i++) {
         const a = (i / 6) * Math.PI * 2;
-        const spike = mesh(new THREE.ConeGeometry(0.08, 0.2, 4), '#f4c430');
+        const spike = mesh(new THREE.ConeGeometry(0.08, 0.2, 4), c[0]);
         spike.position.set(Math.cos(a) * 0.32, 0.27, Math.sin(a) * 0.32); add(spike);
-        const gem = mesh(new THREE.OctahedronGeometry(0.045, 0), i % 2 ? '#e63946' : '#1d4ed8');
+        const gem = mesh(new THREE.OctahedronGeometry(0.045, 0), i % 2 ? c[1] : c[2]);
         gem.position.set(Math.cos(a) * 0.37, 0.09, Math.sin(a) * 0.37); add(gem);
       }
+      break;
+    }
+  }
+  return g;
+}
+
+/** Decorations (HAT_DECOS order), origin at the top of the hat. */
+function hatDeco(kind: number, color: string): THREE.Group {
+  const g = new THREE.Group();
+  const add = (m: THREE.Object3D, x: number, y: number, z: number) => { m.position.set(x, y, z); g.add(m); return m; };
+  switch (kind) {
+    case 1: // Pompom
+      add(mesh(new THREE.IcosahedronGeometry(0.13, 0), color), 0, 0.1, 0);
+      break;
+    case 2: { // Feather
+      const f = add(mesh(new THREE.ConeGeometry(0.06, 0.6, 5), color), -0.15, 0.22, 0.12);
+      f.rotation.z = 0.6; f.scale.z = 0.4;
+      break;
+    }
+    case 3: // Antenna
+      add(cyl(0.015, 0.015, 0.3, '#444', 5), 0, 0, 0);
+      add(mesh(new THREE.IcosahedronGeometry(0.07, 0), color), 0, 0.33, 0);
+      break;
+    case 4: // Flower
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        add(mesh(new THREE.IcosahedronGeometry(0.06, 0), color), Math.cos(a) * 0.08, 0.1, Math.sin(a) * 0.08);
+      }
+      add(mesh(new THREE.IcosahedronGeometry(0.055, 0), '#ffd23f'), 0, 0.12, 0);
+      add(cyl(0.015, 0.015, 0.1, '#3c9a3c', 4), 0, 0, 0);
+      break;
+    case 5: { // Star
+      const shape = new THREE.Shape();
+      for (let i = 0; i < 10; i++) {
+        const a = Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? 0.07 : 0.17;
+        if (i) shape.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else shape.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      }
+      const star = add(mesh(new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false }), color), 0, 0.2, -0.025);
+      star.rotation.y = Math.PI / 2;
+      add(cyl(0.015, 0.015, 0.06, '#444', 4), 0, 0, 0);
+      break;
+    }
+    case 6: { // Propeller
+      add(cyl(0.025, 0.025, 0.16, '#444', 6), 0, 0, 0);
+      const blade = add(mesh(new THREE.BoxGeometry(0.7, 0.02, 0.1), color), 0, 0.17, 0);
+      blade.rotation.y = 0.6;
+      break;
+    }
+    case 7: // Horns
+      for (const s of [-1, 1]) {
+        const horn = add(mesh(new THREE.ConeGeometry(0.06, 0.3, 6), color), 0, 0.06, s * 0.18);
+        horn.rotation.x = s * -0.5;
+      }
+      break;
+    case 8: // Bunny ears
+      for (const s of [-1, 1]) {
+        const ear = add(mesh(new THREE.SphereGeometry(0.08, 8, 6), color), -0.05, 0.22, s * 0.12);
+        ear.scale.set(0.6, 3, 1);
+        ear.rotation.x = s * -0.2;
+      }
+      break;
+    case 9: { // Candle
+      add(cyl(0.05, 0.05, 0.2, color, 8), 0, 0, 0);
+      const flame = add(new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.1, 6), mat('#ffb020', { emissive: '#ff8a00' })), 0, 0.26, 0);
+      flame.castShadow = false;
       break;
     }
   }

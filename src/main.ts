@@ -13,6 +13,8 @@ import { BALLS, HZ, MAX_PLAYERS } from './sim/const';
 import { createState } from './sim/sim';
 import type { Command, GameState, MatchConfig } from './sim/types';
 import { Menu } from './ui/menu';
+import { LookEditor } from './ui/lookEditor';
+import { presetLook, type Look } from './sim/look';
 import { Hud } from './ui/hud';
 import { GamepadNav } from './ui/gamepadNav';
 import { SettingsPanel } from './ui/settings';
@@ -75,6 +77,8 @@ const hud = new Hud(hudRoot, () => ({
   rememberName: (name: string) => { prefs.name = name; savePrefs(prefs); },
   openSettings: () => settings.toggle(),
   quit: () => quitToMenu(),
+  editLook: (device, look, note) => editLook(device, look, note),
+  savedLook: (device) => prefs.looks[device],
 }));
 hud.show(false);
 
@@ -94,14 +98,39 @@ const menu = new Menu(uiRoot, prefs, {
   playLocal: (cfg) => startSession(new LocalSession(cfg, settings.params)),
   online: (cfg, code) => void playOnline(cfg, code),
   openSettings: () => settings.toggle(true),
+  customize: () => editLook(),
 });
+
+// Character editor. Looks are remembered per local device and applied when
+// that device joins; editing one in a game updates it for everyone.
+const lookEditor = new LookEditor(uiRoot);
+const myPlayer = (device: string) => session?.state?.players.find((p) => p.active && !p.isBot && p.peer === session!.peer && p.device === device);
+function editLook(device?: string, start?: Look, note?: string): void {
+  const connected = devices.devices.filter((d) => d.connected() || d.key === 'kbm');
+  // Default: the device being edited, else one of ours in the game, else the first.
+  const dev = device ?? connected.find((d) => myPlayer(d.key))?.key ?? connected[0].key;
+  const lookFor = (k: string) => prefs.looks[k] ?? (myPlayer(k) ? hudLook(myPlayer(k)!) : presetLook(devices.devices.findIndex((d) => d.key === k)));
+  lookEditor.show({
+    look: start ?? lookFor(dev),
+    devices: device ? connected.filter((d) => d.key === device) : connected.map((d) => ({ key: d.key, label: d.label })),
+    device: dev,
+    lookFor,
+    note,
+    onSave: (look, key) => {
+      prefs.looks[key] = look;
+      savePrefs(prefs);
+      if (myPlayer(key)) session!.command({ t: 'setLook', device: key, look });
+    },
+  });
+}
+const hudLook = (p: { look: Look | null; ball: number }) => p.look ?? presetLook(p.ball);
 
 // Gamepads drive the menus: main menu, pause menu, and the settings panel.
 const nav = new GamepadNav(
   // While playing, the settings panel is left to mouse/keyboard so pads keep
   // controlling their players (tune params while playing).
-  () => !session ? (settings.open ? settings.el : menu.el) : hud.paused ? hud.pauseEl : null,
-  () => { if (!session && settings.open) settings.toggle(false); else if (hud.paused) hud.togglePause(false); },
+  () => lookEditor.open ? lookEditor.el : !session ? (settings.open ? settings.el : menu.el) : hud.paused ? hud.pauseEl : null,
+  () => { if (lookEditor.open) lookEditor.close(); else if (!session && settings.open) settings.toggle(false); else if (hud.paused) hud.togglePause(false); },
 );
 
 // Backdrop: a demo match with bots behind the menu.
@@ -265,7 +294,7 @@ function handleDevices(): Record<string, PlayerInput> {
         pendingJoin.set(d.key, now);
         const name = localName();
         pendingNames.set(d.key, name);
-        session.command({ t: 'join', device: d.key, name, ball: (s.players.length * 3 + devices.devices.indexOf(d)) % BALLS.length });
+        session.command({ t: 'join', device: d.key, name, ball: (s.players.length * 3 + devices.devices.indexOf(d)) % BALLS.length, look: prefs.looks[d.key] });
       }
       continue;
     }

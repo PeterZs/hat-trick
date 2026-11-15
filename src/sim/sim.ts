@@ -8,6 +8,7 @@ import { BALLS, HZ, MAX_PLAYERS } from './const';
 import { cloneParams, type Params } from './params';
 import { NEUTRAL, type PlayerInput } from './input';
 import { randInt } from './rng';
+import { sanitizeLook } from './look';
 import type { Command, GameState, MatchConfig, PeerFrame, Player } from './types';
 import { detach, die, emit, spawnPlayer } from './common';
 import { canAct, resolveHatHits, seatDrivers, resolveMelee, separatePlayers, updateCars, updateHats, updatePlayer } from './actors';
@@ -59,7 +60,7 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
 
 function newPlayer(id: number, peer: number, device: string, name: string, ball: number, team: number, isBot: boolean, frame: number): Player {
   return {
-    id, active: true, peer, device, tab: '', awayT: -1, name, ball, team, isBot, skill: 2, role: 'fighter', joinFrame: frame,
+    id, active: true, peer, device, tab: '', awayT: -1, name, ball, look: null, team, isBot, skill: 2, role: 'fighter', joinFrame: frame,
     alive: false, respawnT: 0, x: 0, y: 0, vx: 0, vy: 0, kx: 0, ky: 0, fx: 1, fy: 0,
     dashT: 0, dashCd: 0, dashDx: 0, dashDy: 0, slashT: -1, slashKind: 0, slashCd: 0,
     charging: false, aiming: false, holdT: 0, charge: 0, recalling: false, prevB: 0, stunT: 0, invulnT: 0,
@@ -115,7 +116,8 @@ function applyCommand(s: GameState, peer: number, c: Command, frame: PeerFrame[]
   switch (c.t) {
     case 'join': {
       if (findPlayer(s, peer, c.device)) return;
-      addPlayer(s, peer, c.device, c.name.slice(0, 16), c.ball | 0, false, c.team);
+      const p = addPlayer(s, peer, c.device, c.name.slice(0, 16), c.ball | 0, false, c.team);
+      if (p && c.look) p.look = sanitizeLook(c.look);
       return;
     }
     case 'leave': {
@@ -125,7 +127,12 @@ function applyCommand(s: GameState, peer: number, c: Command, frame: PeerFrame[]
     }
     case 'setBall': {
       const p = findEditable(s, peer, c.device);
-      if (p) p.ball = c.ball | 0;
+      if (p) { p.ball = c.ball | 0; p.look = null; }
+      return;
+    }
+    case 'setLook': {
+      const p = findEditable(s, peer, c.device);
+      if (p) p.look = c.look ? sanitizeLook(c.look) : null;
       return;
     }
     case 'setTeam': {

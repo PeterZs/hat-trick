@@ -8,6 +8,7 @@ import { HZ } from '../sim/const';
 import { tileCenter, tileGrid, TILE_FALLEN, TILE_NONE } from '../sim/hazards';
 import { GOLF_BALL_R } from '../sim/golf';
 import { makeBall, mat, TEAM_COLORS } from './models';
+import { presetLook } from '../sim/look';
 
 const PIT = '#241d2b';
 /** Thickness of floor slabs (how deep a fallen tile's hole looks). */
@@ -311,7 +312,7 @@ export class ArenaView {
       let v = this.golfBalls[i];
       if (!v) {
         v = new THREE.Group();
-        const ball = makeBall(8, GOLF_BALL_R); ball.name = 'ball'; ball.position.y = GOLF_BALL_R; v.add(ball);
+        const ball = makeBall(presetLook(8).ball, GOLF_BALL_R); ball.name = 'ball'; ball.position.y = GOLF_BALL_R; v.add(ball);
         const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.58, 20), new THREE.MeshBasicMaterial({ color: TEAM_COLORS[b.team % 4] }));
         ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; v.add(ring);
         this.golfGroup.add(v);

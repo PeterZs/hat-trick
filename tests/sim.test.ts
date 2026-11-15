@@ -117,3 +117,32 @@ describe('reconnecting tabs', () => {
     expect(s.players.filter((p) => p.active && p.isBot).length).toBe(1);
   });
 });
+
+describe('custom looks', () => {
+  it('are validated, travel with join/setLook, and a preset clears them', async () => {
+    const { presetLook, lookToCode, lookFromCode, randomLook } = await import('../src/sim/look');
+    const s = createState({ mode: 'ffa', level: 'courtyard', winScore: 9 }, DEFAULT_PARAMS, 1);
+    const look = randomLook(() => 0.42);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'join', device: 'kbm', name: 'A', ball: 3, look }] }]);
+    const p = s.players.find((q) => q.active)!;
+    expect(p.look).toEqual(look);
+    // Junk from the network is clamped/filtered.
+    const bad = { ball: { pat: 999, c: ['red', '#ABCDEF', 7], n: -4 }, hat: { shape: -1, c: [], h: 1e9, w: NaN, deco: 2.4, dc: '<b>' }, eyes: 'x' };
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'setLook', device: 'kbm', look: bad as never }] }]);
+    expect(p.look!.ball.pat).toBe(23);
+    expect(p.look!.ball.c[1]).toBe('#abcdef');
+    expect(p.look!.ball.c[0]).toMatch(/^#[0-9a-f]{6}$/);
+    expect(p.look!.ball.n).toBe(1);
+    expect(p.look!.hat).toMatchObject({ shape: 0, h: 1.8, w: 1, deco: 2, dc: '#ffffff' });
+    expect(p.look!.eyes).toBe(0);
+    // Only the owner can change it.
+    step(s, [{ peer: 0, inputs: {}, cmds: [] }, { peer: 1, inputs: {}, cmds: [{ t: 'setLook', device: 'kbm', look }] }]);
+    expect(p.look).not.toEqual(look);
+    step(s, [{ peer: 0, inputs: {}, cmds: [{ t: 'setBall', device: 'kbm', ball: 5 }] }]);
+    expect(p.look).toBeNull();
+    // Share codes round-trip.
+    expect(lookFromCode(lookToCode(look))).toEqual(look);
+    expect(lookFromCode('nope')).toBeNull();
+    expect(presetLook(5).ball.pat).toBe(5);
+  });
+});

@@ -9,18 +9,15 @@ import {
   PICKUP_INFO, PLAYER_COLORS, TEAM_COLORS, makeBall, makeBase, makeCar, makeEyes, makeFlag, makeHat, makePickup, makeProp, makeStump, makeTree, mat, vertexColorMat,
 } from './models';
 import { Effects } from './effects';
+import { presetLook, type Look } from '../sim/look';
 import { ArenaView } from './arena';
 
-const BALL_COLORS = [
-  ['#ffffff', '#222222'], ['#f07a2a', '#3a1d0e'], ['#cfe83c', '#ffffff'], ['#f7f4ea', '#d8322e'],
-  ['#ff4b4b', '#ffcf33', '#3d8bff'], ['#1a1a1a', '#ffffff'], ['#27357e', '#5b74d6'], ['#ffd23f', '#2f6fe0', '#ffffff'],
-  ['#fbfbfb', '#d6d6d6'], ['#ff8c2a', '#ffffff'], ['#5d6670', '#7c858f'], ['#e63946', '#1d4ed8', '#ffffff'],
-  ['#ffd23f', '#1e5bd8'], ['#ff7ab8', '#e0559a'], ['#e8f040', '#d8322e'], ['#80d940', '#a6f06a'],
-];
+/** What a player looks like: their custom look, or their ball's preset. */
+export const lookOf = (p: Player): Look => p.look ?? presetLook(p.ball);
 
 interface PlayerView {
   root: THREE.Group;
-  ballKind: number;
+  lookKey: string;
   ball: THREE.Mesh;
   ballMat: THREE.MeshLambertMaterial;
   head: THREE.Group;
@@ -293,13 +290,14 @@ export class Renderer {
 
   private makePlayerView(p: Player, r: number): PlayerView {
     const root = new THREE.Group();
+    const look = lookOf(p);
     const ballMat = vertexColorMat.clone();
-    const ball = makeBall(p.ball, r);
+    const ball = makeBall(look.ball, r);
     ball.material = ballMat;
     ball.position.y = r;
     root.add(ball);
     const head = new THREE.Group();
-    head.add(makeEyes(r));
+    head.add(makeEyes(r, look.eyes, look.ball.c[0]));
     const hatStack = new THREE.Group();
     hatStack.position.y = r * 1.75;
     head.add(hatStack);
@@ -353,7 +351,7 @@ export class Renderer {
     label.className = 'plabel';
     this.labels.appendChild(label);
     this.scene.add(root);
-    return { root, ballKind: p.ball, ball, ballMat, head, hatStack, hatCount: -1, ring, shield, aim, arc: arcG as unknown as THREE.Mesh, kickArc: kickG as unknown as THREE.Mesh, cursor, label, lastX: p.x, lastY: p.y, speedFx, windup, slashAnim: -1, slashSide: 1, kickAnim: -1, squash: 0, dustT: 0 };
+    return { root, lookKey: JSON.stringify(look), ball, ballMat, head, hatStack, hatCount: -1, ring, shield, aim, arc: arcG as unknown as THREE.Mesh, kickArc: kickG as unknown as THREE.Mesh, cursor, label, lastX: p.x, lastY: p.y, speedFx, windup, slashAnim: -1, slashSide: 1, kickAnim: -1, squash: 0, dustT: 0 };
   }
 
   /** Hat swing: out from the head to attack range, sweep across the arc
@@ -422,7 +420,7 @@ export class Renderer {
       if (!p.active) continue;
       seen.add(p.id);
       let v = this.players.get(p.id);
-      if (v && v.ballKind !== p.ball) { this.disposePlayerView(v); v = undefined; }
+      if (v && v.lookKey !== JSON.stringify(lookOf(p))) { this.disposePlayerView(v); v = undefined; }
       if (!v) { v = this.makePlayerView(p, r); this.players.set(p.id, v); }
       const color = this.playerColor(s, p);
       (v.ring.material as THREE.MeshBasicMaterial).color.set(color);
@@ -484,7 +482,7 @@ export class Renderer {
       if (held !== v.hatCount) {
         v.hatStack.clear();
         for (let i = 0; i < held; i++) {
-          const hat = makeHat(p.ball);
+          const hat = makeHat(lookOf(p).hat);
           hat.scale.setScalar(r * 1.45);
           hat.position.y = i * r * 0.45;
           hat.rotation.z = i ? 0.15 : 0;
@@ -590,7 +588,7 @@ export class Renderer {
       let hv = this.hats.get(h.id);
       if (!hv) {
         const g = new THREE.Group();
-        const hat = makeHat(owner.ball);
+        const hat = makeHat(lookOf(owner).hat);
         hat.scale.setScalar(r * 1.45);
         g.add(hat);
         this.scene.add(g);
@@ -659,7 +657,7 @@ export class Renderer {
     // --- Soccer ball
     if (s.ball) {
       if (!this.ballView) {
-        this.ballView = makeBall(0, P.ballRadius);
+        this.ballView = makeBall(presetLook(0).ball, P.ballRadius);
         this.scene.add(this.ballView);
         this.ballLast = { x: s.ball.x, y: s.ball.y };
       }
@@ -804,7 +802,7 @@ export class Renderer {
     switch (e.e) {
       case 'kill': {
         const p = s.players[e.victim];
-        const cols = p ? BALL_COLORS[p.ball % BALL_COLORS.length] : ['#fff'];
+        const cols = p ? lookOf(p).ball.c.slice(0, 3) : ['#fff'];
         if (e.cause === 'lava') {
           this.effects.burst(e.x, 0.4, e.y, ['#ff9f43', '#ffd23f', '#ff4a2a', '#333'], 30, 6, 1.0);
           this.effects.text(e.x, 2, e.y, 'SIZZLE!', '#ff6a2a', 0.8, 0.9);
