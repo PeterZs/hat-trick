@@ -65,7 +65,7 @@
   "windOnPlayers": 2,
   "tileWarnTime": 1.2,
   "collapseTime": 50,
-  "nightDayTime": 3,
+  "nightDayTime": 1,
   "nightNightTime": 10,
   "nightFadeTime": 2,
   "nightDarkness": 0.98,

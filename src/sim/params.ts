@@ -88,7 +88,7 @@ export const PARAM_DEFS: ParamDef[] = [
   D('tileWarnTime', 'Tile warning before it falls (s)', 'Arena', 0.2, 5, 0.1),
   D('collapseTime', 'Collapsing floor: time to shrink (s)', 'Arena', 5, 300, 5),
   D('ghostRevealTime', 'Ghost Brawl: visible after a reveal (s)', 'Ghost Brawl', 0, 3, 0.05),
-  D('nightDayTime', 'Night Market: daylight (s)', 'Night', 1, 120, 1),
+  D('nightDayTime', 'Night Market: daylight (s)', 'Night', 0, 120, 0.5),
   D('nightNightTime', 'Night Market: darkness (s)', 'Night', 1, 120, 1),
   D('nightFadeTime', 'Night Market: dusk/dawn (s)', 'Night', 0.1, 20, 0.1),
   D('nightDarkness', 'Night Market: how dark (0-1)', 'Night', 0, 1, 0.01),

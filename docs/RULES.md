@@ -74,7 +74,7 @@ to you); a car at speed smashes straight through. They regrow in place after
 | Bumpers | Pinball | Fling players, hats, balls and cars away. |
 | Portals | Teleporter Temple | Step (or throw a hat) in one ring, come out of its partner (same color) with your momentum. The Temple is two mazes of high and low walls joined only by four portal pairs. |
 | Wind | Windy Cliffs | Strongly bends flying hats; barely nudges players (both adjustable in settings → Wind). |
-| Night | Night Market | Periodically the lights go out (16 s day, 12 s night, 2 s dusk/dawn by default); only a small circle around each player is lit. Day/night lengths, darkness and light radius are in settings (Night). |
+| Night | Night Market | Periodically the lights go out (1 s day, 10 s night, 2 s dusk/dawn by default); only a small circle around each player is lit. Day/night lengths, darkness and light radius are in settings (Night). |
 | Low walls | everywhere, especially Downtown windows and the Bowling Alley gutters | Block bodies but not hats. Sniper Canyon's pens can't be left at all: it's all hat throwing. |
 
 **Dash bump:** dashing into an enemy shoves them away (no damage).
