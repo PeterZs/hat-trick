@@ -125,8 +125,13 @@ const PATTERNS: Pattern[] = [
   },
   // Two-tone with a belt
   (n, c, k) => (Math.abs(n.y) < 0.03 * k ? c[2] : n.y > 0 ? c[0] : c[1]),
-  // Spiral
-  (n, c, k) => [c[0], c[1]][Math.floor((azimuth(n) + ((n.y + 1) / 2) * k) * 2 + 8) % 2],
+  // Spiral: four wide bands twisting from pole to pole (detail = how much they
+  // twist, up to one and a half turns), with capped poles where bands would pinch
+  (n, c, k) => {
+    if (Math.abs(n.y) > 0.9) return c[2];
+    const t = Math.acos(n.y) / Math.PI; // 0 top .. 1 bottom
+    return [c[0], c[1]][Math.floor(4 * azimuth(n) + 4 * t * (0.15 + 0.17 * k) + 64) % 2];
+  },
   // Speckles
   (n, c, k) => (hash3(n, 17) > 1 - k * 0.06 ? (hash3(n, 31) > 0.5 ? c[1] : c[2]) : c[0]),
 ];
