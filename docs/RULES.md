@@ -97,7 +97,9 @@ mid-match and online. A new player spawns immediately.
 
 **Online:** type a room code and press Play online (or Enter). If someone is in
 that room you join them, even mid-match; otherwise you start the room under that
-code. Leave the code blank to start a room with a random code. The mode and arena
+code. Leave the code blank to start a room with a random code. While you play, the
+address bar holds the room code (`?join=CODE`): reloading the page rejoins the
+same game, and the URL can be shared. The mode and arena
 picked on the main menu apply only if you start the room; anyone can change them
 in the lobby. If the host leaves, the game freezes for a moment while another
 player takes over as host, then carries on.

@@ -110,6 +110,7 @@ function startSession(s: Session): void {
   pendingJoin.clear();
   pendingNames.clear();
   for (const d of devices.devices) if (d.kind === 'pad') padSuppressed.add(d.key);
+  setUrlRoom(s.online ? roomCode : '');
   menu.show(false);
   hud.show(true);
   unlockAudio();
@@ -123,12 +124,22 @@ function quitToMenu(error = ''): void {
   menu.show(true, error);
   touch.setJoined(false, false);
   demo = demoSession();
-  if (location.search) history.replaceState(null, '', location.pathname);
+  setUrlRoom('');
+}
+
+/** Keep `?join=CODE` in the address bar while in an online game, so a reload
+ *  (or a copied URL) gets back into the same room. */
+function setUrlRoom(code: string): void {
+  const q = new URLSearchParams(location.search);
+  if (code) q.set('join', code); else q.delete('join');
+  const search = q.toString();
+  history.replaceState(null, '', location.pathname + (search ? '?' + search : '') + location.hash);
 }
 
 /** Join room `typed` if someone is in it, otherwise start it (a blank code
  *  starts a new random room). `cfg` only matters if we end up hosting. */
 function playOnline(cfg: MatchConfig, typed: string): Promise<void> {
+  menuTry++;
   const code = cleanRoomCode(typed);
   return code ? joinOnline(code, cfg) : hostOnline(cfg, randomRoomCode());
 }
@@ -166,13 +177,23 @@ async function hostOnline(cfg: MatchConfig, code: string, tries = 2): Promise<vo
   }
 }
 
-async function joinOnline(code: string, cfg: MatchConfig, tries = 2): Promise<void> {
+/** `patience`: extra attempts before deciding an empty room is ours to start.
+ *  After a reload the room may be briefly unreachable — if we were the host,
+ *  the others are still switching hosts and reclaiming the code. */
+let menuTry = 0; // bumped by each online attempt the player starts
+async function joinOnline(code: string, cfg: MatchConfig, tries = 2, patience = 0): Promise<void> {
+  const myTry = menuTry;
   menu.show(true, `Looking for room ${code}…`);
   try {
     let link;
     try {
       link = await joinRoom(code);
     } catch (e) {
+      if (errType(e) === 'peer-unavailable' && patience > 0) {
+        // …unless the player has meanwhile started something else.
+        setTimeout(() => { if (!session && menuTry === myTry) void joinOnline(code, cfg, tries, patience - 1); }, 2500);
+        return;
+      }
       // Nobody's in that room: start it.
       if (errType(e) === 'peer-unavailable' && tries > 1) { void hostOnline(cfg, code, tries - 1); return; }
       throw e;
@@ -364,7 +385,7 @@ requestAnimationFrame(loop);
 
 // Deep link: ?join=CODE
 const joinCode = new URLSearchParams(location.search).get('join');
-if (joinCode && cleanRoomCode(joinCode)) void joinOnline(cleanRoomCode(joinCode), menu.cfg());
+if (joinCode && cleanRoomCode(joinCode)) void joinOnline(cleanRoomCode(joinCode), menu.cfg(), 2, 4);
 
 // Dev hook for automated audio checks.
 (window as unknown as Record<string, unknown>).sfxDebug = async () => sfxModule;
