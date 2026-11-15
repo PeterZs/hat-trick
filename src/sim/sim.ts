@@ -4,7 +4,7 @@
 //   of (state, frameInputs). No wall-clock time, DOM, Math.random or
 //   non-deterministic Math functions are used anywhere under src/sim.
 
-import { BALLS, MAX_PLAYERS } from './const';
+import { BALLS, HZ, MAX_PLAYERS } from './const';
 import { cloneParams, type Params } from './params';
 import { NEUTRAL, type PlayerInput } from './input';
 import { randInt } from './rng';
@@ -49,6 +49,7 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
     hitstop: 0,
     nextId: 1,
     host: 0,
+    tabs: {},
     events: [],
   };
   pickArena(s, true);
@@ -58,7 +59,7 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
 
 function newPlayer(id: number, peer: number, device: string, name: string, ball: number, team: number, isBot: boolean, frame: number): Player {
   return {
-    id, active: true, peer, device, name, ball, team, isBot, skill: 2, role: 'fighter', joinFrame: frame,
+    id, active: true, peer, device, tab: '', awayT: -1, name, ball, team, isBot, skill: 2, role: 'fighter', joinFrame: frame,
     alive: false, respawnT: 0, x: 0, y: 0, vx: 0, vy: 0, kx: 0, ky: 0, fx: 1, fy: 0,
     dashT: 0, dashCd: 0, dashDx: 0, dashDy: 0, slashT: -1, slashKind: 0, slashCd: 0,
     charging: false, aiming: false, holdT: 0, charge: 0, recalling: false, prevB: 0, stunT: 0, invulnT: 0,
@@ -92,6 +93,7 @@ function addPlayer(s: GameState, peer: number, device: string, name: string, bal
   }
   const t = team ?? (counts[0] <= counts[1] ? 0 : 1);
   const p = newPlayer(slot, peer, device, name, ball, t, isBot, s.frame);
+  if (!isBot) p.tab = s.tabs[peer] ?? '';
   s.players[slot] = p;
   s.scores[slot] = s.cfg.mode === 'ffa' ? 0 : s.scores[slot];
   if (s.cfg.mode === 'hazard' && s.phase !== 'lobby') p.role = 'fighter';
@@ -195,9 +197,27 @@ function applyCommand(s: GameState, peer: number, c: Command, frame: PeerFrame[]
     }
     case 'peerLeft': {
       if (peer !== s.host) return;
+      delete s.tabs[c.peer];
       for (const p of s.players) {
         if (!p.active || p.peer !== c.peer) continue;
-        if (p.isBot) p.peer = s.host; else removePlayer(s, p);
+        if (p.isBot) { p.peer = s.host; continue; }
+        // The same tab may already be back (its hello beat this command).
+        const heir = Object.keys(s.tabs).find((q) => p.tab && s.tabs[q] === p.tab);
+        if (heir !== undefined) p.peer = +heir;
+        else if (p.tab && s.params.reconnectGrace > 0) { p.peer = -1; p.awayT = 0; }
+        else removePlayer(s, p);
+      }
+      return;
+    }
+    case 'hello': {
+      const tab = String(c.tab).slice(0, 40);
+      if (!tab) return;
+      s.tabs[peer] = tab;
+      for (const p of s.players) {
+        if (!p.active || p.isBot || p.awayT < 0 || p.tab !== tab) continue;
+        p.peer = peer;
+        p.awayT = -1;
+        emit(s, { e: 'join', who: p.id });
       }
       return;
     }
@@ -213,6 +233,11 @@ function applyCommand(s: GameState, peer: number, c: Command, frame: PeerFrame[]
 export function step(s: GameState, frame: PeerFrame[]): void {
   s.events = [];
   for (const pf of frame) for (const c of pf.cmds) applyCommand(s, pf.peer, c, frame);
+  // Players whose tab disconnected wait a while for it to come back.
+  for (const p of s.players) {
+    if (!p.active || p.awayT < 0) continue;
+    if (++p.awayT > s.params.reconnectGrace * HZ) removePlayer(s, p);
+  }
 
   // Hit-stop: the world freezes for a few frames after a big impact. Button
   // history (prevB) is left untouched so presses during the freeze still count.

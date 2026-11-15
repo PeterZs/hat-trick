@@ -72,3 +72,48 @@ describe('sim', () => {
     expect(A.alive && B.alive).toBe(true);
   });
 });
+
+describe('reconnecting tabs', () => {
+  const f = (peer: number, cmds: PeerFrame['cmds'] = []): PeerFrame => ({ peer, inputs: {}, cmds });
+  function setup() {
+    const s = createState({ mode: 'ffa', level: 'courtyard', winScore: 9 }, DEFAULT_PARAMS, 1);
+    step(s, [f(0, [{ t: 'hello', tab: 'host' }, { t: 'addBot' }]), f(1, [
+      { t: 'hello', tab: 'B' },
+      { t: 'join', device: 'kbm', name: 'B1', ball: 1 },
+      { t: 'join', device: 'pad0', name: 'B2', ball: 2 },
+    ])]);
+    const mine = (peer: number) => s.players.filter((p) => p.active && !p.isBot && p.peer === peer).map((p) => `${p.id}:${p.device}`).sort();
+    return { s, mine };
+  }
+
+  it('a reloaded tab gets its players back (same slots and devices)', () => {
+    const { s, mine } = setup();
+    const before = mine(1);
+    expect(before.length).toBe(2);
+    step(s, [f(0, [{ t: 'peerLeft', peer: 1 }])]);
+    expect(mine(1)).toEqual([]);
+    expect(s.players.filter((p) => p.active && p.awayT >= 0).length).toBe(2);
+    for (let i = 0; i < 60; i++) step(s, [f(0)]);
+    step(s, [f(0), f(2, [{ t: 'hello', tab: 'B' }])]);
+    expect(mine(2)).toEqual(before);
+    expect(s.players.some((p) => p.active && p.awayT >= 0)).toBe(false);
+  });
+
+  it('works when the new hello arrives before the old peer is dropped', () => {
+    const { s, mine } = setup();
+    const before = mine(1);
+    step(s, [f(0), f(1), f(2, [{ t: 'hello', tab: 'B' }])]);
+    step(s, [f(0, [{ t: 'peerLeft', peer: 1 }]), f(2)]);
+    expect(mine(2)).toEqual(before);
+  });
+
+  it('removes the players if the tab does not come back in time, and other tabs cannot claim them', () => {
+    const { s } = setup();
+    step(s, [f(0, [{ t: 'peerLeft', peer: 1 }])]);
+    step(s, [f(0), f(2, [{ t: 'hello', tab: 'C' }])]);
+    expect(s.players.filter((p) => p.active && p.awayT >= 0).length).toBe(2);
+    for (let i = 0; i < DEFAULT_PARAMS.reconnectGrace * 60 + 1; i++) step(s, [f(0), f(2)]);
+    expect(s.players.filter((p) => p.active && !p.isBot).length).toBe(0);
+    expect(s.players.filter((p) => p.active && p.isBot).length).toBe(1);
+  });
+});

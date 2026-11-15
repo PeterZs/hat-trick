@@ -97,6 +97,7 @@ export const PARAM_DEFS: ParamDef[] = [
   D('spawnInvulnTime', 'Spawn protection (s)', 'Rules', 0, 5, 0.1),
   D('roundEndDelay', 'Round end delay (s)', 'Rules', 0.5, 10, 0.1),
   D('countdownTime', 'Countdown (s)', 'Rules', 0, 5, 0.1),
+  D('reconnectGrace', 'Online: keep a disconnected player for (s)', 'Rules', 0, 120, 1),
   D('ballRadius', 'Soccer ball radius', 'Soccer', 0.3, 2, 0.05),
   D('ballFriction', 'Soccer ball friction', 'Soccer', 0, 5, 0.05),
   D('ballPushImpulse', 'Ball push strength', 'Soccer', 0, 4, 0.05),

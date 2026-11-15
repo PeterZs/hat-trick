@@ -208,7 +208,7 @@ export class Hud {
             <div class="pcard" style="border-color:${color(s, p)}">
               <span class="dot" style="width:12px;height:12px;border-radius:50%;background:${color(s, p)}"></span>
               ${mine(p) ? `<input class="nm-input" data-name="${p.id}" type="text" maxlength="16" value="${escapeHtml(p.name)}" title="Your name" size="8">`
-                : `<span class="nm">${escapeHtml(p.name)}${p.isBot ? ' 🤖' : ''}${p.peer !== c.peer && !p.isBot ? ' 🌐' : ''}</span>`}
+                : `<span class="nm">${escapeHtml(p.name)}${p.isBot ? ' 🤖' : ''}${p.awayT >= 0 ? ' 📶' : p.peer !== c.peer && !p.isBot ? ' 🌐' : ''}</span>`}
               ${canEdit(p) ? `<select data-ball="${p.id}">${BALLS.map((b, i) => `<option value="${i}" ${i === p.ball ? 'selected' : ''}>${b} · ${HATS[i]}</option>`).join('')}</select>`
                 : `<span class="hint">${BALLS[p.ball]}</span>`}
               ${teamMode ? (canEdit(p) ? `<select data-team="${p.id}">${TEAM_NAMES.slice(0, nTeams).map((t, i) => `<option value="${i}" ${i === p.team % nTeams ? 'selected' : ''}>${t}</option>`).join('')}</select>` : `<span class="hint">${TEAM_NAMES[p.team % nTeams]}</span>`) : ''}

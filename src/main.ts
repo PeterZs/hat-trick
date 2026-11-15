@@ -34,6 +34,17 @@ touch.setJoined(false, false);
 const devices = new DeviceManager(touch);
 
 let session: Session | null = null;
+
+/** Identifies this browser tab across reloads (sessionStorage is per tab), so
+ *  an online game can hand a reloaded tab its players back. */
+const TAB_ID = (() => {
+  const fresh = () => Math.random().toString(36).slice(2, 12);
+  try {
+    let id = sessionStorage.getItem('hatTrickTab');
+    if (!id) { id = fresh(); sessionStorage.setItem('hatTrickTab', id); }
+    return id;
+  } catch { return fresh(); }
+})();
 let roomCode = '';
 const pendingJoin = new Map<string, number>(); // device -> time requested
 
@@ -111,6 +122,7 @@ function startSession(s: Session): void {
   pendingNames.clear();
   for (const d of devices.devices) if (d.kind === 'pad') padSuppressed.add(d.key);
   setUrlRoom(s.online ? roomCode : '');
+  if (s.online) s.command({ t: 'hello', tab: TAB_ID });
   menu.show(false);
   hud.show(true);
   unlockAudio();

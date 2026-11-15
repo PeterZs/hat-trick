@@ -19,8 +19,10 @@ export const HAT_RECALL = 4;
 export interface Player {
   id: number;           // slot index into state.players
   active: boolean;      // slot in use
-  peer: number;         // owning peer (0 = host / local)
+  peer: number;         // owning peer (0 = first host / local; -1 = away)
   device: string;       // device key on the owning peer
+  tab: string;          // browser tab that owns it, so a reloaded tab gets it back
+  awayT: number;        // frames since its peer disconnected; -1 = connected
   name: string;
   ball: number;         // character index (BALLS)
   team: number;
@@ -219,6 +221,8 @@ export interface GameState {
   /** Peer with authority over match commands (params, back to lobby…).
    *  Peer 0 until it leaves; then whoever takes over sends a `host` command. */
   host: number;
+  /** Online: each peer's browser-tab id (from `hello`), by peer number. */
+  tabs: Record<string, string>;
   events: SimEvent[];    // emitted during the last step (render/audio only)
 }
 
@@ -238,6 +242,9 @@ export type Command =
   | { t: 'lobby'; cfg?: MatchConfig }
   | { t: 'params'; params: Params }
   | { t: 'peerLeft'; peer: number }
+  /** First command of an online peer: its browser-tab id. Reclaims the
+   *  players that tab left behind when it disconnected (e.g. a reload). */
+  | { t: 'hello'; tab: string }
   /** Take over as host. Only accepted once the current host is gone (sends no frame). */
   | { t: 'host' };
 

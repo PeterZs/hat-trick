@@ -58,6 +58,7 @@
   "spawnInvulnTime": 1.2,
   "roundEndDelay": 2.5,
   "countdownTime": 2,
+  "reconnectGrace": 15,
   "ballRadius": 0.75,
   "ballFriction": 1.0,
   "ballPushImpulse": 1.3,

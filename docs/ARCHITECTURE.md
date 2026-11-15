@@ -120,6 +120,14 @@ first host; peer numbers never change, but the host can (see host migration).
   `state.host`, not to a fixed peer. The new host sends a `host` command; the
   sim accepts it only at a frame the current host no longer contributes to, so
   the handover is deterministic.
+- **Reconnecting tabs.** Each tab has a random id in `sessionStorage` (per tab,
+  survives reloads) and sends it as its first command (`hello`); the sim keeps
+  `state.tabs` and stamps it on that tab's players. `peerLeft` hands a peer's
+  players to a current peer with the same tab id, or marks them away
+  (`peer = -1`, `awayT`) for `reconnectGrace` seconds; a later `hello` from that
+  tab reclaims them. All of it is in the sim, so every peer agrees, and it
+  covers a reloading host too. (A duplicated tab copies `sessionStorage`, so it
+  shares the id; it can only claim players that are away.)
 - **One "Play online" button.** Joining a code nobody hosts (`peer-unavailable`)
   hosts it instead; hosting a code that's taken (`unavailable-id`) joins it.
 

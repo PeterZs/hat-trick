@@ -442,6 +442,7 @@ export class Renderer {
       let txt = p.name;
       if (!p.alive && !overlord) txt = s.phase === 'lobby' || p.respawnT > 0 ? `💀 ${p.name}` : '';
       if (overlord) txt = `👁 ${p.name}`;
+      if (p.awayT >= 0) txt = `📶 ${p.name}…`; // disconnected; may come back
       else if (p.alive) {
         // Status icons for active (good and bad) power-ups.
         const st = (p.speedT > 0 ? '⚡' : '') + (p.phaseT > 0 ? '👻' : '') + (p.maxHats > 1 ? '🎩' : '') + (p.slowT > 0 ? '🐌' : '') + (p.reverseT > 0 ? '😵‍💫' : '') + (p.invisT > 0 && s.cfg.mode !== 'ghost' ? '🕶️' : '');

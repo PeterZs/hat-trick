@@ -99,7 +99,10 @@ mid-match and online. A new player spawns immediately.
 that room you join them, even mid-match; otherwise you start the room under that
 code. Leave the code blank to start a room with a random code. While you play, the
 address bar holds the room code (`?join=CODE`): reloading the page rejoins the
-same game, and the URL can be shared. The mode and arena
+same game, and the URL can be shared. Your players come back with you, in
+the same slots with the same devices (a gamepad resumes on its first button
+press). A player whose tab disconnects stands idle with 📶 over it for 15 s
+(Settings → Rules) waiting for that tab to return, then leaves. The mode and arena
 picked on the main menu apply only if you start the room; anyone can change them
 in the lobby. If the host leaves, the game freezes for a moment while another
 player takes over as host, then carries on.
