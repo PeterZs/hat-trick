@@ -39,7 +39,6 @@ function grassField(x0: number, y0: number, x1: number, y1: number, step: number
   return out;
 }
 
-const bushCluster = (x: number, y: number) => [P('bush', x, y), P('bush', x + 1.1, y + 0.3), P('bush', x - 0.4, y + 1.1), P('bush', x + 0.6, y - 1)];
 const daycareWalls = [
   ...border(14, 10),
   W(-3.5, -6, 2, 0.3, 'low'), W(3.5, 6, 2, 0.3, 'low'),
@@ -51,11 +50,9 @@ const daycare: Level = {
   spawns: mirror([[-12, -7.5], [12, -7.5], [0, -8.5], [-6, 0]]),
   goals: [], bases: [{ team: 0, x: -12.2, y: 0 }, { team: 1, x: 12.2, y: 0 }],
   props: [
-    // A few bush clusters...
-    ...[[-8, -4.5], [3, 3], [8.5, -4.5]].flatMap(([x, y]) => bushCluster(x, y)),
-    // ...in a sea of tall grass (overlapping patches; spawn points stay clear).
+    // A sea of tall grass (overlapping patches; spawn points stay clear).
     ...grassField(-12.6, -8.6, 12.6, 8.6, 1.55, [[-12, -7.5], [12, 7.5], [12, -7.5], [-12, 7.5], [0, -8.5], [0, 8.5], [-6, 0], [6, 0],
-      [-8, -4.5], [3, 3], [8.5, -4.5], [10.5, -5.6], [-10.5, 5.6]], 1.9, daycareWalls),
+      [10.5, -5.6], [-10.5, 5.6]], 1.9, daycareWalls),
     P('crate', 10.5, -5.6), P('crate', -10.5, 5.6),
   ],
 };
