@@ -4,6 +4,7 @@
   "playerRadius": 0.55,
   "dashSpeed": 24,
   "dashTime": 0.14,
+  "dashThroughLowWalls": 0,
   "dashCooldown": 0.6,
   "slashWindup": 0.05,
   "slashActive": 0.1,

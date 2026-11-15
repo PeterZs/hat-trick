@@ -24,6 +24,7 @@ export const PARAM_DEFS: ParamDef[] = [
   D('dashSpeed', 'Dash speed', 'Dash', 5, 60, 0.5),
   D('dashTime', 'Dash duration (s)', 'Dash', 0.03, 0.6, 0.01),
   D('dashCooldown', 'Dash cooldown (s)', 'Dash', 0, 3, 0.05),
+  { ...D('dashThroughLowWalls', 'Dash through low walls (windows)', 'Dash', 0, 1, 1), bool: true },
   D('slashWindup', 'Slash windup (s)', 'Melee', 0, 0.3, 0.01),
   D('slashActive', 'Slash active time (s)', 'Melee', 0.02, 0.4, 0.01),
   D('slashCooldown', 'Slash cooldown (s)', 'Melee', 0, 2, 0.05),

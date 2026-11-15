@@ -737,6 +737,21 @@ describe('Ghost Brawl', () => {
   });
 });
 
+describe('dash through low walls', () => {
+  it('a dash vaults a low wall only with the debug setting on', () => {
+    for (const on of [0, 1]) {
+      const s = setup('ffa', 1);
+      s.params.dashThroughLowWalls = on;
+      const a = s.players[0];
+      // Courtyard's low wall spans x -8.5..-3.5 at y = -4 (+-0.35); dash across it.
+      a.x = -6; a.y = -2.8;
+      run(s, 30, (f) => ({ d0: makeInput(0, -1, 0, 0, f === 0 ? BTN_DASH : 0) }));
+      if (on) expect(a.y).toBeLessThan(-4.9);
+      else expect(a.y).toBeGreaterThan(-3.2); // stopped at the wall face
+    }
+  });
+});
+
 describe('tall grass', () => {
   it('hides players in it; a slash mows it (revealing them) and it regrows', async () => {
     const { isInvisible } = await import('../src/sim/common');

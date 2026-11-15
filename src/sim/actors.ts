@@ -147,6 +147,7 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
   p.vy += (ty - p.vy) * a;
 
   const phasing = p.phaseT > 0 && p.dashT > 0;
+  const vaulting = P.dashThroughLowWalls > 0 && p.dashT > 0; // only high walls stop this dash
   let vx = p.vx + p.kx, vy = p.vy + p.ky;
   if (p.dashT > 0) {
     const dashSpeed = P.dashSpeed * (p.slowT > 0 ? P.slowMult : 1); // Slowpoke slows dashes too
@@ -165,7 +166,8 @@ export function updatePlayer(s: GameState, p: Player, inp: PlayerInput): void {
     // Never end a dash inside a wall: extend it until clear.
     if (p.dashT <= 0 && circleOverlapsWalls(p.x, p.y, P.playerRadius, L.walls, false)) p.dashT = 1;
   } else {
-    collideCircle(p.x, p.y, P.playerRadius, L.walls, false, tmp);
+    // A vault that ends inside a low wall pops out the nearer side next frame.
+    collideCircle(p.x, p.y, P.playerRadius, L.walls, vaulting, tmp);
     p.x = tmp.x; p.y = tmp.y;
     if (tmp.hit) {
       reveal(s, p); // bumped into a wall
