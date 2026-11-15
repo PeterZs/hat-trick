@@ -760,6 +760,22 @@ describe('tall grass', () => {
     run(s, Math.round(DEFAULT_PARAMS.grassRegrowTime * 60) + 5, () => ({}));
     expect(s.props.find((t) => t.kind === 'grass')!.hp).toBe(1);
   });
+
+  it('hides you at the visible edge of a lone patch, even pressed against a wall', async () => {
+    const { isInvisible } = await import('../src/sim/common');
+    const s = setup('ffa', 1);
+    const a = s.players[0];
+    // A patch against the left border wall; the ball sits near the tufts' edge, pushing into the wall.
+    const wallX = -15 + 0.25; // near the inside face of the Courtyard's left wall
+    const g: Prop = { id: 502, kind: 'grass', x: wallX + 1.1, y: 0, hp: 1, regrowT: 0, grow: 30, fixed: true };
+    s.props.push(g);
+    a.x = g.x + 1.2; a.y = 0;
+    run(s, 2, () => ({}));
+    expect(isInvisible(a)).toBe(true);
+    run(s, 60, () => ({ d0: makeInput(-1, 0, 0, 0, 0) }));
+    expect(a.inGrass).toBe(true);
+    expect(isInvisible(a)).toBe(true);
+  });
 });
 
 describe('auto polo', () => {

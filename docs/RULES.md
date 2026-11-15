@@ -61,7 +61,7 @@ to you); a car at speed smashes straight through. They regrow in place after
 | 🛢️ Barrel | 1 | **Explodes**: pops everyone within 2.4 units, *including whoever broke it*, knocks hats down and sets off nearby barrels. |
 | 🪨 Rock | 5 | Crumbles. |
 | 🌿 Bush | 1 | Bursts into leaves. Hats fly straight through bushes (chopping them). |
-| 🌾 Tall grass | 1 | Doesn't block anything, but **hides whoever is in it** (watch for rustling). A slash mows it; it regrows after 6 s. Thrown hats don't cut it. |
+| 🌾 Tall grass | 1 | Doesn't block anything, but **hides whoever is in it** — dashing or bumping walls doesn't give you away, only attacking or aiming does (watch for rustling). A slash mows it; it regrows after 6 s. Thrown hats don't cut it. |
 
 ### Arena features
 

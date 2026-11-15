@@ -104,13 +104,14 @@ function explode(s: GameState, x: number, y: number, who: number): void {
 }
 
 export function updateProps(s: GameState): void {
-  // Who is hidden in tall grass?
+  // Who is hidden in tall grass? Anywhere the tufts visibly cover the ball's center.
   const P = s.params;
+  const hideR = propInfo(s, 'grass').r + P.playerRadius * 0.6;
   for (const p of s.players) {
     p.inGrass = false;
     if (!p.active || !p.alive) continue;
     for (const t of s.props) {
-      if (t.kind === 'grass' && isStanding(t) && dist2(p.x, p.y, t.x, t.y) < (propInfo(s, 'grass').r + P.playerRadius * 0.3) ** 2) { p.inGrass = true; break; }
+      if (t.kind === 'grass' && isStanding(t) && dist2(p.x, p.y, t.x, t.y) < hideR * hideR) { p.inGrass = true; break; }
     }
   }
   for (const t of s.props) {

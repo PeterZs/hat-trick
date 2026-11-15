@@ -53,14 +53,17 @@ export function dropHat(s: GameState, h: Hat): void {
   emit(s, { e: 'clank', hat: h.id, x: h.x, y: h.y });
 }
 
-/** Invisible to others: has the power-up and isn't attacking / aiming / just attacked. */
 /** Briefly visible (invisibility power-up, Ghost Brawl): attacks, dashes, bumps, hits. */
 export function reveal(s: GameState, p: Player): void {
   p.revealT = Math.max(p.revealT, sec(s, s.cfg.mode === 'ghost' ? 'ghostRevealTime' : 'invisRevealTime'));
 }
 
+/**
+ * Invisible to others: the power-up (unless just revealed) or tall grass (whose
+ * tell is the rustle, so bumps and dashes don't reveal), and not attacking / aiming.
+ */
 export function isInvisible(p: Player): boolean {
-  return (p.invisT > 0 || p.inGrass) && p.revealT <= 0 && p.slashT < 0 && !p.aiming;
+  return ((p.invisT > 0 && p.revealT <= 0) || p.inGrass) && p.slashT < 0 && !p.aiming;
 }
 
 export function isFighter(p: Player): boolean {
