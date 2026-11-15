@@ -1,4 +1,4 @@
-// Main menu (mode selection, local / host / join).
+// Main menu (mode selection, local play, or online by room code).
 
 import { MODES } from '../sim/const';
 import { arenaChoices } from '../sim/level';
@@ -9,9 +9,9 @@ import { escapeHtml } from './settings';
 
 export interface MenuActions {
   playLocal(cfg: MatchConfig): void;
-  /** Host a room; `code` is the player's chosen room code (empty = random). */
-  host(cfg: MatchConfig, code: string): void;
-  join(code: string): void;
+  /** Play online: join room `code` if it exists, otherwise host it with
+   *  `cfg` (empty code = a new random room). */
+  online(cfg: MatchConfig, code: string): void;
   openSettings(): void;
 }
 
@@ -57,12 +57,11 @@ export class Menu {
         </div>
         <div class="row center">
           <button class="primary" data-act="local" style="font-size:20px;padding:14px 26px">▶ Play</button>
-          <button class="blue" data-act="host">🌐 Host online</button>
         </div>
         <div class="row center">
-          <input data-code placeholder="ROOM CODE" maxlength="12" value="${escapeHtml(joinCode)}" title="Type a code to join that room, or to host it under that name" style="width:150px;text-transform:uppercase;letter-spacing:2px;text-align:center">
-          <button data-act="join">Join online</button>
-          <span class="hint" style="flex-basis:100%;text-align:center">Type a room code to join it — or to host your own room under that name.</span>
+          <input data-code placeholder="ROOM CODE" maxlength="12" value="${escapeHtml(joinCode)}" title="A friend's room code, or blank for a new room" style="width:150px;text-transform:uppercase;letter-spacing:2px;text-align:center">
+          <button class="blue" data-act="online">🌐 Play online</button>
+          <span class="hint" style="flex-basis:100%;text-align:center">Type a friend's room code to join them (or start that room if nobody's there). Leave it blank for a new room.</span>
           <button data-act="settings">⚙️ Settings</button>
         </div>
         <div class="err">${escapeHtml(error)}</div>
@@ -100,16 +99,15 @@ export class Menu {
     nameInput.addEventListener('keydown', (e) => e.stopPropagation());
     this.el.querySelector('[data-act=local]')!.addEventListener('click', () => this.actions.playLocal(this.cfg()));
     const code = this.el.querySelector<HTMLInputElement>('[data-code]')!;
-    const joinBtn = this.el.querySelector<HTMLButtonElement>('[data-act=join]')!;
+    const onlineBtn = this.el.querySelector<HTMLButtonElement>('[data-act=online]')!;
     const typed = () => cleanRoomCode(code.value);
-    // With a code typed, Join becomes the obvious button (a common mistake was
-    // typing a code and then pressing Play, which starts a separate game).
-    const refresh = () => { joinBtn.classList.toggle('primary', typed().length >= 3); joinBtn.disabled = typed().length < 3; };
+    // With a code typed, Play online becomes the obvious button (a common
+    // mistake was typing a code and then pressing Play, which starts a separate game).
+    const refresh = () => onlineBtn.classList.toggle('primary', typed().length >= 3);
     refresh();
     code.addEventListener('input', refresh);
-    code.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && typed().length >= 3) this.actions.join(typed()); });
-    this.el.querySelector('[data-act=host]')!.addEventListener('click', () => this.actions.host(this.cfg(), typed()));
+    code.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') this.actions.online(this.cfg(), typed()); });
+    onlineBtn.addEventListener('click', () => this.actions.online(this.cfg(), typed()));
     this.el.querySelector('[data-act=settings]')!.addEventListener('click', () => this.actions.openSettings());
-    joinBtn.addEventListener('click', () => { if (typed().length >= 3) this.actions.join(typed()); });
   }
 }

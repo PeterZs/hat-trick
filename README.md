@@ -29,7 +29,7 @@ Second keyboard player: arrows, `.` slash, `/` throw, `,` dash.
 Gamepad: sticks, Y/RB slash, X/RT throw, B/LB dash, A join, Start = Play (main menu) / start match (lobby) / pause (in game); menus are navigable with D-pad/stick, A to select, B to go back. Touch: on-screen
 stick and buttons. `` ` `` opens settings (all gameplay params, live), Esc the menu.
 
-**Online:** "Host online" gives a room code/link; others "Join online".
+**Online:** type a room code and press "Play online" — you join that room, or start it if nobody's there (blank = a new random code). If the host leaves, another player takes over and the game carries on.
 
 Full rules for every mode: [docs/RULES.md](docs/RULES.md). Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

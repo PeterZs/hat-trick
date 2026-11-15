@@ -13,6 +13,17 @@
 //
 // Late join: the host sends a Welcome with the last confirmed snapshot plus all
 // messages it knows since then; the new peer fast-forwards to catch up.
+//
+// Host migration: when the host goes away (connection closed, or silent),
+// every peer walks the same list of remaining members in id order and connects
+// to the first one it can reach; the one that finds itself first becomes the
+// host. It collects every survivor's confirmed frame (`hi`), asks for all the
+// frame messages they hold from the oldest of those (`need`/`have`), merges
+// them, ends the old host's membership after the last frame anyone got from it,
+// and sends everyone the merged log and membership (`resync`). Inputs never
+// change once sent, so the union is consistent, and nobody can have confirmed
+// a frame past that leave frame. The new host then sends a `host` command to
+// take over sim authority, plus `peerLeft` for everyone who didn't make it.
 
 import type { NetLink, Msg } from './link';
 import type { Session } from './session';
@@ -34,6 +45,23 @@ export type FrameMsg = {
 interface Member { start: number; end: number }
 
 const INF = 1e15;
+/** Frames of messages kept past confirmation, so a new host can fill in
+ *  whatever a lagging survivor is missing. */
+const KEEP_MSGS = 300;
+
+type Migration = {
+  old: number;                       // the host that went away
+  candidates: number[];              // remaining members, in takeover order
+  next: number;                      // index of the next candidate to try
+  role: 'seek' | 'client' | 'host';
+  deadline: number;                  // ms; give up on the current step after this
+  // New host only:
+  phase: 'hi' | 'have';
+  expected: Set<number>;             // survivors we're waiting for
+  confs: Map<number, number>;        // peer -> its confirmed frame (from `hi`)
+  haves: Set<number>;                // peers whose messages we've merged
+  gone: Set<number>;
+};
 
 function sameMsg(a: FrameMsg | undefined, b: FrameMsg | undefined): boolean {
   if (!a || !b) return !a && !b;
@@ -64,6 +92,9 @@ export class RollbackSession implements Session {
   lastRollbackDepth = 0;
   onHostLost: (reason: string) => void = () => {};
   onStarted: () => void = () => {};
+  /** The game carried on under a new host (possibly us). */
+  onHostChanged: () => void = () => {};
+  hostChanges = 0;
 
   private inputDelay: number;
   private maxPredict: number;
@@ -90,6 +121,12 @@ export class RollbackSession implements Session {
   private theirHashes = new Map<number, Map<number, number>>();
   private pingTimer = 0;
   private stallToggle = false;
+  private migration: Migration | null = null;
+  private pendingHi = new Map<number, { conf: number; at: number }>(); // peers that came to us to be the next host
+  private deferred: { f: number; cmds: Command[] } | null = null;     // new host: authority commands, once the old host is gone
+  private joinsAfterMigration: number[] = [];
+  private lastTickAt = -1;
+  private dead = false;
 
   constructor(private link: NetLink, initial: GameState | null, opts: RollbackOptions = {}) {
     this.inputDelay = opts.inputDelay ?? 2;
@@ -109,10 +146,14 @@ export class RollbackSession implements Session {
     link.onMessage = (from, msg) => this.onMessage(from, msg);
     link.onPeerConnect = (p) => this.onPeerConnect(p);
     link.onPeerDisconnect = (p) => this.onPeerDisconnect(p);
-    link.onClose = (reason) => this.onHostLost(reason);
+    link.onClose = (reason) => this.onLinkClosed(reason);
   }
 
   get isHost(): boolean { return this.link.isHost; }
+  /** Peer number of the current host. */
+  get host(): number { return this.link.host; }
+  /** True while switching to a new host (the game is frozen). */
+  get migrating(): boolean { return !!this.migration; }
 
   command(c: Command): void { this.pendingCmds.push(c); }
 
@@ -120,6 +161,7 @@ export class RollbackSession implements Session {
 
   status(): string {
     if (!this.started) return 'connecting…';
+    if (this.migration) return `peer ${this.peer} · switching host…`;
     const peers = [...this.members.entries()].filter(([, m]) => m.end === INF).length;
     const ahead = this.state.frame - this.confirmed;
     return `peer ${this.peer} · ${peers} peers · rtt ${Math.round(this.rttMs)}ms · predict ${ahead}f` +
@@ -131,17 +173,28 @@ export class RollbackSession implements Session {
   // -------------------------------------------------------------------------
 
   tick(local: Record<string, PlayerInput>): void {
-    if (!this.started) return;
+    if (!this.started || this.dead) return;
+    const now = this.now();
+    const asleep = this.lastTickAt >= 0 && now - this.lastTickAt > 1000; // our tab was in the background
+    this.lastTickAt = now;
+    if (this.migration) { this.tickMigration(now); return; }
+    this.expirePendingHi(now);
 
-    // Ping the host for RTT once a second.
-    if (!this.isHost && ++this.pingTimer % 60 === 1) this.link.send(0, { t: 'ping', ts: this.now() });
+    if (!this.isHost) {
+      // A host that goes quiet (it replies to pings even while stalled) is gone.
+      const heard = this.lastHeard.get(this.host);
+      if (asleep || heard === undefined) this.lastHeard.set(this.host, now);
+      else if (now - heard > this.kickAfterMs) { this.startMigration(); return; }
+      // Ping the host for RTT once a second.
+      if (++this.pingTimer % 60 === 1) this.link.send(this.host, { t: 'ping', ts: now });
+    }
 
     this.sendOwn(local);
     this.doRollback();
 
     let n = 1;
     if (!this.isHost) {
-      const hostLf = this.remoteLf.get(0);
+      const hostLf = this.remoteLf.get(this.host);
       if (hostLf !== undefined) {
         const rttFrames = (this.rttMs / 1000) * 60;
         const diff = this.state.frame - (hostLf + rttFrames / 2);
@@ -162,7 +215,6 @@ export class RollbackSession implements Session {
     this.advanceConfirmed();
     this.gc();
     // Track how long we've been unable to advance (for the 'waiting for…' banner).
-    const now = this.now();
     if (this.state.frame - this.confirmed >= this.maxPredict - 1) { if (this.stallSince < 0) this.stallSince = now; }
     else this.stallSince = -1;
     if (this.isHost) this.kickSilentPeers(now);
@@ -183,7 +235,7 @@ export class RollbackSession implements Session {
    *  connection) would freeze everyone. Drop it so the game goes on. */
   private kickSilentPeers(now: number): void {
     for (const [p, m] of this.members) {
-      if (p === 0 || m.end !== INF || this.leaving.has(p)) continue;
+      if (p === this.peer || m.end !== INF || this.leaving.has(p)) continue;
       const heard = this.lastHeard.get(p) ?? now;
       if (!this.lastHeard.has(p)) this.lastHeard.set(p, now);
       if (now - heard < this.kickAfterMs) continue;
@@ -228,12 +280,13 @@ export class RollbackSession implements Session {
     // nobody has to wait for us to catch up.
     if (!this.isHost && Object.keys(local).length === 0 && this.pendingCmds.length === 0 &&
         !this.state.players.some((q) => q.active && q.peer === this.peer && !q.isBot)) {
-      target = Math.max(target, (this.remoteLf.get(0) ?? 0) + this.inputDelay);
+      target = Math.max(target, (this.remoteLf.get(this.host) ?? 0) + this.inputDelay);
     }
     while (this.nextSend <= target) {
       const f = this.nextSend++;
       const msg: FrameMsg = { t: 'f', p: this.peer, f, i: { ...local }, c: this.pendingCmds, lf: this.state.frame };
       this.pendingCmds = [];
+      if (this.deferred && f >= this.deferred.f) { msg.c = [...this.deferred.cmds, ...msg.c]; this.deferred = null; }
       if (this.isHost) {
         if (this.pendingJoins.length) {
           msg.j = this.pendingJoins; this.pendingJoins = [];
@@ -245,7 +298,7 @@ export class RollbackSession implements Session {
         }
         this.link.broadcast(msg);
       } else {
-        this.link.send(0, msg);
+        this.link.send(this.host, msg);
       }
       this.store(msg);
     }
@@ -326,7 +379,7 @@ export class RollbackSession implements Session {
       const theirs = this.theirHashes.get(f);
       if (theirs) for (const [, th] of theirs) if (th !== h) this.flagDesync(f);
     } else {
-      this.link.send(0, { t: 'h', f, h });
+      this.link.send(this.host, { t: 'h', f, h });
     }
   }
 
@@ -341,7 +394,7 @@ export class RollbackSession implements Session {
   private gc(): void {
     const keep = this.confirmed - 2;
     for (const k of this.states.keys()) if (k < keep) this.states.delete(k);
-    for (const k of this.known.keys()) if (k < keep) this.known.delete(k);
+    for (const k of this.known.keys()) if (k < this.confirmed - KEEP_MSGS) this.known.delete(k);
     for (const k of this.used.keys()) if (k < keep) this.used.delete(k);
     for (const k of this.myHashes.keys()) if (k < keep - 600) this.myHashes.delete(k);
     for (const k of this.theirHashes.keys()) if (k < keep - 600) this.theirHashes.delete(k);
@@ -358,14 +411,11 @@ export class RollbackSession implements Session {
           const mem = this.members.get(from);
           if (!mem || m.f < mem.start || m.f >= mem.end) return;
           this.link.broadcast(msg, from);
-        }
+        } else if (from !== this.host) return; // stragglers from a host we've left behind
         this.remoteLf.set(m.p, Math.max(this.remoteLf.get(m.p) ?? 0, m.lf));
         this.lastHeard.set(from, this.now());
-        if (!this.started) return;
-        if (m.j) for (const p of m.j) this.members.set(p, { start: m.f, end: INF });
-        if (m.l) for (const p of m.l) { const mm = this.members.get(p); if (mm) mm.end = m.f; }
-        if ((m.j || m.l) && m.f < this.state.frame) this.rollbackTo = Math.min(this.rollbackTo, m.f);
-        this.store(m);
+        if (!this.started || this.migration) return;
+        this.ingest([m]);
         return;
       }
       case 'w': {
@@ -378,6 +428,7 @@ export class RollbackSession implements Session {
         this.nextSend = w.join;
         for (const [p, s, e] of w.members) this.members.set(p, { start: s, end: e < 0 ? INF : e });
         this.started = true;
+        this.lastHeard.set(from, this.now());
         for (const m of w.log) {
           this.remoteLf.set(m.p, Math.max(this.remoteLf.get(m.p) ?? 0, m.lf));
           this.store(m);
@@ -389,6 +440,7 @@ export class RollbackSession implements Session {
         this.link.send(from, { t: 'pong', ts: msg.ts as number });
         return;
       case 'pong':
+        this.lastHeard.set(from, this.now());
         this.rttMs = this.rttMs === 0 ? this.now() - (msg.ts as number) : this.rttMs * 0.8 + 0.2 * (this.now() - (msg.ts as number));
         return;
       case 'h': {
@@ -405,8 +457,12 @@ export class RollbackSession implements Session {
         if (!this.isHost && this.started) this.applyLeave(msg.p as number, msg.f as number);
         return;
       case 'kick':
-        this.onHostLost(String(msg.reason ?? 'Disconnected by the host.'));
+        this.fail(String(msg.reason ?? 'Disconnected by the host.'));
         return;
+      case 'hi': return this.onHi(from, msg.conf as number);
+      case 'need': return this.onNeed(from, msg.from as number);
+      case 'have': return this.onHave(from, msg.msgs as FrameMsg[], msg.members as [number, number, number][]);
+      case 'resync': return this.onResync(from, msg as unknown as { msgs: FrameMsg[]; members: [number, number, number][]; lf: number });
       case 'd':
         this.flagDesync(msg.f as number);
         return;
@@ -414,6 +470,7 @@ export class RollbackSession implements Session {
   }
 
   private onPeerConnect(p: number): void {
+    if (this.migration) { this.joinsAfterMigration.push(p); return; }
     // Snapshot the last confirmed state and every message since.
     const base = this.confirmed;
     const snap = base === this.state.frame ? this.state : this.states.get(base);
@@ -426,11 +483,218 @@ export class RollbackSession implements Session {
     const log: FrameMsg[] = [];
     const frames = [...this.known.keys()].filter((f) => f >= base).sort((a, b) => a - b);
     for (const f of frames) for (const m of this.known.get(f)!.values()) log.push(m);
-    const members: [number, number, number][] = [...this.members.entries()].map(([q, m]) => [q, m.start, m.end === INF ? -1 : m.end]);
-    this.link.send(p, { t: 'w', you: p, join, base, state: snap, log, members, delay: this.inputDelay } as unknown as Msg);
+    this.link.send(p, { t: 'w', you: p, join, base, state: snap, log, members: this.memberList(), delay: this.inputDelay } as unknown as Msg);
   }
 
   private onPeerDisconnect(p: number): void {
+    if (this.migration) { this.migration.gone.add(p); return; }
     this.removePeer(p);
+  }
+
+  private memberList(): [number, number, number][] {
+    return [...this.members.entries()].map(([q, m]) => [q, m.start, m.end === INF ? -1 : m.end]);
+  }
+
+  /** Store frame messages, applying the membership changes they announce. */
+  private ingest(msgs: FrameMsg[]): void {
+    for (const m of msgs) {
+      if (m.f < this.confirmed) continue;
+      if (m.j) for (const p of m.j) {
+        const mm = this.members.get(p);
+        if (mm) mm.start = m.f; else this.members.set(p, { start: m.f, end: INF });
+      }
+      if (m.l) for (const p of m.l) { const mm = this.members.get(p); if (mm) mm.end = Math.min(mm.end, m.f); }
+      if ((m.j || m.l) && m.f < this.state.frame) this.rollbackTo = Math.min(this.rollbackTo, m.f);
+      this.store(m);
+    }
+  }
+
+  /** Combine another peer's view of membership with ours: leaves win (only
+   *  the old host could announce them, and some of us may have missed it). */
+  private mergeMembers(list: [number, number, number][]): void {
+    for (const [p, s, e0] of list) {
+      const e = e0 < 0 ? INF : e0;
+      const m = this.members.get(p);
+      if (!m) {
+        this.members.set(p, { start: s, end: e });
+        if (s < this.state.frame) this.rollbackTo = Math.min(this.rollbackTo, s);
+        continue;
+      }
+      if (s < m.start) { m.start = s; if (s < this.state.frame) this.rollbackTo = Math.min(this.rollbackTo, s); }
+      if (e < m.end) this.applyLeave(p, e);
+    }
+  }
+
+  private fail(reason: string): void {
+    if (this.dead) return;
+    this.dead = true;
+    this.migration = null;
+    this.onHostLost(reason);
+  }
+
+  // -------------------------------------------------------------------------
+  // Host migration
+
+  private onLinkClosed(reason: string): void {
+    if (this.dead) return;
+    if (!this.started) { this.fail(reason); return; }
+    const mg = this.migration;
+    if (!mg) { this.startMigration(); return; }
+    // The peer we were handing over to went away too: try the next one.
+    if (mg.role === 'client') this.nextCandidate();
+  }
+
+  private startMigration(): void {
+    const old = this.host;
+    const candidates = [...this.members.entries()]
+      .filter(([p, m]) => p !== old && m.end === INF).map(([p]) => p).sort((a, b) => a - b);
+    console.warn('host', old, 'is gone; candidates', candidates);
+    this.migration = {
+      old, candidates, next: 0, role: 'seek', deadline: INF,
+      phase: 'hi', expected: new Set(), confs: new Map(), haves: new Set(), gone: new Set(),
+    };
+    this.nextCandidate();
+  }
+
+  private nextCandidate(): void {
+    const mg = this.migration!;
+    const c = mg.candidates[mg.next++];
+    if (c === undefined) { this.fail('The host left, and nobody else could take over.'); return; }
+    if (c === this.peer) { this.takeOver(); return; }
+    mg.role = 'seek';
+    mg.deadline = INF;
+    this.link.reconnect(c, this.peer, (ok) => {
+      if (this.migration !== mg || this.dead) return;
+      if (!ok) { this.nextCandidate(); return; }
+      mg.role = 'client';
+      mg.deadline = this.now() + this.handshakeMs();
+      this.link.send(c, { t: 'hi', conf: this.confirmed });
+    });
+  }
+
+  private handshakeMs(): number { return 2 * this.kickAfterMs + 4000; }
+
+  /** We're first in line: become the host and gather the survivors. */
+  private takeOver(): void {
+    const mg = this.migration!;
+    mg.role = 'host';
+    let next = this.peer + 1;
+    for (const p of this.members.keys()) next = Math.max(next, p + 1);
+    for (const p of this.lastKnown.keys()) next = Math.max(next, p + 1);
+    this.link.becomeHost(this.peer, next);
+    // Everyone after us in line should come; anyone before us was unreachable.
+    for (const p of mg.candidates.slice(mg.next)) mg.expected.add(p);
+    for (const [p, h] of this.pendingHi) { mg.confs.set(p, h.conf); mg.expected.add(p); }
+    this.pendingHi.clear();
+    // Others may notice the old host is gone only when it times out for them.
+    mg.deadline = this.now() + this.kickAfterMs + 3000;
+    this.tickMigration(this.now());
+  }
+
+  private tickMigration(now: number): void {
+    const mg = this.migration!;
+    if (mg.role === 'client' && now > mg.deadline) { this.nextCandidate(); return; }
+    if (mg.role !== 'host') return;
+    const settled = (p: number, set: { has(p: number): boolean }) => set.has(p) || mg.gone.has(p);
+    if (mg.phase === 'hi' && ([...mg.expected].every((p) => settled(p, mg.confs)) || now > mg.deadline)) {
+      let floor = this.confirmed;
+      for (const [p, c] of mg.confs) if (!mg.gone.has(p)) floor = Math.min(floor, c);
+      for (const p of mg.confs.keys()) this.link.send(p, { t: 'need', from: floor });
+      mg.phase = 'have';
+      mg.deadline = now + this.handshakeMs();
+    }
+    if (mg.phase === 'have' && ([...mg.confs.keys()].every((p) => settled(p, mg.haves)) || now > mg.deadline)) {
+      this.finishTakeover(now);
+    }
+  }
+
+  private finishTakeover(now: number): void {
+    const mg = this.migration!;
+    const survivors = [...mg.haves].filter((p) => !mg.gone.has(p));
+    // Everyone else still a member is out: the old host and anyone who didn't
+    // make it. Each leaves after the last frame of theirs that anyone got.
+    const left: number[] = [];
+    let after = 0;
+    for (const [p, m] of this.members) {
+      if (p === this.peer || m.end !== INF || survivors.includes(p)) continue;
+      const last = this.lastKnown.get(p);
+      const at = Math.max(m.start, last ? last.f + 1 : m.start);
+      this.applyLeave(p, at);
+      left.push(p);
+      after = Math.max(after, at);
+    }
+    if (!left.includes(mg.old)) { left.push(mg.old); after = Math.max(after, this.members.get(mg.old)?.end ?? 0); }
+    // Sim authority passes to us once the old host no longer sends frames.
+    this.deferred = { f: after, cmds: [{ t: 'host' }, ...left.map((p): Command => ({ t: 'peerLeft', peer: p }))] };
+    const members = this.memberList();
+    for (const p of survivors) {
+      const from = mg.confs.get(p) ?? 0;
+      const msgs: FrameMsg[] = [];
+      for (const [f, fm] of this.known) if (f >= from) for (const m of fm.values()) msgs.push(m);
+      this.link.send(p, { t: 'resync', msgs, members, lf: this.state.frame } as unknown as Msg);
+      this.lastHeard.set(p, now);
+    }
+    for (const p of mg.confs.keys()) {
+      if (!survivors.includes(p)) this.link.send(p, { t: 'kick', reason: 'Lost the connection while the host was changing. Join again to keep playing.' });
+    }
+    console.warn('took over as host; survivors', survivors, 'left', left, 'at', after);
+    this.migration = null;
+    this.hostChanges++;
+    for (const p of this.joinsAfterMigration) this.onPeerConnect(p);
+    this.joinsAfterMigration = [];
+    this.onHostChanged();
+  }
+
+  /** A peer wants us to be the next host. */
+  private onHi(from: number, conf: number): void {
+    const mg = this.migration;
+    if (mg?.role === 'host' && mg.phase === 'hi') { mg.confs.set(from, conf); mg.expected.add(from); return; }
+    if (this.isHost) {
+      this.link.send(from, { t: 'kick', reason: 'Lost the connection while the host was changing. Join again to keep playing.' });
+      return;
+    }
+    this.pendingHi.set(from, { conf, at: this.now() });
+    // If the host has gone quiet for us too, don't wait for our own timeout.
+    if (!mg && this.started && this.now() - (this.lastHeard.get(this.host) ?? 0) > 1000) this.startMigration();
+  }
+
+  /** We're not the host, and the host is still there: turn away peers that
+   *  wrongly thought it was gone. */
+  private expirePendingHi(now: number): void {
+    for (const [p, h] of this.pendingHi) {
+      if (now - h.at < this.kickAfterMs + 3000) continue;
+      this.pendingHi.delete(p);
+      this.link.send(p, { t: 'kick', reason: 'Lost the connection to the host. Join again to keep playing.' });
+    }
+  }
+
+  private onNeed(from: number, floor: number): void {
+    const mg = this.migration;
+    if (!mg || mg.role !== 'client' || from !== this.host) return;
+    const msgs: FrameMsg[] = [];
+    for (const [f, fm] of this.known) if (f >= floor) for (const m of fm.values()) msgs.push(m);
+    this.link.send(from, { t: 'have', msgs, members: this.memberList() } as unknown as Msg);
+    mg.deadline = this.now() + this.handshakeMs();
+  }
+
+  private onHave(from: number, msgs: FrameMsg[], members: [number, number, number][]): void {
+    const mg = this.migration;
+    if (!mg || mg.role !== 'host' || mg.phase !== 'have' || !mg.confs.has(from)) return;
+    this.ingest(msgs);
+    this.mergeMembers(members);
+    mg.haves.add(from);
+    this.tickMigration(this.now());
+  }
+
+  private onResync(from: number, r: { msgs: FrameMsg[]; members: [number, number, number][]; lf: number }): void {
+    const mg = this.migration;
+    if (!mg || mg.role !== 'client' || from !== this.host) return;
+    this.ingest(r.msgs);
+    this.mergeMembers(r.members);
+    this.remoteLf.set(from, r.lf);
+    this.lastHeard.set(from, this.now());
+    this.migration = null;
+    this.hostChanges++;
+    this.onHostChanged();
   }
 }

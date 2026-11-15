@@ -81,7 +81,8 @@ Bots have no device; their input is computed by `botInput` inside `step`.
 ## Networking (`src/net`)
 
 `RollbackSession` implements GGPO-style rollback over a star topology
-(peer 0 = host relays all messages; PeerJS handles WebRTC signaling).
+(the host relays all messages; PeerJS handles WebRTC signaling). Peer 0 is the
+first host; peer numbers never change, but the host can (see host migration).
 
 - **Input delay + prediction.** Local input for frame `f` is sent at `f - inputDelay`.
   Missing remote inputs are predicted by repeating that peer's last inputs.
@@ -102,6 +103,25 @@ Bots have no device; their input is computed by `botInput` inside `step`.
   and occasionally stall or double-step.
 - **Desync detection.** Every 60 confirmed frames clients send a state hash to
   the host, which compares and flags `DESYNC` in the status bar.
+- **Host migration.** If the host's connection closes or it goes silent (it
+  answers pings even while stalled), every peer walks the remaining members in
+  id order and connects to the first one it can reach; whoever finds itself
+  first takes over. Clients reach each other via a directory of PeerJS ids the
+  host shares (`@dir`). The new host collects each survivor's confirmed frame
+  (`hi`), requests every frame message from the oldest of those (`need`/`have`),
+  merges them (inputs never change, so the union is consistent; messages are
+  kept `KEEP_MSGS` frames past confirmation for this), ends the old host's
+  membership right after the last frame anyone received from it, and sends
+  everyone the merged log and membership (`resync`). Nobody can have confirmed
+  a frame past that leave frame, so rollback covers every correction. The game
+  freezes during the handshake. The new host then reclaims the room code so new
+  players can find the room.
+- **Sim authority** (params, back to lobby, `peerLeft`) belongs to
+  `state.host`, not to a fixed peer. The new host sends a `host` command; the
+  sim accepts it only at a frame the current host no longer contributes to, so
+  the handover is deterministic.
+- **One "Play online" button.** Joining a code nobody hosts (`peer-unavailable`)
+  hosts it instead; hosting a code that's taken (`unavailable-id`) joins it.
 
 `LoopbackHub` provides an in-memory transport with latency/jitter for tests
 (`tests/net.test.ts`).

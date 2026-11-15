@@ -48,6 +48,7 @@ export function createState(cfg: MatchConfig, params: Params, seed = 0x1234abcd)
     carSpawnT: 0,
     hitstop: 0,
     nextId: 1,
+    host: 0,
     events: [],
   };
   pickArena(s, true);
@@ -108,7 +109,7 @@ function removePlayer(s: GameState, p: Player): void {
   emit(s, { e: 'leave', who: p.id });
 }
 
-function applyCommand(s: GameState, peer: number, c: Command): void {
+function applyCommand(s: GameState, peer: number, c: Command, frame: PeerFrame[]): void {
   switch (c.t) {
     case 'join': {
       if (findPlayer(s, peer, c.device)) return;
@@ -163,7 +164,7 @@ function applyCommand(s: GameState, peer: number, c: Command): void {
       return;
     }
     case 'start': {
-      if (peer !== 0 && s.phase !== 'lobby') return; // anyone can start from the lobby
+      if (peer !== s.host && s.phase !== 'lobby') return; // anyone can start from the lobby
       s.cfg = { ...c.cfg };
       s.scores = s.scores.map(() => 0);
       s.round = 0;
@@ -182,22 +183,26 @@ function applyCommand(s: GameState, peer: number, c: Command): void {
     case 'lobby': {
       // Anyone can change the match settings while in the lobby; only the
       // host can send everyone back to the lobby from a match.
-      if (peer !== 0 && s.phase !== 'lobby') return;
+      if (peer !== s.host && s.phase !== 'lobby') return;
       if (c.cfg) s.cfg = { ...c.cfg };
       toLobby(s);
       return;
     }
     case 'params': {
-      if (peer !== 0) return;
+      if (peer !== s.host) return;
       s.params = cloneParams(c.params);
       return;
     }
     case 'peerLeft': {
-      if (peer !== 0) return;
+      if (peer !== s.host) return;
       for (const p of s.players) {
         if (!p.active || p.peer !== c.peer) continue;
-        if (p.isBot) p.peer = 0; else removePlayer(s, p);
+        if (p.isBot) p.peer = s.host; else removePlayer(s, p);
       }
+      return;
+    }
+    case 'host': {
+      if (!frame.some((pf) => pf.peer === s.host)) s.host = peer;
       return;
     }
   }
@@ -207,7 +212,7 @@ function applyCommand(s: GameState, peer: number, c: Command): void {
  *  sorted by peer id (missing peers = neutral input, no commands). */
 export function step(s: GameState, frame: PeerFrame[]): void {
   s.events = [];
-  for (const pf of frame) for (const c of pf.cmds) applyCommand(s, pf.peer, c);
+  for (const pf of frame) for (const c of pf.cmds) applyCommand(s, pf.peer, c, frame);
 
   // Hit-stop: the world freezes for a few frames after a big impact. Button
   // history (prevB) is left untouched so presses during the freeze still count.

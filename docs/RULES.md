@@ -95,9 +95,12 @@ interact button: slash does it all (riding, cars).
 Players can join (any device's join button) or leave at any time, including
 mid-match and online. A new player spawns immediately.
 
-**Online:** Host online gives you a room code (type your own code first to pick
-it). Others type the code and press Join or Enter. Hosting a code that's already
-taken just joins that room. You can join a match in progress.
+**Online:** type a room code and press Play online (or Enter). If someone is in
+that room you join them, even mid-match; otherwise you start the room under that
+code. Leave the code blank to start a room with a random code. The mode and arena
+picked on the main menu apply only if you start the room; anyone can change them
+in the lobby. If the host leaves, the game freezes for a moment while another
+player takes over as host, then carries on.
 
 Set your name on the main menu (or in settings). In the lobby, your players'
 names are editable right on their cards; press Enter to apply.

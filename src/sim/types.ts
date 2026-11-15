@@ -216,6 +216,9 @@ export interface GameState {
   carSpawnT: number;     // Cars mode: frames until the next replacement car
   hitstop: number;       // frames of freeze remaining (impact pause)
   nextId: number;
+  /** Peer with authority over match commands (params, back to lobby…).
+   *  Peer 0 until it leaves; then whoever takes over sends a `host` command. */
+  host: number;
   events: SimEvent[];    // emitted during the last step (render/audio only)
 }
 
@@ -234,7 +237,9 @@ export type Command =
   | { t: 'start'; cfg: MatchConfig }
   | { t: 'lobby'; cfg?: MatchConfig }
   | { t: 'params'; params: Params }
-  | { t: 'peerLeft'; peer: number };
+  | { t: 'peerLeft'; peer: number }
+  /** Take over as host. Only accepted once the current host is gone (sends no frame). */
+  | { t: 'host' };
 
 /** Everything one peer contributes to one frame. */
 export interface PeerFrame {

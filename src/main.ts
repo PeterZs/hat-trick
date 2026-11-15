@@ -69,17 +69,19 @@ hud.show(false);
 
 /** 'Waiting for …' when the online game can't advance (someone's inputs are late). */
 function waitingText(): string {
-  if (!(session instanceof RollbackSession) || !session.started || session.stalledMs() < 700) return '';
+  if (!(session instanceof RollbackSession) || !session.started) return '';
+  if (session.migrating) return '⏳ The host left — switching hosts…';
+  if (performance.now() < hostNotice.until) return hostNotice.text;
+  if (session.stalledMs() < 700) return '';
   const peers = session.waitingOn();
   const names = session.state.players.filter((p) => p.active && !p.isBot && peers.includes(p.peer)).map((p) => p.name);
   if (names.length) return `⏳ Waiting for ${names.join(', ')}…`;
-  return peers.includes(0) ? '⏳ Waiting for the host…' : '⏳ Waiting for a player who is joining…';
+  return peers.includes(session.host) ? '⏳ Waiting for the host…' : '⏳ Waiting for a player who is joining…';
 }
 
 const menu = new Menu(uiRoot, prefs, {
   playLocal: (cfg) => startSession(new LocalSession(cfg, settings.params)),
-  host: (cfg, code) => void hostOnline(cfg, code),
-  join: (code) => void joinOnline(code),
+  online: (cfg, code) => void playOnline(cfg, code),
   openSettings: () => settings.toggle(true),
 });
 
@@ -124,33 +126,59 @@ function quitToMenu(error = ''): void {
   if (location.search) history.replaceState(null, '', location.pathname);
 }
 
-async function hostOnline(cfg: MatchConfig, chosen = ''): Promise<void> {
-  const code = cleanRoomCode(chosen) || randomRoomCode();
+/** Join room `typed` if someone is in it, otherwise start it (a blank code
+ *  starts a new random room). `cfg` only matters if we end up hosting. */
+function playOnline(cfg: MatchConfig, typed: string): Promise<void> {
+  const code = cleanRoomCode(typed);
+  return code ? joinOnline(code, cfg) : hostOnline(cfg, randomRoomCode());
+}
+
+const errType = (e: unknown) => (e as { type?: string }).type;
+
+/** Whoever ends up hosting changes over time (host migration), so every
+ *  online session handles losing or changing hosts. */
+function watchHost(s: RollbackSession): void {
+  s.onHostLost = (reason) => { if (session === s) quitToMenu(reason); else { s.dispose(); menu.show(true, reason); } };
+  s.onHostChanged = () => {
+    hostNotice = { text: s.isHost ? "👑 The host left — you're the host now" : '🌐 The host left — the game carries on', until: performance.now() + 3000 };
+  };
+}
+let hostNotice = { text: '', until: 0 };
+
+async function hostOnline(cfg: MatchConfig, code: string, tries = 2): Promise<void> {
   menu.show(true, `Creating room ${code}…`);
   try {
     let link;
     try {
       link = await hostRoom(code);
     } catch (e) {
-      // Someone is already hosting that code: join their room instead.
-      if ((e as { type?: string }).type === 'unavailable-id') { void joinOnline(code); return; }
+      // Someone just started that room: join it instead.
+      if (errType(e) === 'unavailable-id' && tries > 1) { void joinOnline(code, cfg, tries - 1); return; }
       throw e;
     }
     roomCode = code;
     const state = createState(cfg, settings.params, (Math.random() * 2 ** 32) >>> 0);
     const s = new RollbackSession(link, state, { inputDelay: prefs.inputDelay });
+    watchHost(s);
     startSession(s);
   } catch (e) {
-    menu.show(true, 'Could not host: ' + (e as Error).message);
+    menu.show(true, 'Could not start room: ' + (e as Error).message);
   }
 }
 
-async function joinOnline(code: string): Promise<void> {
-  menu.show(true, `Joining ${code}…`);
+async function joinOnline(code: string, cfg: MatchConfig, tries = 2): Promise<void> {
+  menu.show(true, `Looking for room ${code}…`);
   try {
-    const link = await joinRoom(code);
+    let link;
+    try {
+      link = await joinRoom(code);
+    } catch (e) {
+      // Nobody's in that room: start it.
+      if (errType(e) === 'peer-unavailable' && tries > 1) { void hostOnline(cfg, code, tries - 1); return; }
+      throw e;
+    }
     const s = new RollbackSession(link, null, { inputDelay: prefs.inputDelay });
-    s.onHostLost = (reason) => { if (session === s) quitToMenu(reason); else { s.dispose(); menu.show(true, reason); } };
+    watchHost(s);
     // Stay on the menu until the host's snapshot arrives, then enter the game.
     menu.show(true, `Connected to room ${code} — waiting for the host…`);
     s.onStarted = () => { roomCode = code; startSession(s); };
@@ -336,7 +364,7 @@ requestAnimationFrame(loop);
 
 // Deep link: ?join=CODE
 const joinCode = new URLSearchParams(location.search).get('join');
-if (joinCode && cleanRoomCode(joinCode)) void joinOnline(cleanRoomCode(joinCode));
+if (joinCode && cleanRoomCode(joinCode)) void joinOnline(cleanRoomCode(joinCode), menu.cfg());
 
 // Dev hook for automated audio checks.
 (window as unknown as Record<string, unknown>).sfxDebug = async () => sfxModule;
