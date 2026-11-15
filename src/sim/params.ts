@@ -71,6 +71,7 @@ export const PARAM_DEFS: ParamDef[] = [
   D('carTurnRate', 'Car turn rate (rad/s)', 'Car', 0.5, 10, 0.1),
   D('carTime', 'Car lifetime (s)', 'Car', 2, 60, 1),
   D('carKillSpeed', 'Car lethal speed', 'Car', 0, 30, 0.5),
+  D('carBallImpulse', 'Car hits ball (x car speed)', 'Car', 0.5, 4, 0.05),
   D('carRespawnTime', 'Cars mode: replacement car delay (s)', 'Car', 0, 10, 0.1),
   D('piggyMountSpeedMult', 'Piggyback mount speed (x)', 'Piggyback', 0.5, 4, 0.05),
   D('hitstopKill', 'Hit-stop on kill (frames)', 'Juice', 0, 12, 1),

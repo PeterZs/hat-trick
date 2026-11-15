@@ -178,7 +178,7 @@ export type SimEvent =
   | { e: 'match'; winner: number }
   | { e: 'join'; who: number }
   | { e: 'leave'; who: number }
-  | { e: 'car'; what: 'enter' | 'exit' | 'crash' | 'spawn'; who: number; x: number; y: number }
+  | { e: 'car'; what: 'enter' | 'exit' | 'crash' | 'spawn' | 'bump'; who: number; x: number; y: number }
   | { e: 'piggy'; what: 'on' | 'off'; who: number; mount: number };
 
 export interface MatchConfig {

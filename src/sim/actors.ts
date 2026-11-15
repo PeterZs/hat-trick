@@ -610,7 +610,7 @@ export function spawnCar(s: GameState, x: number, y: number, heading: number): C
 
 function driveCar(s: GameState, p: Player, c: Car, inp: PlayerInput, pressed: number): void {
   const P = s.params;
-  if (pressed & BTN_ATTACK) {
+  if ((pressed & BTN_ATTACK) && !level(s).carsOnly) {
     exitCar(s, p, c);
     return;
   }
@@ -660,6 +660,20 @@ export function crashCar(s: GameState, c: Car): void {
   }
 }
 
+/** Auto Polo: nobody walks. Cars without their driver vanish, and every
+ *  fighter on foot (just spawned) gets a fresh car facing the field. Runs every
+ *  frame, countdown included, so players are seated the moment they spawn. */
+export function seatDrivers(s: GameState): void {
+  if (!level(s).carsOnly) return;
+  s.cars = s.cars.filter((c) => c.driver >= 0 && s.players[c.driver]?.alive && s.players[c.driver].car === c.id);
+  for (const p of s.players) {
+    if (!p.active || !p.alive || p.role !== 'fighter' || p.car >= 0) continue;
+    detach(s, p);
+    const c = spawnCar(s, p.x, p.y, p.fx < 0 ? PI : 0);
+    c.driver = p.id; p.car = c.id;
+  }
+}
+
 export function updateCars(s: GameState): void {
   const P = s.params;
   const L = level(s);
@@ -668,7 +682,7 @@ export function updateCars(s: GameState): void {
     if (c.driver >= 0) {
       const d = s.players[c.driver];
       if (!d || !d.active || !d.alive || d.car !== c.id) { c.driver = -1; }
-      else if (--c.t <= 0) { crashCar(s, c); continue; }
+      else if (!L.carsOnly && --c.t <= 0) { crashCar(s, c); continue; }
     } else {
       c.speed -= c.speed * 3 * DT;
     }
@@ -700,11 +714,44 @@ export function updateCars(s: GameState): void {
           if (dist2(o.x, o.y, c.x + c.hx * 0.5, c.y + c.hy * 0.5) < (1.1 + P.hitRadius) ** 2) kill(s, o, d.id);
         }
       }
-      // Bump the ball.
-      if (s.ball && dist2(s.ball.x, s.ball.y, c.x, c.y) < (1.2 + P.ballRadius) ** 2) {
-        s.ball.vx = c.hx * Math.abs(c.speed) * 1.3; s.ball.vy = c.hy * Math.abs(c.speed) * 1.3;
-        s.ball.lastTouch = d.id;
+      // Bump the ball: pushed out along the contact normal, picking up the
+      // car's speed (glancing hits send it off at an angle).
+      const b = s.ball;
+      const r = 1.2 + P.ballRadius;
+      if (b && dist2(b.x, b.y, c.x, c.y) < r * r) {
+        const dx = b.x - c.x, dy = b.y - c.y, dl = Math.max(1e-6, len(dx, dy));
+        const nx = dx / dl, ny = dy / dl;
+        b.x = c.x + nx * r; b.y = c.y + ny * r;
+        // Pinned against a wall: the ball stays put and the car is pushed back.
+        collideCircle(b.x, b.y, P.ballRadius, L.walls, false, tmp);
+        if (tmp.hit) {
+          b.x = tmp.x; b.y = tmp.y;
+          c.x = b.x - nx * r; c.y = b.y - ny * r; c.speed *= -0.3;
+          d.x = c.x; d.y = c.y;
+        }
+        const cv = (c.hx * nx + c.hy * ny) * c.speed;
+        const bv = b.vx * nx + b.vy * ny;
+        const target = Math.max(0, cv) * P.carBallImpulse;
+        if (bv < target) { b.vx += (target - bv) * nx; b.vy += (target - bv) * ny; }
+        else if (bv < 0) { b.vx -= 1.6 * bv * nx; b.vy -= 1.6 * bv * ny; }
+        b.lastTouch = d.id;
       }
+    }
+  }
+  // Cars bump off each other (both bounce back a little).
+  for (let i = 0; i < s.cars.length; i++) {
+    for (let j = i + 1; j < s.cars.length; j++) {
+      const a = s.cars[i], b = s.cars[j];
+      if (a.dead || b.dead) continue;
+      const dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
+      if (d2 >= 2 * 2 || d2 < 1e-9) continue;
+      const d = Math.sqrt(d2), push = (2 - d) / 2;
+      a.x -= (dx / d) * push; a.y -= (dy / d) * push;
+      b.x += (dx / d) * push; b.y += (dy / d) * push;
+      const closing = (a.hx * dx + a.hy * dy) / d * a.speed - (b.hx * dx + b.hy * dy) / d * b.speed;
+      if (closing > 2) emit(s, { e: 'car', what: 'bump', who: a.driver, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+      if ((a.hx * dx + a.hy * dy) * a.speed > 0) a.speed *= -0.4;
+      if ((b.hx * dx + b.hy * dy) * b.speed < 0) b.speed *= -0.4;
     }
   }
   s.cars = s.cars.filter((c) => !c.dead);

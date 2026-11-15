@@ -464,6 +464,10 @@ export function playEvent(e: SimEvent, s: GameState | null = null): void {
         metal(t, out, 310, 0.5, 0.15, [1, 1.7, 2.9, 4.4]);
         thump(t, out, 0.8, 110, 35, 0.35);
         crackle(t + 0.05, out, 0.5, 14, 3500, 0.15);
+      } else if (e.what === 'bump') {
+        // Bumper-car clonk: rubbery thud plus a short tinny panel ring.
+        thump(t, out, 0.6, 150, 60, 0.14);
+        metal(t, out, vary(520, 0.06), 0.18, 0.08, [1, 1.6, 2.4]);
       } else if (e.what === 'enter') {
         // Engine rev: detuned saws through a lowpass that follows the revs.
         const g = envGain(t, 0.05, 0.22, 0.75, out);
@@ -600,6 +604,7 @@ export const SOUND_TEST: { name: string; ev: SimEvent | 'tick' | 'go' }[] = [
   { name: 'car', ev: { e: 'car', what: 'enter', who: -1, x: 0, y: 0 } },
   { name: 'car crash', ev: { e: 'car', what: 'crash', who: -1, x: 0, y: 0 } },
   { name: 'car arrives', ev: { e: 'car', what: 'spawn', who: -1, x: 0, y: 0 } },
+  { name: 'cars bump', ev: { e: 'car', what: 'bump', who: -1, x: 0, y: 0 } },
   { name: 'chop', ev: { e: 'chop', prop: 0, kind: 'tree', who: -1, x: 0, y: 0 } },
   { name: 'fell', ev: { e: 'fell', prop: 0, kind: 'tree', who: -1, x: 0, y: 0, dx: 1, dy: 0 } },
   { name: 'hit crate', ev: { e: 'chop', prop: 0, kind: 'crate', who: -1, x: 0, y: 0 } },

@@ -59,7 +59,7 @@ export function updateCarsMode(s: GameState): void {
 export function updatePickups(s: GameState): void {
   const P = s.params;
   if (s.phase !== 'playing' && s.phase !== 'lobby') return;
-  if (s.cfg.mode === 'bumper' || s.cfg.mode === 'golf') return; // pure modes: no power-ups
+  if (s.cfg.mode === 'bumper' || s.cfg.mode === 'golf' || level(s).carsOnly) return; // pure modes: no power-ups
   if (--s.pickupT <= 0) {
     s.pickupT = sec(s, 'powerupInterval');
     const carCount = s.cars.length;
@@ -120,7 +120,7 @@ export function updateBall(s: GameState): void {
   const L = level(s);
   // Players push the ball.
   for (const p of s.players) {
-    if (!p.active || !p.alive || p.role !== 'fighter' || p.riding >= 0) continue;
+    if (!p.active || !p.alive || p.role !== 'fighter' || p.riding >= 0 || p.car >= 0) continue; // cars bump it themselves
     const r = P.playerRadius + P.ballRadius;
     const dx = b.x - p.x, dy = b.y - p.y;
     const d2 = dx * dx + dy * dy;

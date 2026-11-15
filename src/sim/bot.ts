@@ -155,8 +155,26 @@ function think(s: GameState, p: Player): PlayerInput {
     if (p.botMy > 0) { p.botMy--; return makeInput(-p.botStrafe, 1, 0, 0, 0); } // reversing
     if (Math.abs(car.speed) < 1.5) { if (++p.botAimT > 40) { p.botAimT = 0; p.botMy = 35; } } else p.botAimT = 0;
     const e = nearestEnemy(s, p);
-    if (!e) return makeInput(0.3, -1, 0, 0, 0);
-    const dx = e.x - car.x, dy = e.y - car.y, d = Math.max(0.01, len(dx, dy));
+    let tx = e?.x ?? 0, ty = e?.y ?? 0;
+    if (s.cfg.mode === 'soccer' && s.ball) {
+      // Auto Polo: line up behind the ball (relative to their goal), then ram it.
+      const ball = s.ball;
+      const goal = L.goals.find((g) => g.team !== p.team % 2);
+      const gx = goal ? (goal.x0 + goal.x1) / 2 : 0;
+      const gdx = gx - ball.x, gdy = -ball.y, gl = Math.max(0.01, len(gdx, gdy));
+      const ux = gdx / gl, uy = gdy / gl;
+      const behind = (car.x - ball.x) * ux + (car.y - ball.y) * uy < -1;
+      const side = (car.x - ball.x) * -uy + (car.y - ball.y) * ux;
+      if (behind) { tx = ball.x; ty = ball.y; }
+      else { tx = ball.x - ux * 4 + (side >= 0 ? -uy : uy) * 3; ty = ball.y - uy * 4 + (side >= 0 ? ux : -ux) * 3; }
+      tx = clamp(tx, -L.w + 2, L.w - 2); ty = clamp(ty, -L.h + 2, L.h - 2); // stay on the field
+      // Take a pot shot at a nearby rival car now and then.
+      if (e && heldHats(s, p) > 0 && dist2(car.x, car.y, e.x, e.y) < 10 * 10 && rand(s) < K.throw * 0.3) {
+        const ex = e.x - car.x, ey = e.y - car.y;
+        return makeInput(0, -1, ex, ey, BTN_THROW);
+      }
+    } else if (!e) return makeInput(0.3, -1, 0, 0, 0);
+    const dx = tx - car.x, dy = ty - car.y, d = Math.max(0.01, len(dx, dy));
     const cross = (car.hx * dy - car.hy * dx) / d;
     const ahead = (car.hx * dx + car.hy * dy) / d;
     return makeInput(clamp(cross * 2.5 + (ahead < 0 ? p.botStrafe : 0), -1, 1), -1, 0, 0, 0);

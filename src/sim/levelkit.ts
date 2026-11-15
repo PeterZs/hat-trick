@@ -55,6 +55,8 @@ export interface Level {
   regrowScale?: number;
   /** Mode this arena is made for (shown first / used as its default). */
   short?: string;
+  /** Everyone plays from inside a car they can't leave (Auto Polo). */
+  carsOnly?: boolean;
 }
 
 export interface Rect { x0: number; y0: number; x1: number; y1: number }

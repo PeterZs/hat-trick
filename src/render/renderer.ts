@@ -626,13 +626,18 @@ export class Renderer {
 
     // --- Cars
     const carSeen = new Set<number>();
+    const carsOnly = !!getLevel(s.arena).carsOnly;
     for (const c of s.cars) {
       carSeen.add(c.id);
       let g = this.cars.get(c.id);
-      if (!g) { g = makeCar(); this.scene.add(g); this.cars.set(c.id, g); }
+      if (!g) {
+        // Auto Polo cars wear their driver's team (or player) color.
+        const d = carsOnly && c.driver >= 0 ? s.players[c.driver] : null;
+        g = makeCar(d ? this.playerColor(s, d) : undefined); this.scene.add(g); this.cars.set(c.id, g);
+      }
       g.position.set(c.x, 0, c.y);
       g.rotation.y = -Math.atan2(c.hy, c.hx);
-      g.visible = !(c.driver >= 0 && c.t < 3 * HZ && Math.floor(this.time * 8) % 2 === 0);
+      g.visible = !(c.driver >= 0 && !carsOnly && c.t < 3 * HZ && Math.floor(this.time * 8) % 2 === 0); // blinks before it expires
       // "Get in" hint over free cars when one of this screen's players is near.
       let hint = g.getObjectByName('hint') as THREE.Sprite | undefined;
       if (!hint) {
@@ -869,7 +874,7 @@ export class Renderer {
         this.shake = 0.4;
         break;
       }
-      case 'car': if (e.what === 'spawn') { this.effects.ring(e.x, e.y, '#ffd23f', 3, 0.5); this.effects.puff(e.x, e.y, '#ffffff', 10); } else if (e.what === 'crash') { this.effects.burst(e.x, 0.6, e.y, ['#e8463c', '#222', '#bfe3ff'], 24, 8, 1); this.shake = 0.4; } break;
+      case 'car': if (e.what === 'spawn') { this.effects.ring(e.x, e.y, '#ffd23f', 3, 0.5); this.effects.puff(e.x, e.y, '#ffffff', 10); } else if (e.what === 'crash') { this.effects.burst(e.x, 0.6, e.y, ['#e8463c', '#222', '#bfe3ff'], 24, 8, 1); this.shake = 0.4; } else if (e.what === 'bump') { this.effects.sparks(e.x, 0.6, e.y, ['#ffffff', '#ffe680'], 10, 9, 0.25); this.shake = Math.max(this.shake, 0.15); } break;
       case 'slash': {
         const v = this.players.get(e.who);
         if (v) {

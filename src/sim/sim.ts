@@ -10,7 +10,7 @@ import { NEUTRAL, type PlayerInput } from './input';
 import { randInt } from './rng';
 import type { Command, GameState, MatchConfig, PeerFrame, Player } from './types';
 import { detach, die, emit, spawnPlayer } from './common';
-import { canAct, resolveHatHits, resolveMelee, separatePlayers, updateCars, updateHats, updatePlayer } from './actors';
+import { canAct, resolveHatHits, seatDrivers, resolveMelee, separatePlayers, updateCars, updateHats, updatePlayer } from './actors';
 import {
   pickArena, resetArena, startRound, toLobby, updateBall, updateBombs, updateCarsMode, updateFlags, updateOverlord, updatePickups, updateRules,
 } from './modes';
@@ -257,6 +257,7 @@ export function step(s: GameState, frame: PeerFrame[]): void {
     for (const p of s.players) if (p.active && inputs[p.id]) p.prevB = inputs[p.id].b;
   }
   updateRules(s);
+  seatDrivers(s);
   s.frame++;
 }
 

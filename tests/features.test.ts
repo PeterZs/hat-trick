@@ -761,3 +761,65 @@ describe('tall grass', () => {
     expect(s.props.find((t) => t.kind === 'grass')!.hp).toBe(1);
   });
 });
+
+describe('auto polo', () => {
+  function polo(): GameState {
+    const s = createState({ mode: 'soccer', level: 'autopolo', winScore: 5 }, { ...DEFAULT_PARAMS }, 3);
+    step(s, [{ peer: 0, inputs: {}, cmds: [
+      { t: 'join', device: 'd0', name: 'A', ball: 0, team: 0 },
+      { t: 'join', device: 'd1', name: 'B', ball: 1, team: 1 },
+    ] }]);
+    run(s, 2, () => ({}));
+    for (const p of s.players) p.invulnT = 0;
+    return s;
+  }
+
+  it('everyone drives a car they cannot leave, and it never runs out', () => {
+    const s = polo();
+    expect(s.pickups.length).toBe(0);
+    for (const p of s.players) expect(p.car).toBeGreaterThanOrEqual(0);
+    expect(s.cars.length).toBe(2);
+    const a = s.players[0];
+    const car = a.car;
+    run(s, Math.round((DEFAULT_PARAMS.carTime + 1) * 60), (f) => ({ d0: makeInput(0, 0, 0, 0, f % 20 === 0 ? BTN_ATTACK : 0) }));
+    expect(a.car).toBe(car);
+    expect(s.cars.length).toBe(2);
+  });
+
+  it('ramming the ball sends it along the contact normal', () => {
+    const s = polo();
+    const a = s.players[0];
+    const c = s.cars.find((c) => c.id === a.car)!;
+    s.cars = s.cars.filter((o) => o === c);
+    s.players[1].car = -1; s.players[1].x = 0; s.players[1].y = 12;
+    c.x = -8; c.y = 0; c.heading = 0; c.hx = 1; c.hy = 0; c.speed = 0;
+    s.ball = { x: 0, y: 0.6, vx: 0, vy: 0, lastTouch: -1 };
+    run(s, 60, () => ({ d0: makeInput(0, -1, 0, 0, 0) }));
+    expect(s.ball!.vx).toBeGreaterThan(5);
+    expect(s.ball!.y).toBeGreaterThan(0.6); // glancing hit off the car's left side pushes it +y
+    expect(s.ball!.lastTouch).toBe(a.id);
+  });
+
+  it('a wrecked driver respawns in a new car', () => {
+    const s = polo();
+    const [a, b] = s.players;
+    const ca = s.cars.find((c) => c.id === a.car)!, cb = s.cars.find((c) => c.id === b.car)!;
+    ca.x = -3; ca.y = 0; cb.x = 3; cb.y = 0;
+    s.ball!.y = 8; // out of the line of fire
+    run(s, 2, (f) => ({ d0: makeInput(0, 0, 1, 0, f === 0 ? BTN_THROW : 0) }));
+    run(s, 60, () => ({}));
+    expect(b.deaths).toBe(1);
+    run(s, Math.round((DEFAULT_PARAMS.respawnTime + 0.5) * 60), () => ({}));
+    expect(b.alive).toBe(true);
+    expect(b.car).toBeGreaterThanOrEqual(0);
+    expect(s.cars.length).toBe(2);
+  });
+
+  it('cars bump off each other', () => {
+    const s = polo();
+    const [ca, cb] = s.cars;
+    ca.x = -1.5; ca.y = 0; cb.x = 1.5; cb.y = 0;
+    run(s, 30, () => ({}));
+    expect(cb.x - ca.x).toBeGreaterThanOrEqual(2 - 1e-6);
+  });
+});

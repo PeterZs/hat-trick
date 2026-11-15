@@ -49,7 +49,7 @@ power-up is an identical ❓ box until someone picks it up — good or bad is a 
 
 ### Breakables
 
-Every arena except the Pitch has breakables. They block bodies (bushes let hats
+Every arena except the Pitch and Auto Polo has breakables. They block bodies (bushes let hats
 through); slashes and thrown hats damage them (a hat that hits one bounces back
 to you); a car at speed smashes straight through. They regrow in place after
 20 s (faster on Rooftops; never on top of someone). The regrow times are in settings → Breakables.
@@ -131,6 +131,7 @@ to the lobby after 8 s.
 - Push the ball by rolling into it; slashes and thrown hats smack it harder (hats bounce off it and come back), and a **kick** (attack without your hat) really sends it flying.
 - A goal scores for the attacking team and resets positions.
 - Players can still pop each other and respawn after 2.5 s. First to the target score wins.
+- **Auto Polo** arena: a big open field (no walls in the middle, bevelled corners) where everyone plays from a car in their team's color. You spawn in it and can't get out; it never runs out. Up/down is throttle and brake (dash also accelerates), left/right steers. Ram the ball to hit it: it flies off along the point of contact (glancing hits angle it), taking the car's speed × *Car hits ball* (settings → Car). Cars bump off each other. You can still throw your hat from the car; a hat wrecks an enemy car and pops its driver, who respawns in a new car. No power-ups.
 
 ### Overlord (asymmetric)
 - Some players are **Overlords** (chosen in the lobby; if nobody chooses, one is picked at random). Overlords have no body: they move a crosshair and press attack to drop a bomb (1 s fall, 0.6 s between bombs). The landing spot flashes red before impact.

@@ -144,6 +144,42 @@ const icerink: Level = {
   props: [],
 };
 
+// Auto Polo: soccer from the driver's seat. A wide open field with nothing in
+// the middle; everyone plays from a car they can't leave.
+const poloW = 22, poloH = 13, poloHalf = 3.5, poloNet = 2.6;
+/** Bevelled corners (a fine staircase of blocks) so the ball can't get wedged in a corner. */
+function chamfers(w: number, h: number, size: number, step = 0.5): Wall[] {
+  const out: Wall[] = [];
+  for (let k = 0; k * step < size; k++) {
+    const x0 = w - size + (k + 0.5) * step, cy = h - (k + 0.5) * step;
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) out.push(W(sx * (x0 + w) / 2, sy * cy, (w - x0) / 2, step / 2));
+  }
+  return out;
+}
+const autopolo: Level = {
+  id: 'autopolo', name: 'Auto Polo', w: poloW, h: poloH, floor: ['#8fd16f', '#86c866'],
+  modes: ['soccer'], carsOnly: true,
+  walls: [
+    ...border(poloW, poloH, poloHalf),
+    ...chamfers(poloW, poloH, 4),
+    ...[-1, 1].flatMap((sx) => [
+      W(sx * (poloW + poloNet + 0.25), 0, 0.25, poloHalf + 0.5, 'net'),
+      W(sx * (poloW + poloNet / 2), -poloHalf - 0.25, poloNet / 2, 0.25, 'net'),
+      W(sx * (poloW + poloNet / 2), poloHalf + 0.25, poloNet / 2, 0.25, 'net'),
+    ]),
+  ],
+  spawns: [-1, 1].flatMap((sx) => {
+    const team = sx < 0 ? 0 : 1;
+    return [[8, 0], [13, -6], [13, 6], [18, 0], [10, -10], [10, 10], [17, -9], [17, 9]].map(([x, y]) => S(sx * x, y, team));
+  }),
+  goals: [
+    { team: 0, x0: -poloW - poloNet, y0: -poloHalf, x1: -poloW - 0.2, y1: poloHalf },
+    { team: 1, x0: poloW + 0.2, y0: -poloHalf, x1: poloW + poloNet, y1: poloHalf },
+  ],
+  bases: [{ team: 0, x: -18, y: 0 }, { team: 1, x: 18, y: 0 }],
+  props: [],
+};
+
 const pitarena: Level = {
   id: 'pitarena', name: 'Pit Arena', w: 15, h: 10, floor: ['#c9b38a', '#bfa97f'],
   walls: [...border(15, 10), W(0, -6.5, 1.2, 0.3, 'low'), W(0, 6.5, 1.2, 0.3, 'low')],
@@ -397,6 +433,6 @@ const islands: Level = {
 
 export const MORE_LEVELS: Record<string, Level> = {
   shop, daycare, bowling, rooftops, lockers, stadium,
-  icerink, pitarena, factory, pinball, temple, cliffs,
+  icerink, autopolo, pitarena, factory, pinball, temple, cliffs,
   lavarising, nightmarket, downtown, canyon, platform, links, islands,
 };
