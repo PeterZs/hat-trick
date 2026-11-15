@@ -104,7 +104,9 @@ the same slots with the same devices (a gamepad resumes on its first button
 press). A player whose tab disconnects stands idle with 📶 over it for 15 s
 (Settings → Rules) waiting for that tab to return, then leaves. The mode and arena
 picked on the main menu apply only if you start the room; anyone can change them
-in the lobby. If the host leaves, the game freezes for a moment while another
+in the lobby. Anyone can also send everyone back to the lobby from the pause
+menu, or change gameplay settings (`` ` ``) for everyone; a note says who did
+it. If the host leaves, the game freezes for a moment while another
 player takes over as host, then carries on.
 
 **Customize** your character from the main menu (🎨 Customize) or a lobby card

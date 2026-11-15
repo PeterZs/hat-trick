@@ -11,7 +11,8 @@ import { TouchControls } from './input/touch';
 import { NEUTRAL, type PlayerInput } from './sim/input';
 import { BALLS, HZ, MAX_PLAYERS } from './sim/const';
 import { createState } from './sim/sim';
-import type { Command, GameState, MatchConfig } from './sim/types';
+import type { Command, GameState, MatchConfig, SimEvent } from './sim/types';
+import { PARAM_DEFS } from './sim/params';
 import { Menu } from './ui/menu';
 import { LookEditor } from './ui/lookEditor';
 import { presetLook, type Look } from './sim/look';
@@ -51,7 +52,7 @@ let roomCode = '';
 const pendingJoin = new Map<string, number>(); // device -> time requested
 
 const settings = new SettingsPanel(uiRoot, prefs);
-settings.onParams = (p) => { if (session?.isHost) session.command({ t: 'params', params: p }); };
+settings.onParams = (set) => session?.command({ t: 'params', set });
 settings.onPrefs = (p) => {
   setVolume(p.volume);
   renderer.opts.showHitboxes = p.showHitboxes;
@@ -86,7 +87,7 @@ hud.show(false);
 function waitingText(): string {
   if (!(session instanceof RollbackSession) || !session.started) return '';
   if (session.migrating) return '⏳ The host left — switching hosts…';
-  if (performance.now() < hostNotice.until) return hostNotice.text;
+  if (performance.now() < notice.until) return notice.text;
   if (session.stalledMs() < 700) return '';
   const peers = session.waitingOn();
   const names = session.state.players.filter((p) => p.active && !p.isBot && peers.includes(p.peer)).map((p) => p.name);
@@ -192,10 +193,28 @@ const errType = (e: unknown) => (e as { type?: string }).type;
 function watchHost(s: RollbackSession): void {
   s.onHostLost = (reason) => { if (session === s) quitToMenu(reason); else { s.dispose(); menu.show(true, reason); } };
   s.onHostChanged = () => {
-    hostNotice = { text: s.isHost ? "👑 The host left — you're the host now" : '🌐 The host left — the game carries on', until: performance.now() + 3000 };
+    notify(s.isHost ? "👑 The host left — you're the host now" : '🌐 The host left — the game carries on');
   };
 }
-let hostNotice = { text: '', until: 0 };
+let notice = { text: '', until: 0 };
+function notify(text: string): void { notice = { text, until: performance.now() + 3000 }; }
+
+/** Online, tell everyone when someone else retunes the game or ends the match. */
+let lastTune = { peer: -1, key: '', from: 0, until: 0 };
+function announce(s: GameState, ev: SimEvent): void {
+  if (!session?.online || (ev.e !== 'tuned' && ev.e !== 'tolobby') || ev.peer === session.peer) return;
+  const who = s.players.find((p) => p.active && !p.isBot && p.peer === ev.peer)?.name ?? 'Someone';
+  if (ev.e === 'tolobby') { notify(`↩️ ${who} sent everyone back to the lobby`); return; }
+  if (ev.changes.length > 1) { notify(`🔧 ${who} changed ${ev.changes.length} settings`); return; }
+  const [key, from0, to] = ev.changes[0];
+  // A dragged slider sends a stream of changes: keep the value it started from.
+  const now = performance.now();
+  const from = lastTune.peer === ev.peer && lastTune.key === key && now < lastTune.until ? lastTune.from : from0;
+  lastTune = { peer: ev.peer, key, from, until: now + 3000 };
+  const def = PARAM_DEFS.find((d) => d.key === key);
+  const fmt = (v: number) => (def?.bool ? (v ? 'on' : 'off') : String(+v.toFixed(3)));
+  notify(`🔧 ${who}: ${def?.label ?? key} ${fmt(from)} → ${fmt(to)}`);
+}
 
 async function hostOnline(cfg: MatchConfig, code: string, tries = 2): Promise<void> {
   menu.show(true, `Creating room ${code}…`);
@@ -404,14 +423,15 @@ function loop(now: number): void {
   }
   if (ticks >= 8) acc = 0;
 
+  settings.setLive(session?.online ? session.state?.params ?? null : null);
   if (active && active.state) {
     const s = active.state;
-    if (session) settings.setLive(s.params, !session.isHost);
     for (const { frame, ev } of active.takeEvents()) {
       const key = frame + JSON.stringify(ev);
       if (seenEvents.has(key)) continue;
       seenEvents.set(key, frame);
       renderer.onEvent(s, ev);
+      announce(s, ev);
       if (session) playEvent(ev, s);
     }
     if (seenEvents.size > 2000) for (const [k, f] of seenEvents) if (f < s.frame - 300) seenEvents.delete(k);

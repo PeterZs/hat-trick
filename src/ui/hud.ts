@@ -97,7 +97,7 @@ export class Hud {
       <h2 style="margin:0;text-align:center">Menu</h2>
       <div class="hint" style="text-align:center">The game keeps running${c.online ? ' (online)' : ''}.</div>
       <button class="primary" data-p="resume">Resume</button>
-      ${c.isHost ? '<button data-p="lobby">Back to lobby</button>' : ''}
+      <button data-p="lobby">Back to lobby</button>
       <button data-p="bot">+ Add bot</button>
       <button data-p="rmbot">− Remove bot</button>
       <button data-p="settings">⚙️ Settings</button>

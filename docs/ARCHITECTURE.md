@@ -53,6 +53,10 @@ Rules for code under `src/sim` (required for rollback and a future native port):
 - Iteration order is deterministic (arrays; peers sorted by id).
 - Gameplay parameters are part of the state (`state.params`), so tuning live
   in the settings panel is itself a deterministic, networked `params` command.
+  Any peer can send one; it carries only the values that changed, so
+  concurrent edits to different parameters don't clobber each other. Online
+  edits aren't saved to the editor's browser, and a `tuned` event lets the
+  others show who changed what.
 
 The sim emits `state.events` each step (kills, throws, clashes…) for effects and
 audio only; nothing reads them back into the simulation.
@@ -116,7 +120,7 @@ first host; peer numbers never change, but the host can (see host migration).
   a frame past that leave frame, so rollback covers every correction. The game
   freezes during the handshake. The new host then reclaims the room code so new
   players can find the room.
-- **Sim authority** (params, back to lobby, `peerLeft`) belongs to
+- **Sim authority** (`peerLeft`, restarting a match) belongs to
   `state.host`, not to a fixed peer. The new host sends a `host` command; the
   sim accepts it only at a frame the current host no longer contributes to, so
   the handover is deterministic.

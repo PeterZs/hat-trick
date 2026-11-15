@@ -183,7 +183,11 @@ export type SimEvent =
   | { e: 'join'; who: number }
   | { e: 'leave'; who: number }
   | { e: 'car'; what: 'enter' | 'exit' | 'crash' | 'spawn' | 'bump'; who: number; x: number; y: number }
-  | { e: 'piggy'; what: 'on' | 'off'; who: number; mount: number };
+  | { e: 'piggy'; what: 'on' | 'off'; who: number; mount: number }
+  /** A peer changed gameplay parameters: [key, from, to] for each. */
+  | { e: 'tuned'; peer: number; changes: [string, number, number][] }
+  /** A peer sent everyone from a match back to the lobby. */
+  | { e: 'tolobby'; peer: number };
 
 export interface MatchConfig {
   mode: ModeId;
@@ -244,7 +248,8 @@ export type Command =
   | { t: 'removeBot' }
   | { t: 'start'; cfg: MatchConfig }
   | { t: 'lobby'; cfg?: MatchConfig }
-  | { t: 'params'; params: Params }
+  /** Tune gameplay parameters (anyone can): just the values that changed. */
+  | { t: 'params'; set: Params }
   | { t: 'peerLeft'; peer: number }
   /** First command of an online peer: its browser-tab id. Reclaims the
    *  players that tab left behind when it disconnected (e.g. a reload). */

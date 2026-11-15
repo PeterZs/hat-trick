@@ -8,10 +8,14 @@ export class SettingsPanel {
   el: HTMLElement;
   open = false;
   params: Params = loadParams();
-  readOnly = false;
+  /** Online: showing (and editing) the game's parameters, which aren't saved in this browser. */
+  live = false;
+  /** Our recent online edits, shown until the game catches up (input delay) or a second passes. */
+  private pending = new Map<string, { v: number; t: number }>();
   /** Which groups are expanded (kept across re-renders). */
   private openGroups = new Set(['Player', 'Movement', 'Dash', 'Melee', 'Throw']);
-  onParams: (p: Params) => void = () => {};
+  /** Just the values that changed. */
+  onParams: (set: Params) => void = () => {};
   onPrefs: (p: Prefs) => void = () => {};
 
   constructor(parent: HTMLElement, public prefs: Prefs) {
@@ -29,12 +33,36 @@ export class SettingsPanel {
     if (this.open) this.render();
   }
 
-  /** Show the params currently in effect (e.g. the host's when we're a client). */
-  setLive(params: Params, readOnly: boolean): void {
-    const changed = readOnly !== this.readOnly || (readOnly && JSON.stringify(params) !== JSON.stringify(this.params));
-    this.readOnly = readOnly;
-    if (readOnly) this.params = cloneParams(params);
-    if (changed && this.open) this.render();
+  /** Online, show the game's params (anyone can change them); `null` goes back to this browser's saved ones. */
+  setLive(params: Params | null): void {
+    if (!params && !this.live) return;
+    let next: Params;
+    if (params) {
+      next = cloneParams(params);
+      const now = performance.now();
+      for (const [k, { v, t }] of this.pending) {
+        if (next[k] === v || now - t > 1000) this.pending.delete(k);
+        else next[k] = v;
+      }
+    } else {
+      this.pending.clear();
+      next = this.live ? loadParams() : this.params;
+    }
+    const changed = !!params !== this.live || JSON.stringify(next) !== JSON.stringify(this.params);
+    this.live = !!params;
+    this.params = next;
+    if (changed && this.open) this.refresh();
+  }
+
+  /** Re-render, but never rebuild a control while it's being used: update the others in place. */
+  private refresh(): void {
+    const active = document.activeElement as HTMLInputElement | null;
+    if (!active || !this.el.contains(active) || !(active.dataset.key || active.dataset.bool)) { this.render(); return; }
+    for (const inp of this.el.querySelectorAll<HTMLInputElement>('input[data-key], input[data-bool]')) {
+      if (inp === active) continue;
+      if (inp.dataset.bool) inp.checked = !!this.params[inp.dataset.bool];
+      else inp.value = String(this.params[inp.dataset.key!]);
+    }
   }
 
   private render(): void {
@@ -55,10 +83,10 @@ export class SettingsPanel {
           <div class="prow"><label><span>Show hitboxes</span><input data-pref="showHitboxes" type="checkbox" ${pf.showHitboxes ? 'checked' : ''}></label></div>
           <div class="prow"><label>Online input delay (frames) <span>${pf.inputDelay}</span></label><input data-pref="inputDelay" type="range" min="0" max="6" step="1" value="${pf.inputDelay}" style="grid-column:1/3"></div>
         </details>
-        <div class="note">${this.readOnly ? 'Gameplay parameters are controlled by the host.' : 'Gameplay parameters apply immediately and are remembered in this browser. Download to update the defaults (src/sim/defaultParams.json).'}</div>
+        <div class="note">${this.live ? 'Online: anyone can change gameplay parameters. Changes apply to everyone and aren\'t saved in this browser.' : 'Gameplay parameters apply immediately and are remembered in this browser. Download to update the defaults (src/sim/defaultParams.json).'}</div>
         <div class="row" style="margin:8px 0">
           <button class="small gold" data-act="download">⬇ Download params</button>
-          <button class="small" data-act="reset" ${this.readOnly ? 'disabled' : ''}>Reset all</button>
+          <button class="small" data-act="reset">Reset all</button>
         </div>
         ${[...groups.entries()].map(([g, defs]) => `
           <details data-group="${g}" ${this.openGroups.has(g) ? 'open' : ''}><summary>${g}</summary>
@@ -67,12 +95,12 @@ export class SettingsPanel {
               const changed = v !== DEFAULT_PARAMS[d.key];
               if (d.bool) return `<div class="prow">
                 <label class="${changed ? 'changed' : ''}" title="${d.key}"><span>${d.label}</span>
-                  <input type="checkbox" data-bool="${d.key}" ${v ? 'checked' : ''} ${this.readOnly ? 'disabled' : ''}></label>
+                  <input type="checkbox" data-bool="${d.key}" ${v ? 'checked' : ''}></label>
               </div>`;
               return `<div class="prow">
                 <label class="${changed ? 'changed' : ''}" title="${d.key}"><span>${d.label}</span>${changed ? `<a href="#" data-reset="${d.key}" title="Reset to ${DEFAULT_PARAMS[d.key]}">↺</a>` : ''}</label>
-                <input type="range" data-key="${d.key}" min="${d.min}" max="${d.max}" step="${d.step}" value="${v}" ${this.readOnly ? 'disabled' : ''}>
-                <input type="number" data-key="${d.key}" min="${d.min}" max="${d.max}" step="${d.step}" value="${v}" ${this.readOnly ? 'disabled' : ''}>
+                <input type="range" data-key="${d.key}" min="${d.min}" max="${d.max}" step="${d.step}" value="${v}">
+                <input type="number" data-key="${d.key}" min="${d.min}" max="${d.max}" step="${d.step}" value="${v}">
               </div>`;
             }).join('')}
           </details>`).join('')}
@@ -90,24 +118,23 @@ export class SettingsPanel {
     this.el.querySelector('[data-act=close]')!.addEventListener('click', () => this.toggle(false));
     this.el.querySelector('[data-act=download]')!.addEventListener('click', () => this.download());
     this.el.querySelector('[data-act=soundtest]')!.addEventListener('click', () => soundTest());
-    this.el.querySelector('[data-act=reset]')!.addEventListener('click', () => { this.params = cloneParams(DEFAULT_PARAMS); this.commit(); this.render(); });
+    this.el.querySelector('[data-act=reset]')!.addEventListener('click', () => { this.commit(cloneParams(DEFAULT_PARAMS)); this.render(); });
     for (const a of this.el.querySelectorAll<HTMLElement>('[data-reset]')) {
-      a.addEventListener('click', (e) => { e.preventDefault(); this.params[a.dataset.reset!] = DEFAULT_PARAMS[a.dataset.reset!]; this.commit(); this.render(); });
+      a.addEventListener('click', (e) => { e.preventDefault(); this.commit({ [a.dataset.reset!]: DEFAULT_PARAMS[a.dataset.reset!] }); this.render(); });
     }
     for (const inp of this.el.querySelectorAll<HTMLInputElement>('input[data-key]')) {
       inp.addEventListener('input', () => {
         const v = parseFloat(inp.value);
         if (!Number.isFinite(v)) return;
-        this.params[inp.dataset.key!] = v;
         for (const other of this.el.querySelectorAll<HTMLInputElement>(`input[data-key="${inp.dataset.key}"]`)) if (other !== inp) other.value = String(v);
         const label = inp.parentElement!.querySelector('label')!;
         label.classList.toggle('changed', v !== DEFAULT_PARAMS[inp.dataset.key!]);
-        this.commit();
+        this.commit({ [inp.dataset.key!]: v });
       });
       inp.addEventListener('change', () => this.render());
     }
     for (const inp of this.el.querySelectorAll<HTMLInputElement>('input[data-bool]')) {
-      inp.addEventListener('change', () => { this.params[inp.dataset.bool!] = inp.checked ? 1 : 0; this.commit(); this.render(); });
+      inp.addEventListener('change', () => { this.commit({ [inp.dataset.bool!]: inp.checked ? 1 : 0 }); this.render(); });
     }
     for (const inp of this.el.querySelectorAll<HTMLInputElement>('input[data-pref]')) {
       inp.addEventListener('input', () => {
@@ -123,10 +150,13 @@ export class SettingsPanel {
     }
   }
 
-  private commit(): void {
-    if (this.readOnly) return;
-    saveParams(this.params);
-    this.onParams(cloneParams(this.params));
+  private commit(set: Params): void {
+    Object.assign(this.params, set);
+    if (this.live) {
+      const t = performance.now();
+      for (const k in set) this.pending.set(k, { v: set[k], t });
+    } else saveParams(this.params);
+    this.onParams(set);
   }
 
   private download(): void {

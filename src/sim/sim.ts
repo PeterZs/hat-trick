@@ -5,7 +5,7 @@
 //   non-deterministic Math functions are used anywhere under src/sim.
 
 import { BALLS, HZ, MAX_PLAYERS } from './const';
-import { cloneParams, type Params } from './params';
+import { PARAM_DEFS, cloneParams, type Params } from './params';
 import { NEUTRAL, type PlayerInput } from './input';
 import { randInt } from './rng';
 import { sanitizeLook } from './look';
@@ -190,16 +190,24 @@ function applyCommand(s: GameState, peer: number, c: Command, frame: PeerFrame[]
       return;
     }
     case 'lobby': {
-      // Anyone can change the match settings while in the lobby; only the
-      // host can send everyone back to the lobby from a match.
-      if (peer !== s.host && s.phase !== 'lobby') return;
+      // Anyone can change the match settings or send everyone back to the lobby.
+      const fromMatch = s.phase !== 'lobby';
       if (c.cfg) s.cfg = { ...c.cfg };
       toLobby(s);
+      if (fromMatch) emit(s, { e: 'tolobby', peer });
       return;
     }
     case 'params': {
-      if (peer !== s.host) return;
-      s.params = cloneParams(c.params);
+      // Anyone can tune. Only the values sent change, so concurrent edits to
+      // different parameters don't clobber each other.
+      const changes: [string, number, number][] = [];
+      for (const d of PARAM_DEFS) {
+        const v = c.set[d.key];
+        if (typeof v !== 'number' || !Number.isFinite(v) || v === s.params[d.key]) continue;
+        changes.push([d.key, s.params[d.key], v]);
+        s.params[d.key] = v;
+      }
+      if (changes.length) emit(s, { e: 'tuned', peer, changes });
       return;
     }
     case 'peerLeft': {

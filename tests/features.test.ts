@@ -592,7 +592,7 @@ describe('names', () => {
 });
 
 describe('lobby settings', () => {
-  it('any peer can change settings and start from the lobby, but not abort a match', () => {
+  it('any peer can change settings, start from the lobby, and send everyone back to it', () => {
     const cfg = { mode: 'ffa' as const, level: 'courtyard', winScore: 5 };
     const s = createState(cfg, DEFAULT_PARAMS, 1);
     step(s, [{ peer: 1, inputs: {}, cmds: [{ t: 'lobby', cfg: { mode: 'soccer', level: 'pitch', winScore: 3 } }] }]);
@@ -600,9 +600,23 @@ describe('lobby settings', () => {
     expect(s.cfg.level).toBe('pitch');
     step(s, [{ peer: 1, inputs: {}, cmds: [{ t: 'start', cfg: s.cfg }] }]);
     expect(s.phase).not.toBe('lobby'); // anyone can start from the lobby
-    step(s, [{ peer: 1, inputs: {}, cmds: [{ t: 'lobby', cfg }] }]);
-    expect(s.phase).not.toBe('lobby'); // a client can't abort the match
-    expect(s.cfg.mode).toBe('soccer');
+    step(s, [{ peer: 1, inputs: {}, cmds: [{ t: 'lobby' }] }]);
+    expect(s.phase).toBe('lobby');
+    expect(s.events).toContainEqual({ e: 'tolobby', peer: 1 });
+  });
+
+  it('any peer can tune parameters; only the values sent change', () => {
+    const s = createState({ mode: 'ffa', level: 'courtyard', winScore: 5 }, DEFAULT_PARAMS, 1);
+    // Two peers edit different parameters on the same frame: both stick.
+    step(s, [
+      { peer: 0, inputs: {}, cmds: [{ t: 'params', set: { moveSpeed: 12 } }] },
+      { peer: 2, inputs: {}, cmds: [{ t: 'params', set: { dashSpeed: 30, notAParam: 5 } }] },
+    ]);
+    expect(s.params.moveSpeed).toBe(12);
+    expect(s.params.dashSpeed).toBe(30);
+    expect(s.params.notAParam).toBeUndefined();
+    expect(s.params.slashCooldown).toBe(DEFAULT_PARAMS.slashCooldown);
+    expect(s.events).toContainEqual({ e: 'tuned', peer: 2, changes: [['dashSpeed', DEFAULT_PARAMS.dashSpeed, 30]] });
   });
 });
 
