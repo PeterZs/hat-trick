@@ -39,7 +39,7 @@ power-up is an identical ❓ box until someone picks it up — good or bad is a 
 | Icon | Power-up | Effect |
 |---|---|---|
 | ⚡ | Speed | 1.5× running speed for 10 s. |
-| 🕶️ | Invisible | For 10 s nobody can see you (online, your own screen shows a faint ghost). You flash visible while slashing, kicking or aiming, and for 0.6 s after attacking, throwing, dashing, bumping into something or getting hit. Bots lose track of you unless you're very close. |
+| 🕶️ | Invisible | For 10 s nobody can see you, not even you. You flash visible while slashing, kicking or aiming, and for 0.6 s after attacking, throwing, dashing, bumping into something or getting hit. Bots lose track of you unless you're very close. |
 | 🫧 | Bubble Shield | Survive one hit (brief invulnerability after it pops). |
 | 🎩 | Double hat | Two hats: throw twice, or slash while one hat is out. Slash cooldown halves. |
 | 👻 | Phase dash | For 12 s, dashes pass through walls (never ending inside one). |

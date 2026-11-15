@@ -80,10 +80,8 @@ export class Renderer {
   private aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.5);
   private time = 0;
   opts: ViewOptions = { showHitboxes: false };
-  /** Peer id of this browser (own players stay faintly visible when invisible). */
+  /** Peer id of this browser. */
   localPeer = 0;
-  /** Online: show own invisible players as a faint ghost. */
-  ghostOwn = false;
 
   constructor(private canvas: HTMLCanvasElement, labelLayer: HTMLElement) {
     this.labels = labelLayer;
@@ -548,11 +546,8 @@ export class Renderer {
       v.speedFx.visible = p.speedT > 0;
       if (p.speedT > 0) v.speedFx.rotation.z = this.time * 12;
       const phasing = p.phaseT > 0;
-      // Invisible: hidden from everyone. Online, your own players stay a faint
-      // ghost (nobody else sees your screen); on a shared screen they vanish too.
+      // Invisible: hidden from everyone, yourself included (you see what they see).
       const invis = isInvisible(p);
-      const own = this.ghostOwn && p.peer === this.localPeer && !p.isBot;
-      const ghost = invis ? (own ? 0.22 : 0) : 1;
       if (invis) {
         // A faint dust tell when moving.
         v.dustT -= dt;
@@ -563,15 +558,14 @@ export class Renderer {
           else this.effects.puff(p.x, p.y, '#e8e4da', 2);
         }
       }
-      v.ballMat.transparent = phasing || ghost < 1;
-      v.ballMat.opacity = Math.min(ghost, phasing ? 0.55 + 0.2 * Math.sin(this.time * 10) : 1);
-      v.root.visible = ghost > 0;
+      v.ballMat.transparent = phasing;
+      v.ballMat.opacity = phasing ? 0.55 + 0.2 * Math.sin(this.time * 10) : 1;
+      v.root.visible = !invis;
       v.ring.visible = v.ring.visible && !invis;
       v.shield.visible = v.shield.visible && !invis;
       v.speedFx.visible = v.speedFx.visible && !invis;
-      if (invis && !own) v.label.style.display = 'none';
-      if (invis && !own) { v.lastX = p.x; v.lastY = p.y; continue; }
-      for (const h of v.hatStack.children) h.visible = ghost > 0;
+      if (invis) { v.label.style.display = 'none'; v.lastX = p.x; v.lastY = p.y; continue; }
+      for (const h of v.hatStack.children) h.visible = true;
       // Spawn protection blink.
       v.ball.visible = !(p.invulnT > 0 && Math.floor(this.time * 12) % 2 === 0);
       v.head.visible = v.ball.visible;
