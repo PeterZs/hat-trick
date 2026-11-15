@@ -1,6 +1,7 @@
 // Procedural low-poly, flat-colored models.
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export const PLAYER_COLORS = ['#ff5a5a', '#4a8dff', '#ffd23f', '#4fd17a', '#c77dff', '#ff9f43', '#2ed3d3', '#ff6fb5'];
 export const TEAM_COLORS = ['#ff5a5a', '#4a8dff', '#ffd23f', '#4fd17a'];
@@ -443,18 +444,10 @@ export function makeProp(kind: string, seed: number): THREE.Group {
       break;
     }
     case 'grass': {
-      // A patch of tall blades, tall enough to bury a ball.
-      const greens = ['#5fae4a', '#6fbf55', '#4f9c3e', '#82c95e'];
-      let k = seed * 7.13;
-      const rnd = () => { k = (k * 9301 + 49297) % 233280; return k / 233280; };
-      for (let i = 0; i < 26; i++) {
-        const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 0.9, h = 0.9 + rnd() * 0.6;
-        const blade = mesh(new THREE.ConeGeometry(0.09, h, 3), greens[i % greens.length]);
-        blade.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r);
-        blade.rotation.set((rnd() - 0.5) * 0.5, rnd() * 3, (rnd() - 0.5) * 0.5);
-        blade.castShadow = false;
-        g.add(blade);
-      }
+      // A solid clump of overlapping tufts that hides the ground (one merged mesh).
+      const m = new THREE.Mesh(grassGeometry(seed % 3), vertexColorMat);
+      m.castShadow = true; m.receiveShadow = true;
+      g.add(m);
       break;
     }
     case 'bush': {
@@ -469,6 +462,37 @@ export function makeProp(kind: string, seed: number): THREE.Group {
     }
   }
   return g;
+}
+
+const grassGeos: THREE.BufferGeometry[] = [];
+/** Merged, vertex-colored tall-grass clump (three variants). */
+export function grassGeometry(variant: number): THREE.BufferGeometry {
+  if (grassGeos[variant]) return grassGeos[variant];
+  const greens = ['#5fae4a', '#6fbf55', '#55a443', '#7cc760'].map((c) => new THREE.Color(c));
+  let k = 17 + variant * 31;
+  const rnd = () => { k = (k * 9301 + 49297) % 233280; return k / 233280; };
+  const parts: THREE.BufferGeometry[] = [];
+  const add = (geo: THREE.BufferGeometry, color: THREE.Color, x: number, y: number, z: number, ry = 0) => {
+    const gg = geo.toNonIndexed();
+    gg.rotateY(ry); gg.translate(x, y, z);
+    const cols = new Float32Array(gg.getAttribute('position').count * 3);
+    for (let i = 0; i < cols.length; i += 3) { cols[i] = color.r; cols[i + 1] = color.g; cols[i + 2] = color.b; }
+    gg.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    gg.deleteAttribute('uv');
+    parts.push(gg);
+  };
+  // Ground cover.
+  add(new THREE.CylinderGeometry(1.08, 1.12, 0.3, 9), greens[2], 0, 0.15, 0);
+  // Ring of fat tufts plus a taller middle.
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2 + rnd() * 0.5, r = 0.62 + rnd() * 0.18, h = 0.95 + rnd() * 0.35;
+    add(new THREE.ConeGeometry(0.42 + rnd() * 0.1, h, 5), greens[i % 4], Math.cos(a) * r, h / 2 + 0.1, Math.sin(a) * r, rnd() * 3);
+  }
+  add(new THREE.ConeGeometry(0.55, 1.45, 6), greens[1], 0, 0.8, 0, rnd() * 3);
+  const merged = mergeGeometries(parts)!;
+  merged.computeVertexNormals();
+  grassGeos[variant] = merged;
+  return merged;
 }
 
 export function makeStump(): THREE.Group {

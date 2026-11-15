@@ -4,6 +4,7 @@
 
 import { border, R, spawnsRing, W, type Level, type Spawn, type Wall } from './levelkit';
 import type { PropKind } from './types';
+import { circleOverlapsWalls } from './collision';
 
 const P = (kind: PropKind, x: number, y: number) => ({ kind, x, y });
 const S = (x: number, y: number, team = -1): Spawn => ({ x, y, team });
@@ -24,22 +25,37 @@ const shop: Level = {
   props: [P('crate', -6.75, 0), P('crate', 6.75, 0), P('bush', -13.4, -8.6), P('bush', 13.4, 8.6), P('crate', -2.25, 8.7), P('crate', 2.25, -8.7)],
 };
 
+/** Grass patches on a grid (with a little jitter), skipping spots near `avoid` points. */
+function grassField(x0: number, y0: number, x1: number, y1: number, step: number, avoid: number[][], clear: number, walls: Wall[] = []) {
+  const out: ReturnType<typeof P>[] = [];
+  let k = 0;
+  for (let y = y0; y <= y1 + 1e-6; y += step) {
+    for (let x = x0 + ((k++ % 2) * step) / 2; x <= x1 + 1e-6; x += step) {
+      if (avoid.some(([ax, ay]) => Math.hypot(ax - x, ay - y) < clear)) continue;
+      if (circleOverlapsWalls(x, y, 1.3, walls, false)) continue;
+      out.push(P('grass', Math.round(x * 100) / 100, Math.round(y * 100) / 100));
+    }
+  }
+  return out;
+}
+
 const bushCluster = (x: number, y: number) => [P('bush', x, y), P('bush', x + 1.1, y + 0.3), P('bush', x - 0.4, y + 1.1), P('bush', x + 0.6, y - 1)];
+const daycareWalls = [
+  ...border(14, 10),
+  W(-3.5, -6, 2, 0.3, 'low'), W(3.5, 6, 2, 0.3, 'low'),
+  W(-10, 0, 0.3, 2, 'low'), W(10, 0, 0.3, 2, 'low'),
+];
 const daycare: Level = {
   id: 'daycare', name: 'Ball Pit Daycare', w: 14, h: 10, floor: ['#ffd6e8', '#ffcade'],
-  walls: [
-    ...border(14, 10),
-    W(-3.5, -6, 2, 0.3, 'low'), W(3.5, 6, 2, 0.3, 'low'),
-    W(-10, 0, 0.3, 2, 'low'), W(10, 0, 0.3, 2, 'low'),
-  ],
+  walls: daycareWalls,
   spawns: mirror([[-12, -7.5], [12, -7.5], [0, -8.5], [-6, 0]]),
   goals: [], bases: [{ team: 0, x: -12.2, y: 0 }, { team: 1, x: 12.2, y: 0 }],
   props: [
-    // "Ball pits": lots of bush clusters to hide behind (hats pass through).
-    ...[[-8, -4.5], [-2.5, -3], [3, -3.2], [8.5, -4.5], [-8.5, 4.5], [-3, 3.2], [2.5, 3], [8, 4.5], [0, 0], [-12.3, -3.6], [11.6, 3.6], [5.5, -8], [-5.5, 8]]
-      .flatMap(([x, y]) => bushCluster(x, y)),
-    // Tall grass to hide in.
-    P('grass', -12.3, 0.4), P('grass', 12.3, -0.4), P('grass', -5.5, -8.6), P('grass', 5.5, 8.6), P('grass', 0, -4.6), P('grass', 0, 4.6),
+    // A few bush clusters...
+    ...[[-8, -4.5], [3, 3], [8.5, -4.5]].flatMap(([x, y]) => bushCluster(x, y)),
+    // ...in a sea of tall grass (overlapping patches; spawn points stay clear).
+    ...grassField(-12.6, -8.6, 12.6, 8.6, 1.55, [[-12, -7.5], [12, 7.5], [12, -7.5], [-12, 7.5], [0, -8.5], [0, 8.5], [-6, 0], [6, 0],
+      [-8, -4.5], [3, 3], [8.5, -4.5], [10.5, -5.6], [-10.5, 5.6]], 1.9, daycareWalls),
     P('crate', 10.5, -5.6), P('crate', -10.5, 5.6),
   ],
 };
@@ -170,28 +186,61 @@ const pinball: Level = {
 
 /** Walls for one half, plus the same walls rotated 180 degrees for the other. */
 const pointSym = (ws: Wall[]) => [...ws, ...ws.map((w) => ({ ...w, x: -w.x, y: -w.y }))];
+
+/** A connected maze on a cols x rows grid of `cell`-sized cells starting at (x0, y0):
+ *  a random spanning tree (every cell reachable), plus a few extra openings for
+ *  loops. Walls are a mix of high and low. Deterministic for a given seed. */
+function maze(x0: number, y0: number, cols: number, rows: number, cell: number, seed: number, extraOpen: number): Wall[] {
+  let r = seed;
+  const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
+  const open = new Set<string>();
+  const seen = new Set<number>([0]);
+  const stack = [0];
+  while (stack.length) {
+    const c = stack[stack.length - 1], cx = c % cols, cy = Math.floor(c / cols);
+    const nbrs = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [cx + dx, cy + dy])
+      .filter(([x, y]) => x >= 0 && y >= 0 && x < cols && y < rows && !seen.has(y * cols + x));
+    if (!nbrs.length) { stack.pop(); continue; }
+    const [nx, ny] = nbrs[Math.floor(rnd() * nbrs.length)];
+    const n = ny * cols + nx;
+    open.add(Math.min(c, n) + ':' + Math.max(c, n));
+    seen.add(n); stack.push(n);
+  }
+  const walls: Wall[] = [];
+  const t = 0.15, half = cell / 2 + t;
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    const c = y * cols + x;
+    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx >= cols || ny >= rows) continue;
+      const n = ny * cols + nx;
+      if (open.has(c + ':' + n)) continue;
+      if (extraOpen > 0 && rnd() < 0.12) { extraOpen--; continue; }
+      const kind: Wall['kind'] = rnd() < 0.4 ? 'low' : 'wall';
+      if (dx) walls.push(W(x0 + (x + 1) * cell, y0 + (y + 0.5) * cell, t, half, kind));
+      else walls.push(W(x0 + (x + 0.5) * cell, y0 + (y + 1) * cell, half, t, kind));
+    }
+  }
+  return walls;
+}
+
+// Two mazes (one per half, point-symmetric), joined only by teleporters.
 const temple: Level = {
   id: 'temple', name: 'Teleporter Temple', w: 16, h: 10, floor: ['#d9c79a', '#cfbd8f'],
   walls: [
     ...border(16, 10),
-    W(0, 0, 0.5, 10.5), // the two halves only connect through the portals
-    ...pointSym([
-      W(-11, 0, 0.7, 0.7, 'box'), W(-5, -4, 0.6, 0.6, 'box'), W(-5, 4, 0.6, 0.6, 'box'),
-      W(-11, -3.5, 2.2, 0.3),            // high
-      W(-6.5, -1, 0.3, 2.6, 'low'),      // low: throw over it
-      W(-10.5, 4, 0.3, 1.5),             // high
-      W(-3, 6.5, 1.8, 0.3, 'low'),
-      W(-2, -7, 0.3, 1.8),               // high
-      W(-13.5, -0.5, 1.2, 0.3, 'low'),
-    ]),
+    W(0, 0, 0.5, 10.5),
+    ...pointSym(maze(-16, -10, 4, 5, 4, 7, 3)),
   ],
   portals: [
-    { x: -8, y: -7, to: 1 }, { x: 8, y: 7, to: 0 },
-    { x: -8, y: 7, to: 3 }, { x: 8, y: -7, to: 2 },
+    { x: -10, y: -4, to: 1 }, { x: 6, y: -8, to: 0 },     // across, near the top
+    { x: 10, y: 4, to: 3 }, { x: -6, y: 8, to: 2 },       // (mirror)
+    { x: -14, y: 8, to: 5 }, { x: 14, y: 0, to: 4 },      // corner to far middle
+    { x: 14, y: -8, to: 7 }, { x: -14, y: 0, to: 6 },     // (mirror)
   ],
-  spawns: mirror([[-13, -7], [13, -7], [-3, 0], [-13, 3]]),
-  goals: [], bases: [{ team: 0, x: -13, y: 1.5 }, { team: 1, x: 13, y: -1.5 }],
-  props: [P('grass', -9, 1.5), P('grass', 9, -1.5)],
+  spawns: [S(-14, -8), S(14, 8), S(-2, 0), S(2, 0), S(-10, 8), S(10, -8), S(-6, 0), S(6, 0), S(-14, 4), S(14, -4)],
+  goals: [], bases: [{ team: 0, x: -2, y: -8 }, { team: 1, x: 2, y: 8 }],
+  props: [P('grass', -10, 0), P('grass', 10, 0), P('grass', -2, 4), P('grass', 2, -4)],
 };
 
 const cliffs: Level = {
@@ -322,7 +371,9 @@ const islands: Level = {
     R(-9.3, -11, -3.8, -7.9), R(-9.3, -6.1, -3.8, 11),
     R(3.8, -11, 9.3, 6.1), R(3.8, 7.9, 9.3, 11),
     // Channel between the rows (gaps at x = +-13 are bridges).
-    R(-18, -2.9, -13.9, 2.9), R(-12.1, -2.9, 12.1, 2.9), R(13.9, -2.9, 18, 2.9),
+    R(-18, -2.9, -13.9, 2.9), R(13.9, -2.9, 18, 2.9),
+    // ...around a small platform in the middle that you can only dash onto.
+    R(-12.1, -2.9, -2, 2.9), R(2, -2.9, 12.1, 2.9), R(-2, -2.9, 2, -1.4), R(-2, 1.4, 2, 2.9),
   ],
   walls: [
     // Railings along the bridges (low: hats fly over).

@@ -117,7 +117,8 @@ export class ArenaView {
     }
     const pairColors = ['#ff9f43', '#4a8dff', '#4fd17a', '#c77dff'];
     (L.portals ?? []).forEach((p, i) => {
-      const color = pairColors[Math.floor(Math.min(i, p.to) / 1) % pairColors.length];
+      // Each pair gets its own color (pairs are listed as consecutive portals).
+      const color = pairColors[Math.floor(Math.min(i, p.to) / 2) % pairColors.length];
       const g = new THREE.Group();
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.12, 8, 28), new THREE.MeshBasicMaterial({ color }));
       ring.rotation.x = Math.PI / 2; ring.position.y = 0.15; g.add(ring);

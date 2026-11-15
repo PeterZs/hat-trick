@@ -61,7 +61,7 @@
   "iceGrip": 0.04,
   "bumperForce": 24,
   "portalCooldown": 0.5,
-  "windOnPlayers": 0.15,
+  "windOnPlayers": 2,
   "tileWarnTime": 1.2,
   "collapseTime": 50,
   "nightDayTime": 3,
@@ -108,7 +108,7 @@
   "hazardRoundTime": 45,
   "iceSlide": 0.08,
   "iceBallFriction": 0.25,
-  "windOnHats": 2.5,
+  "windOnHats": 10,
   "ghostRevealTime": 0.3,
   "grassRegrowTime": 6
 }

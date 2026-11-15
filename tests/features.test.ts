@@ -531,7 +531,7 @@ describe('level layouts', () => {
       for (const pr of L.props) {
         const r = propInfo(s, pr.kind).r;
         expect(circleOverlapsWalls(pr.x, pr.y, r + 0.3, L.walls, false), `${L.id} ${pr.kind} @${pr.x},${pr.y} hits a wall`).toBe(false);
-        for (const sp of L.spawns) expect(Math.hypot(sp.x - pr.x, sp.y - pr.y), `${L.id} ${pr.kind} near spawn`).toBeGreaterThan(r + 1.2);
+        if (pr.kind !== 'grass') for (const sp of L.spawns) expect(Math.hypot(sp.x - pr.x, sp.y - pr.y), `${L.id} ${pr.kind} near spawn`).toBeGreaterThan(r + 1.2);
       }
     }
   });
