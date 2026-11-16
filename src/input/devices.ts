@@ -56,10 +56,10 @@ export class KeyboardMouseDevice implements Device {
       if (w) { ax = w.x - pos.x; ay = w.y - pos.y; if (Math.hypot(ax, ay) < 0.3) { ax = 0; ay = 0; } }
     }
     let b = 0;
-    // C/V/B = dash/slash/throw; Space also slashes, left click throws, right click slashes.
+    // C/V/B = dash/slash/throw; left Shift also dashes, Space also slashes, left click throws, right click slashes.
     if ((mouseButtons() & 2) || anyKey('KeyV', 'Space')) b |= BTN_ATTACK;
     if ((mouseButtons() & 1) || anyKey('KeyB')) b |= BTN_THROW;
-    if (anyKey('KeyC')) b |= BTN_DASH;
+    if (anyKey('KeyC', 'ShiftLeft')) b |= BTN_DASH;
     return makeInput(mx, my, ax, ay, b);
   }
   joinPressed() { return this.j; }
