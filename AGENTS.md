@@ -54,6 +54,8 @@ Asymmetric gameplay where some players control the environment rather than chara
 
 Document the software architecture. Commit often. Use git-bug for issue tracking.
 
+Keep git-bug up to date as you work: before starting, check `git bug bug` for related issues; when a commit fixes or advances an issue, add a comment naming the commit hash and close it (`git bug bug comment new ID -m "Done in <hash>: ..."`, `git bug bug status close ID`); file new issues for known limitations or follow-ups you leave behind.
+
 Players can join or leave the game at any time (and pair new controllers).
 
 A non-modal settings menu with, among other things, developer parameters like running speed, dash cooldown, slash cooldown, boomerang speed, boomerang distance, hold-throw speed, hold-throw distance, attack radius, hit radius, etc. Parameters are remembered across refreshes and downloadable for updating the defaults.
